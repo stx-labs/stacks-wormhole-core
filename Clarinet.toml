@@ -11,7 +11,6 @@ path = 'contracts/wormhole-core-v1.clar'
 clarity_version = 2
 epoch = 2.1
 
-
 [contracts.hk-cursor-v1]
 path = 'contracts/hiro-kit/hk-cursor-v1.clar'
 clarity_version = 2
@@ -22,6 +21,15 @@ path = 'contracts/hiro-kit/traits/hk-tokens-v1.clar'
 clarity_version = 2
 epoch = 2.1
 
+[contracts.wormhole-token-bridge-v1]
+path = 'contracts/wormhole-token-bridge-v1.clar'
+clarity_version = 2
+epoch = 2.1
+
+[contracts.ethereum-usdc-v1]
+path = 'contracts/token-bridged/ethereum-usdc-v1.clar'
+clarity_version = 2
+epoch = 2.1
 
 [repl.analysis]
 passes = ['check_checker']
