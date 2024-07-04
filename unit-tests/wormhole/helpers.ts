@@ -13,6 +13,13 @@ import { sha256 } from "@noble/hashes/sha256";
 import { gsuMainnetVaas } from "./fixtures";
 import { hexToBytes } from "@noble/hashes/utils";
 
+const initialGovernanceDataSource = {
+  chain: 1,
+  address: hexToBytes(
+    "5635979a221c34931e32620b9293a463065555ea71fe97cd6237ade875b12e9e",
+  ),
+};
+
 secp.etc.hmacSha256Sync = (k, ...m) =>
   hmac(sha256, k, secp.etc.concatBytes(...m));
 
@@ -319,7 +326,7 @@ export namespace wormhole {
     const payload =
       (opts && opts.payload && opts.payload) || new Uint8Array(32);
     let emitter =
-      opts && opts.emitter ? opts.emitter : pyth.InitialGovernanceDataSource;
+      opts && opts.emitter ? opts.emitter : initialGovernanceDataSource;
     let values = {
       timestamp: timestamp,
       nonce: 0,
