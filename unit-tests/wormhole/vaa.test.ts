@@ -5,10 +5,10 @@ import { wormhole } from "./helpers";
 import { ParsedTransactionResult, tx } from "@hirosystems/clarinet-sdk";
 import { hexToBytes } from "@noble/hashes/utils";
 
-const contractName = "wormhole-core-v2";
+const contractName = "wormhole-core-v1";
 const verbosity = 0;
 
-describe("wormhole-core-v2::parse-vaa success", () => {
+describe("wormhole-core-v1::parse-vaa success", () => {
   const accounts = simnet.getAccounts();
   const sender = accounts.get("wallet_1")!;
   const keychain = wormhole.generateGuardianSetKeychain(19);
@@ -60,7 +60,7 @@ describe("wormhole-core-v2::parse-vaa success", () => {
   });
 });
 
-describe("wormhole-core-v2::update-guardians-set failures", () => {
+describe("wormhole-core-v1::update-guardians-set failures", () => {
   const accounts = simnet.getAccounts();
   const sender = accounts.get("wallet_1")!;
   const keychain = wormhole.generateGuardianSetKeychain(19);
@@ -204,7 +204,9 @@ describe("wormhole-core-v2::update-guardians-set failures", () => {
     // Before performing this test, we need to setup the guardian set
     let emitter = {
       chain: wormhole.GovernanceUpdateEmitter.chain,
-      address: hexToBytes("0000000000000000000000000000000000000000000000000000000000000009"),
+      address: hexToBytes(
+        "0000000000000000000000000000000000000000000000000000000000000009",
+      ),
     };
     let guardianRotationPayload =
       wormhole.serializeGuardianUpdateVaaPayloadToBuffer(
@@ -275,7 +277,7 @@ describe("wormhole-core-v2::update-guardians-set failures", () => {
   });
 });
 
-describe("wormhole-core-v2::update-guardians-set success", () => {
+describe("wormhole-core-v1::update-guardians-set success", () => {
   const accounts = simnet.getAccounts();
   const sender = accounts.get("wallet_1")!;
   const guardianSet1Keys = wormhole.generateGuardianSetKeychain(19);
@@ -439,7 +441,7 @@ describe("wormhole-core-v2::update-guardians-set success", () => {
   });
 });
 
-describe("wormhole-core-v2::parse-and-verify-vaa success", () => {
+describe("wormhole-core-v1::parse-and-verify-vaa success", () => {
   const accounts = simnet.getAccounts();
   const sender = accounts.get("wallet_1")!;
   const guardianSet1Keys = wormhole.generateGuardianSetKeychain(19);
@@ -525,7 +527,7 @@ describe("wormhole-core-v2::parse-and-verify-vaa success", () => {
   });
 });
 
-describe("wormhole-core-v2::parse-and-verify-vaa failures", () => {
+describe("wormhole-core-v1::parse-and-verify-vaa failures", () => {
   const accounts = simnet.getAccounts();
   const sender = accounts.get("wallet_1")!;
   const guardianSet1Keys = wormhole.generateGuardianSetKeychain(19);
@@ -662,7 +664,7 @@ describe("wormhole-core-v2::parse-and-verify-vaa failures", () => {
   });
 });
 
-describe("wormhole-core-v2::update-guardians-set mainnet guardian rotations", () => {
+describe("wormhole-core-v1::update-guardians-set mainnet guardian rotations", () => {
   const accounts = simnet.getAccounts();
   const sender = accounts.get("wallet_1")!;
   let block: ParsedTransactionResult[] | undefined = undefined;
