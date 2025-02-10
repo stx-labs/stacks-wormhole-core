@@ -17,13 +17,13 @@ contract_id = 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-merkle-tree-keccak16
 
 [contracts.wormhole-core-v1]
 path = 'contracts/wormhole-core-v1.clar'
-clarity_version = 2
-epoch = 2.4
+clarity_version = 3
+epoch = 3.0
 
 [contracts.wormhole-traits-v1]
 path = 'contracts/wormhole-traits-v1.clar'
-clarity_version = 2
-epoch = 2.4
+clarity_version = 3
+epoch = 3.0
 
 [repl.analysis]
 passes = ["check_checker"]
