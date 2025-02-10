@@ -1,6 +1,6 @@
 
 [project]
-name = "stacks-wormhole-bridge"
+name = "stacks-wormhole-core"
 description = ""
 authors = []
 telemetry = false

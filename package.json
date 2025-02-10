@@ -1,5 +1,5 @@
 {
-  "name": "stacks-wormhole-bridge-tests",
+  "name": "stacks-wormhole-core-tests",
   "version": "1.0.0",
   "description": "Run unit tests on this project.",
   "type": "module",
