@@ -91,6 +91,10 @@
 (define-constant GUARDIAN_ETH_ADDRESS_SIZE u20)
 ;; 24 hours in seconds
 (define-constant TWENTY_FOUR_HOURS u86400)
+;; Default consistency level for emitted messages
+;; TODO: Allow this to set per contract/message?
+(define-constant DEFAULT_CONSISTENCY_LEVEL u100)
+
 ;;;; Data vars
 
 ;; Guardian Set Update uncompressed public keys invalid
@@ -106,6 +110,12 @@
 
 ;; Map tracking guardians set
 (define-map guardian-sets uint (list 19 { compressed-public-key: (buff 33), uncompressed-public-key: (buff 64) }))
+
+;; Keep track of sequence state for message emitters
+(define-map emitter-sequence
+    principal  ;; Contract emitting message
+    uint       ;; Incremented each time emitter emits a message
+)
 
 ;;;; Public functions
 
@@ -261,6 +271,26 @@
         set-id: set-id,
         guardians: guardians
       })))
+
+;; Read from `emitter-sequence` map, defaulting to 0 if entry not found
+(define-read-only (get-emitter-sequence (emitter principal))
+  (default-to u0 (map-get? emitter-sequence contract-caller)))
+
+;; @desc Emit message for Guardians to  observe and package in to VAA
+;; @param data: Raw data to send, specific to the contract sending the message
+(define-public (emit-message (data (buff 2048)))
+  (let (
+      (emitter contract-caller)
+      (sequence (get-emitter-sequence emitter))
+      (message {
+        emitter: emitter,
+        sequence: sequence,
+        consistency-level: DEFAULT_CONSISTENCY_LEVEL,
+        data: data
+      }))
+    (print message)
+    (map-set emitter-sequence emitter (+ sequence u1))
+    (ok message)))
 
 ;;;; Private functions
 
