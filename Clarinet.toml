@@ -15,8 +15,8 @@ contract_id = 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-ecc-v1'
 [[project.requirements]]
 contract_id = 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-merkle-tree-keccak160-v1'
 
-[contracts.wormhole-core-v3]
-path = 'contracts/wormhole-core-v3.clar'
+[contracts.wormhole-core-v4]
+path = 'contracts/wormhole-core-v4.clar'
 clarity_version = 3
 epoch = 3.0
 

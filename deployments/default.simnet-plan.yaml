@@ -73,8 +73,8 @@ plan:
             path: contracts/wormhole-traits-v2.clar
             clarity-version: 3
         - emulated-contract-publish:
-            contract-name: wormhole-core-v3
+            contract-name: wormhole-core-v4
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
-            path: contracts/wormhole-core-v3.clar
+            path: contracts/wormhole-core-v4.clar
             clarity-version: 3
       epoch: "3.0"
