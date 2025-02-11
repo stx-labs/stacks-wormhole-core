@@ -6,7 +6,7 @@
 ;;;; Traits
 
 ;; Implements trait specified in wormhole-core-trait contract
-(impl-trait .wormhole-traits-v1.core-trait)
+(impl-trait .wormhole-traits-v2.core-trait)
 
 ;;;; Constants
 
@@ -277,8 +277,8 @@
   (default-to u0 (map-get? emitter-sequence contract-caller)))
 
 ;; @desc Emit message for Guardians to  observe and package in to VAA
-;; @param data: Raw data to send, specific to the contract sending the message
-(define-public (emit-message (data (buff 2048)))
+;; @param payload: Raw data to send, specific to the contract sending the message
+(define-public (emit-message (payload (buff 8192)))
   (let (
       (emitter contract-caller)
       (sequence (get-emitter-sequence emitter))
@@ -286,7 +286,7 @@
         emitter: emitter,
         sequence: sequence,
         consistency-level: DEFAULT_CONSISTENCY_LEVEL,
-        data: data
+        payload: payload
       }))
     (print message)
     (map-set emitter-sequence emitter (+ sequence u1))

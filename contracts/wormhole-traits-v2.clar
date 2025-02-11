@@ -14,5 +14,12 @@
       consistency-level: uint,
       payload: (buff 8192),
     } uint))
+    ;; Emit message for Guardians to observe
+    (emit-message ((buff 8192)) (response {
+      emitter: principal,
+      sequence: uint,
+      consistency-level: uint,
+      payload: (buff 8192)
+    } uint))
   )
 )
