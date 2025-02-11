@@ -13,13 +13,6 @@ import { sha256 } from "@noble/hashes/sha256";
 import { gsuMainnetVaas } from "./fixtures";
 import { hexToBytes } from "@noble/hashes/utils";
 
-const initialGovernanceDataSource = {
-  chain: 1,
-  address: hexToBytes(
-    "5635979a221c34931e32620b9293a463065555ea71fe97cd6237ade875b12e9e",
-  ),
-};
-
 secp.etc.hmacSha256Sync = (k, ...m) =>
   hmac(sha256, k, secp.etc.concatBytes(...m));
 
@@ -50,6 +43,12 @@ export namespace wormhole {
     }
     return keychain;
   };
+
+  export interface NewEmitter {
+    chain: number;
+    sequence: bigint;
+    address: Uint8Array;
+  }
 
   export interface Emitter {
     chain: number;
@@ -90,6 +89,7 @@ export namespace wormhole {
 
   export const GovernanceUpdateEmitter = {
     chain: 1,
+    sequence: 0,
     address: hexToBytes(
       "0000000000000000000000000000000000000000000000000000000000000004",
     ),
@@ -509,12 +509,6 @@ export namespace wormhole {
     const vaaRotation1 = Cl.bufferFromHex(gsuMainnetVaas[0].vaa);
     let publicKeysRotation1 = gsuMainnetVaas[0].keys.map(Cl.bufferFromHex);
 
-    const vaaRotation2 = Cl.bufferFromHex(gsuMainnetVaas[1].vaa);
-    let publicKeysRotation2 = gsuMainnetVaas[1].keys.map(Cl.bufferFromHex);
-
-    const vaaRotation3 = Cl.bufferFromHex(gsuMainnetVaas[2].vaa);
-    let publicKeysRotation3 = gsuMainnetVaas[2].keys.map(Cl.bufferFromHex);
-
     const block = simnet.mineBlock([
       tx.callPublicFn(
         contractName,
@@ -522,16 +516,22 @@ export namespace wormhole {
         [vaaRotation1, Cl.list(publicKeysRotation1)],
         txSenderAddress,
       ),
+    ]);
+    return block;
+  }
+
+  export function applyNextMainnetGuardianSetUpdates(
+    txSenderAddress: string,
+    contractName: string,
+  ) {
+    const vaaRotation2 = Cl.bufferFromHex(gsuMainnetVaas[1].vaa);
+    let publicKeysRotation2 = gsuMainnetVaas[1].keys.map(Cl.bufferFromHex);
+
+    const block = simnet.mineBlock([
       tx.callPublicFn(
         contractName,
         "update-guardians-set",
         [vaaRotation2, Cl.list(publicKeysRotation2)],
-        txSenderAddress,
-      ),
-      tx.callPublicFn(
-        contractName,
-        "update-guardians-set",
-        [vaaRotation3, Cl.list(publicKeysRotation3)],
         txSenderAddress,
       ),
     ]);
