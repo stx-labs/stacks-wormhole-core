@@ -15,9 +15,10 @@
       payload: (buff 8192),
     } uint))
     ;; Emit message for Guardians to observe
-    (emit-message ((buff 8192)) (response {
+    (emit-message ((buff 8192) uint (optional uint)) (response {
       emitter: principal,
-      sequence: uint,
+      nonce: uint,                ;; Must fit into `u32`
+      sequence: uint,             ;; Must fit into `u64`
       consistency-level: uint,
       payload: (buff 8192)
     } uint))

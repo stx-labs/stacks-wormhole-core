@@ -74,6 +74,12 @@
 (define-constant ERR_DUPLICATED_GUARDIAN_ADDRESSES (err u1309))
 ;; Unable to get stacks timestamp
 (define-constant ERR_STACKS_TIMESTAMP (err u1310))
+;; Consistency level is too large
+(define-constant ERR_EMIT_OVERFLOW_CONSISTENCY_LEVEL (err u1401))
+;; Nonce is too large
+(define-constant ERR_EMIT_OVERFLOW_NONCE (err u1402))
+;; Sequence is too large
+(define-constant ERR_EMIT_OVERFLOW_SEQUENCE (err u1403))
 
 ;; Guardian set upgrade emitting address
 (define-constant GSU-EMITTING-ADDRESS 0x0000000000000000000000000000000000000000000000000000000000000004)
@@ -92,8 +98,13 @@
 ;; 24 hours in seconds
 (define-constant TWENTY_FOUR_HOURS u86400)
 ;; Default consistency level for emitted messages
-;; TODO: Allow this to set per contract/message?
-(define-constant DEFAULT_CONSISTENCY_LEVEL u100)
+(define-constant DEFAULT_CONSISTENCY_LEVEL u0)
+;; Max value for unsigned 8-bit integer
+(define-constant MAX_VALUE_U8 u255)
+;; Max value for unsigned 32-bit integer
+(define-constant MAX_VALUE_U32 u4294967295)
+;; Max value for unsigned 64-bit integer
+(define-constant MAX_VALUE_U64 u18446744073709551615)
 
 ;;;; Data vars
 
@@ -278,17 +289,29 @@
 
 ;; @desc Emit message for Guardians to  observe and package in to VAA
 ;; @param payload: Raw data to send, specific to the contract sending the message
-(define-public (emit-message (payload (buff 8192)))
+;; @param nonce: 32-bit nonce set by emitter
+;; @param consistency-level-opt: Optional, use custom level instead of default
+(define-public (emit-message (payload (buff 8192)) (nonce uint) (consistency-level-opt (optional uint)))
   (let (
       (emitter contract-caller)
       (sequence (get-emitter-sequence emitter))
+      (consistency-level (default-to DEFAULT_CONSISTENCY_LEVEL consistency-level-opt))
       (message {
         emitter: emitter,
+        nonce: nonce,
         sequence: sequence,
-        consistency-level: DEFAULT_CONSISTENCY_LEVEL,
+        consistency-level: consistency-level,
         payload: payload
       }))
+    ;; `consistency-level` must fit into `u8` type
+    (asserts! (<= consistency-level MAX_VALUE_U8) ERR_EMIT_OVERFLOW_CONSISTENCY_LEVEL)
+    ;; `nonce` must fit into `u32` type
+    (asserts! (<= nonce MAX_VALUE_U32) ERR_EMIT_OVERFLOW_NONCE)
+    ;; `sequence` must fit into `u64` type
+    (asserts! (<= sequence MAX_VALUE_U64) ERR_EMIT_OVERFLOW_SEQUENCE)
+    ;; Message has passed checks, is valid, so emit
     (print message)
+    ;; Increment `sequence` for next message
     (map-set emitter-sequence emitter (+ sequence u1))
     (ok message)))
 
