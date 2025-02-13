@@ -43,7 +43,7 @@ describe(`${contractName}::parse-vaa success`, () => {
           const res = simnet.callReadOnlyFn(
             contractName,
             `parse-vaa`,
-            [Cl.buffer(vaa)],
+            [Cl.buffer(Uint8Array.from(vaa))],
             sender,
           );
           res.result;
@@ -63,7 +63,6 @@ describe(`${contractName}::parse-vaa success`, () => {
 describe(`${contractName}::update-guardians-set failures`, () => {
   const accounts = simnet.getAccounts();
   const deployer = accounts.get("deployer")!;
-  const sender = accounts.get("wallet_1")!;
   const keychain = wormhole.generateGuardianSetKeychain(19);
 
   it("should fail if the chain is invalid", () => {
@@ -77,7 +76,7 @@ describe(`${contractName}::update-guardians-set failures`, () => {
         wormhole.validGuardianRotationModule,
       );
     let body = wormhole.buildValidVaaBodySpecs({
-      payload: guardianRotationPayload,
+      payload: Uint8Array.from(guardianRotationPayload),
       emitter: wormhole.GovernanceUpdateEmitter,
     });
     let header = wormhole.buildValidVaaHeader(keychain, body, {
@@ -93,7 +92,7 @@ describe(`${contractName}::update-guardians-set failures`, () => {
     const res = simnet.callPublicFn(
       contractName,
       `update-guardians-set`,
-      [Cl.buffer(vaa), Cl.list(uncompressedPublicKey)],
+      [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
     );
     expect(res.result).toBeErr(Cl.uint(1303));
@@ -110,7 +109,7 @@ describe(`${contractName}::update-guardians-set failures`, () => {
         wormhole.validGuardianRotationModule,
       );
     let body = wormhole.buildValidVaaBodySpecs({
-      payload: guardianRotationPayload,
+      payload: Uint8Array.from(guardianRotationPayload),
       emitter: wormhole.GovernanceUpdateEmitter,
     });
     let header = wormhole.buildValidVaaHeader(keychain, body, {
@@ -126,7 +125,7 @@ describe(`${contractName}::update-guardians-set failures`, () => {
     const res = simnet.callPublicFn(
       contractName,
       `update-guardians-set`,
-      [Cl.buffer(vaa), Cl.list(uncompressedPublicKey)],
+      [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
     );
     expect(res.result).toBeErr(Cl.uint(1302));
@@ -143,7 +142,7 @@ describe(`${contractName}::update-guardians-set failures`, () => {
         wormhole.validGuardianRotationModule,
       );
     let body = wormhole.buildValidVaaBodySpecs({
-      payload: guardianRotationPayload,
+      payload: Uint8Array.from(guardianRotationPayload),
       emitter: wormhole.GovernanceUpdateEmitter,
     });
     let header = wormhole.buildValidVaaHeader(keychain, body, {
@@ -159,7 +158,7 @@ describe(`${contractName}::update-guardians-set failures`, () => {
     const res = simnet.callPublicFn(
       contractName,
       `update-guardians-set`,
-      [Cl.buffer(vaa), Cl.list(uncompressedPublicKey)],
+      [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
     );
     expect(res.result).toBeErr(Cl.uint(1304));
@@ -179,7 +178,7 @@ describe(`${contractName}::update-guardians-set failures`, () => {
         ),
       );
     let body = wormhole.buildValidVaaBodySpecs({
-      payload: guardianRotationPayload,
+      payload: Uint8Array.from(guardianRotationPayload),
       emitter: wormhole.GovernanceUpdateEmitter,
     });
     let header = wormhole.buildValidVaaHeader(keychain, body, {
@@ -195,7 +194,7 @@ describe(`${contractName}::update-guardians-set failures`, () => {
     const res = simnet.callPublicFn(
       contractName,
       `update-guardians-set`,
-      [Cl.buffer(vaa), Cl.list(uncompressedPublicKey)],
+      [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
     );
     expect(res.result).toBeErr(Cl.uint(1301));
@@ -216,7 +215,7 @@ describe(`${contractName}::update-guardians-set failures`, () => {
         wormhole.validGuardianRotationModule,
       );
     let body = wormhole.buildValidVaaBodySpecs({
-      payload: guardianRotationPayload,
+      payload: Uint8Array.from(guardianRotationPayload),
       emitter,
     });
     let header = wormhole.buildValidVaaHeader(keychain, body, {
@@ -232,7 +231,7 @@ describe(`${contractName}::update-guardians-set failures`, () => {
     const res = simnet.callPublicFn(
       contractName,
       `update-guardians-set`,
-      [Cl.buffer(vaa), Cl.list(uncompressedPublicKey)],
+      [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
     );
     expect(res.result).toBeErr(Cl.uint(1305));
@@ -253,7 +252,7 @@ describe(`${contractName}::update-guardians-set failures`, () => {
         wormhole.validGuardianRotationModule,
       );
     let body = wormhole.buildValidVaaBodySpecs({
-      payload: guardianRotationPayload,
+      payload: Uint8Array.from(guardianRotationPayload),
       emitter,
     });
     let header = wormhole.buildValidVaaHeader(keychain, body, {
@@ -269,7 +268,7 @@ describe(`${contractName}::update-guardians-set failures`, () => {
     const res = simnet.callPublicFn(
       contractName,
       `update-guardians-set`,
-      [Cl.buffer(vaa), Cl.list(uncompressedPublicKey)],
+      [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
     );
     expect(res.result).toBeErr(Cl.uint(1305));
@@ -357,7 +356,7 @@ describe(`${contractName}::update-guardians-set success`, () => {
         wormhole.validGuardianRotationModule,
       );
     const body = wormhole.buildValidVaaBodySpecs({
-      payload: guardianRotationPayload,
+      payload: Uint8Array.from(guardianRotationPayload),
       emitter: wormhole.GovernanceUpdateEmitter,
     });
     const header = wormhole.buildValidVaaHeader(guardianSet1Keys, body, {
@@ -378,7 +377,7 @@ describe(`${contractName}::update-guardians-set success`, () => {
       tx.callPublicFn(
         contractName,
         `update-guardians-set`,
-        [Cl.buffer(vaa), Cl.list(uncompressedPublicKey)],
+        [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
         sender,
       ),
     ])[0].result;
@@ -417,7 +416,7 @@ describe(`${contractName}::update-guardians-set success`, () => {
         wormhole.validGuardianRotationModule,
       );
     const body = wormhole.buildValidVaaBodySpecs({
-      payload: guardianRotationPayload,
+      payload: Uint8Array.from(guardianRotationPayload),
       emitter: wormhole.GovernanceUpdateEmitter,
     });
     const header = wormhole.buildValidVaaHeader(guardianSet1Keys, body, {
@@ -433,7 +432,7 @@ describe(`${contractName}::update-guardians-set success`, () => {
       tx.callPublicFn(
         contractName,
         `update-guardians-set`,
-        [Cl.buffer(vaa), Cl.list(uncompressedPublicKey)],
+        [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
         sender,
       ),
     ])[0].result;
@@ -484,7 +483,7 @@ describe(`${contractName}::parse-and-verify-vaa success`, () => {
           const res = simnet.callReadOnlyFn(
             contractName,
             `parse-vaa`,
-            [Cl.buffer(vaa)],
+            [Cl.buffer(Uint8Array.from(vaa))],
             sender,
           );
           res.result;
@@ -521,7 +520,7 @@ describe(`${contractName}::parse-and-verify-vaa success`, () => {
     const res = simnet.callReadOnlyFn(
       contractName,
       `parse-and-verify-vaa`,
-      [Cl.buffer(vaa)],
+      [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );
     expect(res.result).toBeOk(decodedVaa);
@@ -556,7 +555,7 @@ describe(`${contractName}::parse-and-verify-vaa failures`, () => {
     const res = simnet.callReadOnlyFn(
       contractName,
       `parse-and-verify-vaa`,
-      [Cl.buffer(vaa)],
+      [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );
     expect(res.result).toBeErr(Cl.uint(1101));
@@ -579,7 +578,7 @@ describe(`${contractName}::parse-and-verify-vaa failures`, () => {
     const res = simnet.callReadOnlyFn(
       contractName,
       `parse-and-verify-vaa`,
-      [Cl.buffer(vaa)],
+      [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );
     expect(res.result).toBeErr(Cl.uint(1103));
@@ -606,7 +605,7 @@ describe(`${contractName}::parse-and-verify-vaa failures`, () => {
     const res = simnet.callReadOnlyFn(
       contractName,
       `parse-and-verify-vaa`,
-      [Cl.buffer(vaa)],
+      [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );
     expect(res.result).toBeErr(Cl.uint(1102));
@@ -631,7 +630,7 @@ describe(`${contractName}::parse-and-verify-vaa failures`, () => {
     const res = simnet.callReadOnlyFn(
       contractName,
       `parse-and-verify-vaa`,
-      [Cl.buffer(vaa)],
+      [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );
     expect(res.result).toBeErr(Cl.uint(1102));
@@ -659,7 +658,7 @@ describe(`${contractName}::parse-and-verify-vaa failures`, () => {
     const res = simnet.callReadOnlyFn(
       contractName,
       `parse-and-verify-vaa`,
-      [Cl.buffer(vaa)],
+      [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );
     expect(res.result).toBeErr(Cl.uint(1102));

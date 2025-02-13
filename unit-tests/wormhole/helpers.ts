@@ -13,6 +13,13 @@ import { sha256 } from "@noble/hashes/sha256";
 import { gsuMainnetVaas } from "./fixtures";
 import { hexToBytes } from "@noble/hashes/utils";
 
+const initialGovernanceDataSource = {
+  chain: 1,
+  address: hexToBytes(
+    "5635979a221c34931e32620b9293a463065555ea71fe97cd6237ade875b12e9e",
+  ),
+};
+
 secp.etc.hmacSha256Sync = (k, ...m) =>
   hmac(sha256, k, secp.etc.concatBytes(...m));
 
@@ -220,7 +227,7 @@ export namespace wormhole {
     opts?: VaaHeaderBuildOptions,
   ): VaaHeaderBuildOptions => {
     let signatures = [];
-    const messageHash = keccak_256(keccak_256(serializeVaaBodyToBuffer(body)));
+    const messageHash = keccak_256(keccak_256(Uint8Array.from(serializeVaaBodyToBuffer(body))));
 
     for (let guardian of keychain) {
       const signature = secp.sign(messageHash, guardian.secretKey);
@@ -233,20 +240,20 @@ export namespace wormhole {
         const rec = Buffer.alloc(1);
         rec.writeUint8(signature.recovery, 0);
         signatures.push(
-          Buffer.concat([id, signature.toCompactRawBytes(), rec]),
+          Buffer.concat([Uint8Array.from(id), signature.toCompactRawBytes(), Uint8Array.from(rec)]),
         );
       } else {
         const rec = Buffer.alloc(1);
         rec.writeUint8(0, 0);
         signatures.push(
-          Buffer.concat([id, signature.toCompactRawBytes(), rec]),
+          Buffer.concat([Uint8Array.from(id), signature.toCompactRawBytes(), Uint8Array.from(rec)]),
         );
       }
     }
     return {
       version: opts?.version,
       guardianSetId: opts?.guardianSetId,
-      signatures: signatures,
+      signatures: signatures.map(x => Uint8Array.from(x)),
     };
   };
 
@@ -378,7 +385,7 @@ export namespace wormhole {
     return Buffer.concat([
       serializeVaaHeaderToBuffer(vaaHeader),
       serializeVaaBodyToBuffer(vaaBody),
-    ]);
+    ].map(x => Uint8Array.from(x)));
   };
 
   export const serializeVaaHeaderToBuffer = (vaaHeader: VaaHeader) => {
@@ -396,7 +403,7 @@ export namespace wormhole {
     components.push(v);
 
     components.push(Buffer.concat(vaaHeader.signatures));
-    return Buffer.concat(components);
+    return Buffer.concat(components.map(x => Uint8Array.from(x)));
   };
 
   export const serializeVaaBodyToBuffer = (vaaBody: VaaBody) => {
@@ -423,7 +430,7 @@ export namespace wormhole {
 
     components.push(vaaBody.payload);
 
-    return Buffer.concat(components);
+    return Buffer.concat(components.map(x => Uint8Array.from(x)));
   };
 
   export const validGuardianRotationModule = Buffer.from(
@@ -461,7 +468,7 @@ export namespace wormhole {
       components.push(guardian.ethereumAddress);
     }
 
-    return Buffer.concat(components);
+    return Buffer.concat(components.map(x => Uint8Array.from(x)));
   };
 
   export function applyGuardianSetUpdate(
@@ -479,7 +486,7 @@ export namespace wormhole {
         wormhole.validGuardianRotationModule,
       );
     let vaaBody = wormhole.buildValidVaaBodySpecs({
-      payload: guardianRotationPayload,
+      payload: Uint8Array.from(guardianRotationPayload),
       emitter: wormhole.GovernanceUpdateEmitter,
     });
     let vaaHeader = wormhole.buildValidVaaHeader(keychain, vaaBody, {
@@ -495,7 +502,7 @@ export namespace wormhole {
       tx.callPublicFn(
         contractName,
         `update-guardians-set`,
-        [Cl.buffer(vaa), Cl.list(uncompressedPublicKey)],
+        [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
         txSenderAddress,
       ),
     ])[0].result;
