@@ -139,6 +139,35 @@ describe(`${contractName}::emit-message success`, () => {
       }),
     );
   });
+
+  it("should allow payload size of 8192 bytes", () => {
+    const emitter = Cl.principal(sender);
+    let nonce = Cl.uint(5);
+
+    // Create payload with random data
+    const bufSize = 8192;
+    let randomData = new Uint8Array(bufSize);
+    (globalThis as any).crypto.getRandomValues(randomData);
+    const payload = Cl.buffer(randomData);
+
+    expect(payload.buffer.length).toBe(8192);
+
+    let res = simnet.callPublicFn(
+      contractName,
+      `emit-message`,
+      [payload, nonce, Cl.none()],
+      sender,
+    );
+    expect(res.result).toBeOk(
+      Cl.tuple({
+        emitter,
+        nonce,
+        sequence: Cl.uint(0),
+        "consistency-level": Cl.uint(DEFAULT_CONSISTENCY_LEVEL),
+        payload,
+      }),
+    );
+  });
 });
 
 describe(`${contractName}::emit-message failure`, () => {
@@ -173,7 +202,7 @@ describe(`${contractName}::emit-message failure`, () => {
   });
 
   it("should fail if `payload` exceeds 8192 bytes", () => {
-    const payload = Cl.buffer(new Uint8Array(8192 * 2));
+    const payload = Cl.buffer(new Uint8Array(8192 + 1));
     let nonce = Cl.uint(1);
 
     // We don't get an error value because the contract is never called
