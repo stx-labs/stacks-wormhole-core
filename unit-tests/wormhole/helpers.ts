@@ -227,7 +227,9 @@ export namespace wormhole {
     opts?: VaaHeaderBuildOptions,
   ): VaaHeaderBuildOptions => {
     let signatures = [];
-    const messageHash = keccak_256(keccak_256(Uint8Array.from(serializeVaaBodyToBuffer(body))));
+    const messageHash = keccak_256(
+      keccak_256(Uint8Array.from(serializeVaaBodyToBuffer(body))),
+    );
 
     for (let guardian of keychain) {
       const signature = secp.sign(messageHash, guardian.secretKey);
@@ -240,20 +242,28 @@ export namespace wormhole {
         const rec = Buffer.alloc(1);
         rec.writeUint8(signature.recovery, 0);
         signatures.push(
-          Buffer.concat([Uint8Array.from(id), signature.toCompactRawBytes(), Uint8Array.from(rec)]),
+          Buffer.concat([
+            Uint8Array.from(id),
+            signature.toCompactRawBytes(),
+            Uint8Array.from(rec),
+          ]),
         );
       } else {
         const rec = Buffer.alloc(1);
         rec.writeUint8(0, 0);
         signatures.push(
-          Buffer.concat([Uint8Array.from(id), signature.toCompactRawBytes(), Uint8Array.from(rec)]),
+          Buffer.concat([
+            Uint8Array.from(id),
+            signature.toCompactRawBytes(),
+            Uint8Array.from(rec),
+          ]),
         );
       }
     }
     return {
       version: opts?.version,
       guardianSetId: opts?.guardianSetId,
-      signatures: signatures.map(x => Uint8Array.from(x)),
+      signatures: signatures.map((x) => Uint8Array.from(x)),
     };
   };
 
@@ -382,10 +392,12 @@ export namespace wormhole {
     vaaHeader: VaaHeader,
     vaaBody: VaaBody,
   ) => {
-    return Buffer.concat([
-      serializeVaaHeaderToBuffer(vaaHeader),
-      serializeVaaBodyToBuffer(vaaBody),
-    ].map(x => Uint8Array.from(x)));
+    return Buffer.concat(
+      [
+        serializeVaaHeaderToBuffer(vaaHeader),
+        serializeVaaBodyToBuffer(vaaBody),
+      ].map((x) => Uint8Array.from(x)),
+    );
   };
 
   export const serializeVaaHeaderToBuffer = (vaaHeader: VaaHeader) => {
@@ -403,7 +415,7 @@ export namespace wormhole {
     components.push(v);
 
     components.push(Buffer.concat(vaaHeader.signatures));
-    return Buffer.concat(components.map(x => Uint8Array.from(x)));
+    return Buffer.concat(components.map((x) => Uint8Array.from(x)));
   };
 
   export const serializeVaaBodyToBuffer = (vaaBody: VaaBody) => {
@@ -430,7 +442,7 @@ export namespace wormhole {
 
     components.push(vaaBody.payload);
 
-    return Buffer.concat(components.map(x => Uint8Array.from(x)));
+    return Buffer.concat(components.map((x) => Uint8Array.from(x)));
   };
 
   export const validGuardianRotationModule = Buffer.from(
@@ -468,7 +480,7 @@ export namespace wormhole {
       components.push(guardian.ethereumAddress);
     }
 
-    return Buffer.concat(components.map(x => Uint8Array.from(x)));
+    return Buffer.concat(components.map((x) => Uint8Array.from(x)));
   };
 
   export function applyGuardianSetUpdate(

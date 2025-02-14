@@ -91,7 +91,7 @@ describe(`${contractName}::emit-message failure`, () => {
   it("should fail if `consistency-level` exceeds max `u8` size", () => {
     const payload = Cl.buffer(new Uint8Array(1024));
     let nonce = Cl.uint(1);
-    let consistencyLevel = Cl.uint(2**8 + 1);
+    let consistencyLevel = Cl.uint(2 ** 8 + 1);
 
     let res = simnet.callPublicFn(
       contractName,
@@ -104,7 +104,7 @@ describe(`${contractName}::emit-message failure`, () => {
 
   it("should fail if `nonce` exceeds max `u32` size", () => {
     const payload = Cl.buffer(new Uint8Array(1024));
-    let nonce = Cl.uint(2**32 + 1);
+    let nonce = Cl.uint(2 ** 32 + 1);
 
     let res = simnet.callPublicFn(
       contractName,
@@ -120,13 +120,14 @@ describe(`${contractName}::emit-message failure`, () => {
     let nonce = Cl.uint(1);
 
     // We don't get an error value because the contract is never called
-    const f = () => simnet.callPublicFn(
-      contractName,
-      `emit-message`,
-      [payload, nonce, Cl.none()],
-      sender,
-    );
+    const f = () =>
+      simnet.callPublicFn(
+        contractName,
+        `emit-message`,
+        [payload, nonce, Cl.none()],
+        sender,
+      );
 
-    expect(f).toThrowError()
+    expect(f).toThrowError();
   });
 });

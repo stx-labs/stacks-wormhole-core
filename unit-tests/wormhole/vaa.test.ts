@@ -204,7 +204,9 @@ describe(`${contractName}::update-guardians-set failures`, () => {
     // Before performing this test, we need to setup the guardian set
     let emitter = {
       chain: wormhole.GovernanceUpdateEmitter.chain,
-      address: hexToBytes("0000000000000000000000000000000000000000000000000000000000000009"),
+      address: hexToBytes(
+        "0000000000000000000000000000000000000000000000000000000000000009",
+      ),
     };
     let guardianRotationPayload =
       wormhole.serializeGuardianUpdateVaaPayloadToBuffer(
@@ -449,7 +451,12 @@ describe(`${contractName}::parse-and-verify-vaa success`, () => {
 
   // Before starting the test suite, we have to setup the guardian set.
   beforeEach(async () => {
-    wormhole.applyGuardianSetUpdate(guardianSet1Keys, 1, deployer, contractName);
+    wormhole.applyGuardianSetUpdate(
+      guardianSet1Keys,
+      1,
+      deployer,
+      contractName,
+    );
   });
 
   it("should succeed if the vaa is valid", () => {
@@ -535,7 +542,12 @@ describe(`${contractName}::parse-and-verify-vaa failures`, () => {
 
   // Before starting the test suite, we have to setup the guardian set.
   beforeEach(async () => {
-    wormhole.applyGuardianSetUpdate(guardianSet1Keys, 1, deployer, contractName);
+    wormhole.applyGuardianSetUpdate(
+      guardianSet1Keys,
+      1,
+      deployer,
+      contractName,
+    );
   });
 
   it("should fail if the version is invalid", () => {
@@ -682,7 +694,10 @@ describe(`${contractName}::update-guardians-set mainnet guardian rotations`, () 
       expect(b.result).toHaveClarityType(ClarityType.ResponseOk);
     });
 
-    const newUpdateBlock = wormhole.applyNextMainnetGuardianSetUpdates(sender, contractName)
+    const newUpdateBlock = wormhole.applyNextMainnetGuardianSetUpdates(
+      sender,
+      contractName,
+    );
     expect(newUpdateBlock!).toHaveLength(1);
     newUpdateBlock!.forEach((b: ParsedTransactionResult) => {
       expect(b.result).toHaveClarityType(ClarityType.ResponseOk);
