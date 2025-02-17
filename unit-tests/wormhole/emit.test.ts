@@ -1,6 +1,6 @@
 import { Cl } from "@stacks/transactions";
 import { expect, describe } from "vitest";
-import { it } from "@fast-check/vitest";
+import { it, fc } from "@fast-check/vitest";
 
 // Constants from `wormhole-core`
 const DEFAULT_CONSISTENCY_LEVEL = 0;
@@ -41,33 +41,44 @@ describe(`${contractName}::emit-message success`, () => {
     }
   });
 
-  it("should allow for custom consistency level but default to 0", () => {
+  it("should allow for custom consistency level", () => {
+    const emitter = Cl.principal(sender);
+    const payload = Cl.buffer(new Uint8Array(1024));
+    const nonce = Cl.uint(111);
+
+    let sequence = 0;
+
+    fc.assert(
+      fc
+        .property(fc.nat(255), (fcConsistencyLevel) => {
+          let consistencyLevel = Cl.uint(fcConsistencyLevel);
+          let res = simnet.callPublicFn(
+            contractName,
+            `emit-message`,
+            [payload, nonce, Cl.some(consistencyLevel)],
+            sender,
+          );
+          expect(res.result).toBeOk(
+            Cl.tuple({
+              emitter,
+              nonce,
+              sequence: Cl.uint(sequence),
+              "consistency-level": consistencyLevel,
+              payload,
+            }),
+          );
+        })
+        .afterEach(() => (sequence += 1)),
+    );
+  });
+
+  it("should default to 0 if `consistency-level` not specified", () => {
     const emitter = Cl.principal(sender);
     const payload = Cl.buffer(new Uint8Array(1024));
     let nonce = Cl.uint(111);
-    let consistencyLevel = Cl.uint(50);
-
-    // Use custom `consistency-level`
-    let res = simnet.callPublicFn(
-      contractName,
-      `emit-message`,
-      [payload, nonce, Cl.some(consistencyLevel)],
-      sender,
-    );
-    expect(res.result).toBeOk(
-      Cl.tuple({
-        emitter,
-        nonce,
-        sequence: Cl.uint(0),
-        "consistency-level": consistencyLevel,
-        payload,
-      }),
-    );
-
-    nonce = Cl.uint(222);
 
     // Use default `consistency-level`
-    res = simnet.callPublicFn(
+    const res = simnet.callPublicFn(
       contractName,
       `emit-message`,
       [payload, nonce, Cl.none()],
@@ -77,10 +88,41 @@ describe(`${contractName}::emit-message success`, () => {
       Cl.tuple({
         emitter,
         nonce,
-        sequence: Cl.uint(1),
+        sequence: Cl.uint(0),
         "consistency-level": Cl.uint(DEFAULT_CONSISTENCY_LEVEL),
         payload,
       }),
+    );
+  });
+
+  it("should allow any 32-bit nonce", () => {
+    const emitter = Cl.principal(sender);
+    const payload = Cl.buffer(new Uint8Array(1024));
+    const consistencyLevel = Cl.uint(DEFAULT_CONSISTENCY_LEVEL);
+
+    let sequence = 0;
+
+    fc.assert(
+      fc
+        .property(fc.nat(2 ** 32 - 1), (fcNonce) => {
+          let nonce = Cl.uint(fcNonce);
+          let res = simnet.callPublicFn(
+            contractName,
+            `emit-message`,
+            [payload, nonce, Cl.some(consistencyLevel)],
+            sender,
+          );
+          expect(res.result).toBeOk(
+            Cl.tuple({
+              emitter,
+              nonce,
+              sequence: Cl.uint(sequence),
+              "consistency-level": consistencyLevel,
+              payload,
+            }),
+          );
+        })
+        .afterEach(() => (sequence += 1)),
     );
   });
 
@@ -177,7 +219,7 @@ describe(`${contractName}::emit-message failure`, () => {
   it("should fail if `consistency-level` exceeds max `u8` size", () => {
     const payload = Cl.buffer(new Uint8Array(1024));
     let nonce = Cl.uint(1);
-    let consistencyLevel = Cl.uint(2 ** 8 + 1);
+    let consistencyLevel = Cl.uint(2 ** 8);
 
     let res = simnet.callPublicFn(
       contractName,
@@ -190,7 +232,7 @@ describe(`${contractName}::emit-message failure`, () => {
 
   it("should fail if `nonce` exceeds max `u32` size", () => {
     const payload = Cl.buffer(new Uint8Array(1024));
-    let nonce = Cl.uint(2 ** 32 + 1);
+    let nonce = Cl.uint(2 ** 32);
 
     let res = simnet.callPublicFn(
       contractName,
