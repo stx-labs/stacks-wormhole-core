@@ -51,8 +51,8 @@ describe(`${contractName}::emit-message success`, () => {
     fc.assert(
       fc
         .property(fc.nat(255), (fcConsistencyLevel) => {
-          let consistencyLevel = Cl.uint(fcConsistencyLevel);
-          let res = simnet.callPublicFn(
+          const consistencyLevel = Cl.uint(fcConsistencyLevel);
+          const res = simnet.callPublicFn(
             contractName,
             `emit-message`,
             [payload, nonce, Cl.some(consistencyLevel)],
@@ -75,7 +75,7 @@ describe(`${contractName}::emit-message success`, () => {
   it("should default to 0 if `consistency-level` not specified", () => {
     const emitter = Cl.principal(sender);
     const payload = Cl.buffer(new Uint8Array(1024));
-    let nonce = Cl.uint(111);
+    const nonce = Cl.uint(111);
 
     // Use default `consistency-level`
     const res = simnet.callPublicFn(
@@ -105,8 +105,8 @@ describe(`${contractName}::emit-message success`, () => {
     fc.assert(
       fc
         .property(fc.nat(2 ** 32 - 1), (fcNonce) => {
-          let nonce = Cl.uint(fcNonce);
-          let res = simnet.callPublicFn(
+          const nonce = Cl.uint(fcNonce);
+          const res = simnet.callPublicFn(
             contractName,
             `emit-message`,
             [payload, nonce, Cl.some(consistencyLevel)],
@@ -126,9 +126,35 @@ describe(`${contractName}::emit-message success`, () => {
     );
   });
 
+  it("should allow `nonce` reuse", () => {
+    const emitter = Cl.principal(sender);
+    const payload = Cl.buffer(new Uint8Array(1024));
+    const numMessages = 10;
+    const nonce = Cl.uint(1);
+
+    // `wormhole-core ` should not check for nonce reuse
+    for (let i = 0; i < numMessages; i++) {
+      const res = simnet.callPublicFn(
+        contractName,
+        `emit-message`,
+        [payload, nonce, Cl.none()],
+        sender,
+      );
+      expect(res.result).toBeOk(
+        Cl.tuple({
+          emitter,
+          nonce,
+          sequence: Cl.uint(i),
+          "consistency-level": Cl.uint(DEFAULT_CONSISTENCY_LEVEL),
+          payload,
+        }),
+      );
+    }
+  });
+
   it("should use the calling contract's principal for `emitter`", () => {
     const payload = Cl.buffer(new Uint8Array(1024));
-    let nonce = Cl.uint(111);
+    const nonce = Cl.uint(111);
 
     let res = simnet.callPublicFn(
       contractName,
@@ -146,7 +172,7 @@ describe(`${contractName}::emit-message success`, () => {
       }),
     );
 
-    let proxyContract = {
+    const proxyContract = {
       name: "proxy-contract",
       code: [
         `(define-public (emit-message-proxy (payload (buff 8192)) (nonce uint) (consistency-level-opt (optional uint)))`,
@@ -184,7 +210,7 @@ describe(`${contractName}::emit-message success`, () => {
 
   it("should allow payload size of 8192 bytes", () => {
     const emitter = Cl.principal(sender);
-    let nonce = Cl.uint(5);
+    const nonce = Cl.uint(5);
 
     // Create payload with random data
     const bufSize = 8192;
@@ -218,10 +244,10 @@ describe(`${contractName}::emit-message failure`, () => {
 
   it("should fail if `consistency-level` exceeds max `u8` size", () => {
     const payload = Cl.buffer(new Uint8Array(1024));
-    let nonce = Cl.uint(1);
-    let consistencyLevel = Cl.uint(2 ** 8);
+    const nonce = Cl.uint(1);
+    const consistencyLevel = Cl.uint(2 ** 8);
 
-    let res = simnet.callPublicFn(
+    const res = simnet.callPublicFn(
       contractName,
       `emit-message`,
       [payload, nonce, Cl.some(consistencyLevel)],
@@ -232,9 +258,9 @@ describe(`${contractName}::emit-message failure`, () => {
 
   it("should fail if `nonce` exceeds max `u32` size", () => {
     const payload = Cl.buffer(new Uint8Array(1024));
-    let nonce = Cl.uint(2 ** 32);
+    const nonce = Cl.uint(2 ** 32);
 
-    let res = simnet.callPublicFn(
+    const res = simnet.callPublicFn(
       contractName,
       `emit-message`,
       [payload, nonce, Cl.none()],
@@ -245,7 +271,7 @@ describe(`${contractName}::emit-message failure`, () => {
 
   it("should fail if `payload` exceeds 8192 bytes", () => {
     const payload = Cl.buffer(new Uint8Array(8192 + 1));
-    let nonce = Cl.uint(1);
+    const nonce = Cl.uint(1);
 
     // We don't get an error value because the contract is never called
     const f = () =>
@@ -257,5 +283,41 @@ describe(`${contractName}::emit-message failure`, () => {
       );
 
     expect(f).toThrowError();
+  });
+
+  it("should not increment `sequence` if send fails", () => {
+    const emitter = Cl.principal(sender);
+    const payload = Cl.buffer(new Uint8Array(1024));
+    const attempts = 10;
+    const nonce = Cl.uint(1);
+    const consistencyLevel = Cl.uint(2 ** 8);
+
+    // Should all fail and not increment `sequence`
+    for (let i = 0; i < attempts; i++) {
+      const res = simnet.callPublicFn(
+        contractName,
+        `emit-message`,
+        [payload, nonce, Cl.some(consistencyLevel)],
+        sender,
+      );
+      expect(res.result).toBeErr(Cl.uint(ERR_EMIT_OVERFLOW_CONSISTENCY_LEVEL));
+    }
+
+    // Should succeed and have `sequence` of `u0`
+    let res = simnet.callPublicFn(
+      contractName,
+      `emit-message`,
+      [payload, nonce, Cl.none()],
+      sender,
+    );
+    expect(res.result).toBeOk(
+      Cl.tuple({
+        emitter,
+        nonce,
+        sequence: Cl.uint(0),
+        "consistency-level": Cl.uint(DEFAULT_CONSISTENCY_LEVEL),
+        payload,
+      }),
+    );
   });
 });
