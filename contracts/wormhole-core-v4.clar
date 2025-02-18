@@ -34,12 +34,14 @@
 (define-constant ERR_VAA_PARSING_PAYLOAD (err u1011))
 ;; Unable to extract the hash the payload from the VAA
 (define-constant ERR_VAA_HASHING_BODY (err u1012))
+
 ;; Number of valid signatures insufficient (min: 13/19)
 (define-constant ERR_VAA_CHECKS_VERSION_UNSUPPORTED (err u1101))
 ;; Number of valid signatures insufficient (min: 13/19)
 (define-constant ERR_VAA_CHECKS_THRESHOLD_SIGNATURE (err u1102))
 ;; Guardian signature not comprised in guardian set specified
 (define-constant ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY (err u1103))
+
 ;; Guardian Set Update initiated by an unauthorized module
 (define-constant ERR_GSU_PARSING_MODULE (err u1201))
 ;; Guardian Set Update initiated from an unauthorized module
@@ -54,6 +56,7 @@
 (define-constant ERR_GSU_PARSING_GUARDIANS_BYTES (err u1206))
 ;; Guardian Set Update uncompressed public keys invalid
 (define-constant ERR_GSU_UNCOMPRESSED_PUBLIC_KEYS (err u1207))
+
 ;; Guardian Set Update initiated by an unauthorized module
 (define-constant ERR_GSU_CHECK_MODULE (err u1301))
 ;; Guardian Set Update initiated from an unauthorized module
@@ -74,6 +77,7 @@
 (define-constant ERR_DUPLICATED_GUARDIAN_ADDRESSES (err u1309))
 ;; Unable to get stacks timestamp
 (define-constant ERR_STACKS_TIMESTAMP (err u1310))
+
 ;; Consistency level is too large
 (define-constant ERR_EMIT_OVERFLOW_CONSISTENCY_LEVEL (err u1401))
 ;; Nonce is too large
@@ -81,16 +85,41 @@
 ;; Sequence is too large
 (define-constant ERR_EMIT_OVERFLOW_SEQUENCE (err u1403))
 
+;; Set Message Fee error parsing `module` field
+(define-constant ERR_SMF_PARSING_MODULE (err u1501))
+;; Set Message Fee error parsing `action` field
+(define-constant ERR_SMF_PARSING_ACTION (err u1502))
+;; Set Message Fee error parsing `chain` field
+(define-constant ERR_SMF_PARSING_CHAIN (err u1503))
+;; Set Message Fee error parsing first 128 bits of `fee` field
+(define-constant ERR_SMF_PARSING_FEE_1 (err u1504))
+;; Set Message Fee error parsing second 128 bits of `fee` field
+(define-constant ERR_SMF_PARSING_FEE_2 (err u1505))
+;; Set Message Fee overlay present in vaa bytes
+(define-constant ERR_SMF_CHECK_OVERLAY (err u1506))
+;; Set Message Fee `fee` value too high
+(define-constant ERR_SMF_CHECK_FEE (err u1507))
+;; Set Message Fee `sequence` is not next one expected
+(define-constant ERR_SMF_CHECK_SEQUENCE (err u1508))
+;; Set Message Fee `module` is not expected value
+(define-constant ERR_SMF_CHECK_MODULE (err u1509))
+;; Set Message Fee `action` is not expected value for this message type
+(define-constant ERR_SMF_CHECK_ACTION (err u1510))
+;; Set Message Fee `chain` does not match this blockchain
+(define-constant ERR_SMF_CHECK_CHAIN (err u1511))
+
 ;; Guardian set upgrade emitting address
-(define-constant GSU-EMITTING-ADDRESS 0x0000000000000000000000000000000000000000000000000000000000000004)
+(define-constant GSU_EMITTING_ADDRESS 0x0000000000000000000000000000000000000000000000000000000000000004)
 ;; Guardian set upgrade emitting chain
-(define-constant GSU-EMITTING-CHAIN u1)
+(define-constant GSU_EMITTING_CHAIN u1)
 ;; Stacks chain id attributed by Pyth
 (define-constant EXPECTED_CHAIN_ID (if is-in-mainnet 0xea86 0xc377))
 ;; Core string module
 (define-constant CORE_STRING_MODULE 0x00000000000000000000000000000000000000000000000000000000436f7265)
 ;; Guardian set update action
 (define-constant ACTION_GUARDIAN_SET_UPDATE u2)
+;; Set Message Fee action
+(define-constant ACTION_SET_MESSAGE_FEE u3)
 ;; Core chain ID
 (define-constant CORE_CHAIN_ID u0)
 ;; Guardian eth address size
@@ -116,6 +145,8 @@
 (define-data-var active-guardian-set-id uint u0)
 ;; Keep track of exiting guardian set
 (define-data-var previous-guardian-set {set-id: uint, expires-at: uint} {set-id: u0, expires-at: u0})
+;; Fee to emit message to Wormhole guardians and sequence of VAA that last set fee
+(define-data-var emit-message-fee {value: uint, sequence: uint} {value: u0, sequence: u0})
 
 ;;;; Data maps
 
@@ -252,9 +283,9 @@
     (asserts! (is-eq (len uncompressed-public-keys) (len eth-addresses)) 
       ERR_GSU_UNCOMPRESSED_PUBLIC_KEYS)
     ;; Check emitting address
-    (asserts! (is-eq (get emitter-address vaa) GSU-EMITTING-ADDRESS) ERR_GSU_CHECK_EMITTER)
+    (asserts! (is-eq (get emitter-address vaa) GSU_EMITTING_ADDRESS) ERR_GSU_CHECK_EMITTER)
     ;; Check emitting address
-    (asserts! (is-eq (get emitter-chain vaa) GSU-EMITTING-CHAIN) ERR_GSU_CHECK_EMITTER)
+    (asserts! (is-eq (get emitter-chain vaa) GSU_EMITTING_CHAIN) ERR_GSU_CHECK_EMITTER)
     ;; ensure guardian set has atleast one member
     (asserts! (>= (len result) u1) ERR_EMPTY_GUARDIAN_SET)
     ;; Update storage
@@ -283,9 +314,14 @@
         guardians: guardians
       })))
 
-;; Read from `emitter-sequence` map, defaulting to 0 if entry not found
+;; @desc Read from `emitter-sequence` map, defaulting to 0 if entry not found
+;; @param principal: Emitter's account principal
 (define-read-only (get-emitter-sequence (emitter principal))
   (default-to u0 (map-get? emitter-sequence contract-caller)))
+
+;; @desc Read current message fee
+(define-read-only (get-message-fee)
+  (get value (var-get emit-message-fee)))
 
 ;; @desc Emit message for Guardians to  observe and package in to VAA
 ;; @param payload: Raw data to send, specific to the contract sending the message
@@ -296,6 +332,7 @@
       (emitter contract-caller)
       (sequence (get-emitter-sequence emitter))
       (consistency-level (default-to DEFAULT_CONSISTENCY_LEVEL consistency-level-opt))
+      (fee (get-message-fee))
       (message {
         emitter: emitter,
         nonce: nonce,
@@ -309,11 +346,67 @@
     (asserts! (<= nonce MAX_VALUE_U32) ERR_EMIT_OVERFLOW_NONCE)
     ;; `sequence` must fit into `u64` type
     (asserts! (<= sequence MAX_VALUE_U64) ERR_EMIT_OVERFLOW_SEQUENCE)
+    ;; If a fee has been set, collect it
+    (if (> fee u0)
+      (try! (stx-transfer? fee tx-sender (as-contract tx-sender)))
+      true
+    )
     ;; Message has passed checks, is valid, so emit
     (print message)
     ;; Increment `sequence` for next message
     (map-set emitter-sequence emitter (+ sequence u1))
     (ok message)))
+
+;; @desc Set message fee for `emit-message` using VAA
+;; // Core Wormhole Module
+;; [32]byte    module     Should be "Core"
+;; u16         action     Should be `3`
+;; u16         chain      ???
+;; u256        fee        New fee to emit message (in uSTX)
+(define-public (set-message-fee (vaa-bytes (buff 8192)))
+  (let ((vaa (try! (parse-and-verify-vaa vaa-bytes)))
+        (payload (get payload vaa))
+        (sequence (get sequence vaa))
+        (last-sequence (get sequence (var-get emit-message-fee)))
+        (cursor-module (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-buff-32 { bytes: payload, pos: u0 })
+          ERR_SMF_PARSING_MODULE))
+        (cursor-action (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-16 (get next cursor-module))
+          ERR_SMF_PARSING_ACTION))
+        (cursor-chain (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-16 (get next cursor-action))
+          ERR_SMF_PARSING_CHAIN))
+        (cursor-fee-first-128-bits (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-128 (get next cursor-chain))
+          ERR_SMF_PARSING_FEE_1))
+        (cursor-fee-second-128-bits (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-128 (get next cursor-fee-first-128-bits))
+          ERR_SMF_PARSING_FEE_2)))
+
+    ;; --- Validate Message Data ---
+    ;; Check no extra bytes in buffer
+    (asserts! (is-eq (get pos (get next cursor-fee-second-128-bits)) (len vaa-bytes))
+      ERR_SMF_CHECK_OVERLAY)
+    ;; Check fee fits into `u128`, because that's the max value clarity can represent
+    (asserts! (is-eq (get value cursor-fee-first-128-bits) u0)
+      ERR_SMF_CHECK_FEE)
+    ;; Check sequence is the next one we expect
+    (asserts! (is-eq sequence (+ last-sequence u1))
+      ERR_SMF_CHECK_SEQUENCE)
+    ;; Ensure that this message was emitted from authorized module
+    (asserts! (is-eq (get value cursor-module) CORE_STRING_MODULE)
+      ERR_SMF_CHECK_MODULE)
+    ;; Ensure that this message is matching the adequate action
+    (asserts! (is-eq (get value cursor-action) ACTION_SET_MESSAGE_FEE)
+      ERR_SMF_CHECK_ACTION)
+    ;; Ensure that this message is matching the expected chain
+    (asserts! (or (is-eq (get value cursor-chain) (buff-to-uint-be EXPECTED_CHAIN_ID)) (is-eq (get value cursor-chain) CORE_CHAIN_ID))
+      ERR_SMF_CHECK_CHAIN)
+    ;; TODO: Check `emitter-chain` and `emitter-address`? What are the allowed values?
+
+    ;; -- Checks Passed, Update Fee ---
+    (let ((new-value (get value cursor-fee-second-128-bits))
+          (new-emit-message-fee { value: new-value, sequence: sequence}))
+      (var-set emit-message-fee new-emit-message-fee)
+      ;; TODO: Emit event?
+      (ok new-emit-message-fee))))
+
 
 ;;;; Private functions
 
