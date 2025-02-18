@@ -393,7 +393,7 @@
 ;;
 ;; Expected message format for VAA `payload`:
 ;;   [32]byte    module     Should be "Core"
-;;   u16         action     Should be `3`
+;;   u16         action     Should be `3` for this message type
 ;;   u16         chain      ???
 ;;   u256        fee        New fee to emit message (in uSTX)
 ;;

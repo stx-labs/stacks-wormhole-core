@@ -12,6 +12,7 @@ import { hmac } from "@noble/hashes/hmac";
 import { sha256 } from "@noble/hashes/sha256";
 import { gsuMainnetVaas } from "./fixtures";
 import { hexToBytes } from "@noble/hashes/utils";
+import { toBufferBE } from "bigint-buffer";
 
 const initialGovernanceDataSource = {
   chain: 1,
@@ -445,10 +446,14 @@ export namespace wormhole {
     return Buffer.concat(components.map((x) => Uint8Array.from(x)));
   };
 
-  export const validGuardianRotationModule = Buffer.from(
+  // This hex string represents the ASCII string "Core"
+  export const coreModule = Buffer.from(
     "00000000000000000000000000000000000000000000000000000000436f7265",
     "hex",
   );
+
+  export const validGuardianRotationModule = coreModule;
+  export const validSetMessageFeeModule = coreModule;
 
   export const serializeGuardianUpdateVaaPayloadToBuffer = (
     keyChain: Guardian[],
@@ -479,6 +484,40 @@ export namespace wormhole {
     for (let guardian of keyChain) {
       components.push(guardian.ethereumAddress);
     }
+
+    return Buffer.concat(components.map((x) => Uint8Array.from(x)));
+  };
+
+  // Serialize payload for a SetMessageFee VAA
+  //
+  // Wire format reminder:
+  // ===========================
+  // [32]byte    module     (Module, should be "Core")
+  // u16         action     (Action type, `3` for SetMessageFee)
+  // u16         chain      (Blockchain ID which this message is intended for)
+  // u256        fee        (New fee (in uSTX) to emit a message to Wormhole Guardians)
+  //
+  // See also: https://github.com/wormhole-foundation/wormhole/blob/main/whitepapers/0004_message_publishing.md
+  export const serializeSetMessageFeeVaaPayloadToBuffer = (
+    action: number,
+    chain: number,
+    fee: number | bigint,
+    module = validSetMessageFeeModule,
+  ) => {
+    const components = [];
+    components.push(module);
+
+    // TODO: Is this correct? `action` is a `u8` in other governance messages
+    let v = Buffer.alloc(2);
+    v.writeUint16BE(action, 0);
+    components.push(v);
+
+    v = Buffer.alloc(2);
+    v.writeUInt16BE(chain, 0);
+    components.push(v);
+
+    v = toBufferBE(BigInt(fee), 32);
+    components.push(v);
 
     return Buffer.concat(components.map((x) => Uint8Array.from(x)));
   };
