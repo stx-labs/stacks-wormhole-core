@@ -99,14 +99,14 @@
 (define-constant ERR_SMF_CHECK_OVERLAY (err u1506))
 ;; Set Message Fee `fee` value too high
 (define-constant ERR_SMF_CHECK_FEE (err u1507))
-;; Set Message Fee `sequence` is not next one expected
-(define-constant ERR_SMF_CHECK_SEQUENCE (err u1508))
 ;; Set Message Fee `module` is not expected value
-(define-constant ERR_SMF_CHECK_MODULE (err u1509))
+(define-constant ERR_SMF_CHECK_MODULE (err u1508))
 ;; Set Message Fee `action` is not expected value for this message type
-(define-constant ERR_SMF_CHECK_ACTION (err u1510))
+(define-constant ERR_SMF_CHECK_ACTION (err u1509))
 ;; Set Message Fee `chain` does not match this blockchain
-(define-constant ERR_SMF_CHECK_CHAIN (err u1511))
+(define-constant ERR_SMF_CHECK_CHAIN (err u1510))
+;; Set Message Fee `sequence` is not next one expected
+(define-constant ERR_SMF_CHECK_SEQUENCE (err u1511))
 
 ;; Guardian set upgrade emitting address
 (define-constant GSU_EMITTING_ADDRESS 0x0000000000000000000000000000000000000000000000000000000000000004)
@@ -358,16 +358,36 @@
     (ok message)))
 
 ;; @desc Set message fee for `emit-message` using VAA
-;; // Core Wormhole Module
-;; [32]byte    module     Should be "Core"
-;; u16         action     Should be `3`
-;; u16         chain      ???
-;; u256        fee        New fee to emit message (in uSTX)
+;;       Returns `ok({value, sequence})` if successful
+;;       See `parse-and-verify-vaa-set-message-fee` for message structure
+;; @param vaa-bytes: VAA as raw bytes
 (define-public (set-message-fee (vaa-bytes (buff 8192)))
+  (let ((new-emit-message-fee (try! (parse-and-verify-set-message-fee vaa-bytes)))
+        (last-sequence (get sequence (var-get emit-message-fee))))
+
+    ;; --- Message has been validated, check if we can apply update ---
+    ;; Check sequence is the next one we expect
+    ;; TODO: Is `sequence` unique for this type of message, or shared with guardian set or other governance updates?
+    (asserts! (is-eq (get sequence new-emit-message-fee) (+ last-sequence u1))
+      ERR_SMF_CHECK_SEQUENCE)
+
+    (var-set emit-message-fee new-emit-message-fee)
+    ;; TODO: Emit event?
+    (ok new-emit-message-fee)))
+
+;; @desc Parse and validate message for updating `emit-message` fee
+;;       Returns `ok({value, sequence})` if successful
+;;
+;; Expected message format for VAA `payload`:
+;;   [32]byte    module     Should be "Core"
+;;   u16         action     Should be `3`
+;;   u16         chain      ???
+;;   u256        fee        New fee to emit message (in uSTX)
+;;
+;; @param vaa-bytes: VAA as raw bytes
+(define-public (parse-and-verify-set-message-fee (vaa-bytes (buff 8192)))
   (let ((vaa (try! (parse-and-verify-vaa vaa-bytes)))
         (payload (get payload vaa))
-        (sequence (get sequence vaa))
-        (last-sequence (get sequence (var-get emit-message-fee)))
         (cursor-module (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-buff-32 { bytes: payload, pos: u0 })
           ERR_SMF_PARSING_MODULE))
         (cursor-action (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-16 (get next cursor-module))
@@ -386,9 +406,6 @@
     ;; Check fee fits into `u128`, because that's the max value clarity can represent
     (asserts! (is-eq (get value cursor-fee-first-128-bits) u0)
       ERR_SMF_CHECK_FEE)
-    ;; Check sequence is the next one we expect
-    (asserts! (is-eq sequence (+ last-sequence u1))
-      ERR_SMF_CHECK_SEQUENCE)
     ;; Ensure that this message was emitted from authorized module
     (asserts! (is-eq (get value cursor-module) CORE_STRING_MODULE)
       ERR_SMF_CHECK_MODULE)
@@ -400,13 +417,8 @@
       ERR_SMF_CHECK_CHAIN)
     ;; TODO: Check `emitter-chain` and `emitter-address`? What are the allowed values?
 
-    ;; -- Checks Passed, Update Fee ---
-    (let ((new-value (get value cursor-fee-second-128-bits))
-          (new-emit-message-fee { value: new-value, sequence: sequence}))
-      (var-set emit-message-fee new-emit-message-fee)
-      ;; TODO: Emit event?
-      (ok new-emit-message-fee))))
-
+    ;; -- Checks Passed, Return Message Data ---
+    (ok { value: (get value cursor-fee-second-128-bits), sequence: (get sequence vaa)})))
 
 ;;;; Private functions
 
