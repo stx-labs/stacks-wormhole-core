@@ -359,7 +359,7 @@
 
 ;; @desc Set message fee for `emit-message` using VAA
 ;;       Returns `ok({value, sequence})` if successful
-;;       See `parse-and-verify-vaa-set-message-fee` for message structure
+;;
 ;; @param vaa-bytes: VAA as raw bytes
 (define-public (set-message-fee (vaa-bytes (buff 8192)))
   (let ((new-emit-message-fee (try! (parse-and-verify-set-message-fee vaa-bytes)))
@@ -375,8 +375,21 @@
     ;; TODO: Emit event?
     (ok new-emit-message-fee)))
 
-;; @desc Parse and validate message for updating `emit-message` fee
+;; @desc Parse and validate VAA for updating `emit-message` fee
 ;;       Returns `ok({value, sequence})` if successful
+;;
+;; @param vaa-bytes: VAA as raw bytes
+(define-public (parse-and-verify-set-message-fee (vaa-bytes (buff 8192)))
+  (let ((vaa (try! (parse-and-verify-vaa vaa-bytes)))
+        (payload (get payload vaa))
+        (fee (try! (parse-and-verify-set-message-fee-payload payload))))
+
+    ;; TODO: Check `emitter-chain` and `emitter-address`? What are the allowed values?
+
+    (ok {value: fee, sequence: (get sequence vaa)})))
+
+;; @desc Parse and validate VAA payload for `set-message-fee`
+;;       Returns `ok(fee)` if successful
 ;;
 ;; Expected message format for VAA `payload`:
 ;;   [32]byte    module     Should be "Core"
@@ -384,11 +397,9 @@
 ;;   u16         chain      ???
 ;;   u256        fee        New fee to emit message (in uSTX)
 ;;
-;; @param vaa-bytes: VAA as raw bytes
-(define-public (parse-and-verify-set-message-fee (vaa-bytes (buff 8192)))
-  (let ((vaa (try! (parse-and-verify-vaa vaa-bytes)))
-        (payload (get payload vaa))
-        (cursor-module (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-buff-32 { bytes: payload, pos: u0 })
+;; @param vaa-payload: VAA `payload` as raw bytes
+(define-public (parse-and-verify-set-message-fee-payload (vaa-payload (buff 8192)))
+  (let ((cursor-module (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-buff-32 { bytes: vaa-payload, pos: u0 })
           ERR_SMF_PARSING_MODULE))
         (cursor-action (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-16 (get next cursor-module))
           ERR_SMF_PARSING_ACTION))
@@ -401,7 +412,7 @@
 
     ;; --- Validate Message Data ---
     ;; Check no extra bytes in buffer
-    (asserts! (is-eq (get pos (get next cursor-fee-second-128-bits)) (len vaa-bytes))
+    (asserts! (is-eq (get pos (get next cursor-fee-second-128-bits)) (len vaa-payload))
       ERR_SMF_CHECK_OVERLAY)
     ;; Check fee fits into `u128`, because that's the max value clarity can represent
     (asserts! (is-eq (get value cursor-fee-first-128-bits) u0)
@@ -415,10 +426,9 @@
     ;; Ensure that this message is matching the expected chain
     (asserts! (or (is-eq (get value cursor-chain) (buff-to-uint-be EXPECTED_CHAIN_ID)) (is-eq (get value cursor-chain) CORE_CHAIN_ID))
       ERR_SMF_CHECK_CHAIN)
-    ;; TODO: Check `emitter-chain` and `emitter-address`? What are the allowed values?
 
-    ;; -- Checks Passed, Return Message Data ---
-    (ok { value: (get value cursor-fee-second-128-bits), sequence: (get sequence vaa)})))
+    ;; -- Checks Passed, Return Payload Data ---
+    (ok (get value cursor-fee-second-128-bits))))
 
 ;;;; Private functions
 
