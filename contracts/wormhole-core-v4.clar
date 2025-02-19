@@ -42,30 +42,30 @@
 ;; Guardian signature not comprised in guardian set specified
 (define-constant ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY (err u1103))
 
-;; Guardian Set Update initiated by an unauthorized module
+;; Guardian Set Update: error parsing `module`
 (define-constant ERR_GSU_PARSING_MODULE (err u1201))
-;; Guardian Set Update initiated from an unauthorized module
+;; Guardian Set Update: error parsing `action`
 (define-constant ERR_GSU_PARSING_ACTION (err u1202))
-;; Guardian Set Update initiated from an unauthorized module
+;; Guardian Set Update: error parsing `chain`
 (define-constant ERR_GSU_PARSING_CHAIN (err u1203))
-;; Guardian Set Update new index invalid
+;; Guardian Set Update: error parsing `index`
 (define-constant ERR_GSU_PARSING_INDEX (err u1204))
-;; Guardian Set Update length is invalid
+;; Guardian Set Update: error parsing `length`
 (define-constant ERR_GSU_PARSING_GUARDIAN_LEN (err u1205))
-;; Guardian Set Update guardians payload is malformed
+;; Guardian Set Update: guardians payload is malformed
 (define-constant ERR_GSU_PARSING_GUARDIANS_BYTES (err u1206))
-;; Guardian Set Update uncompressed public keys invalid
+;; Guardian Set Update: error parsing pubkeys
 (define-constant ERR_GSU_UNCOMPRESSED_PUBLIC_KEYS (err u1207))
 
-;; Guardian Set Update initiated by an unauthorized module
+;; Guardian Set Update: initiated by an unauthorized module
 (define-constant ERR_GSU_CHECK_MODULE (err u1301))
-;; Guardian Set Update initiated from an unauthorized module
+;; Guardian Set Update: initiated from an unauthorized module
 (define-constant ERR_GSU_CHECK_ACTION (err u1302))
-;; Guardian Set Update initiated from an unauthorized module
+;; Guardian Set Update: initiated from an unauthorized module
 (define-constant ERR_GSU_CHECK_CHAIN (err u1303))
-;; Guardian Set Update new index invalid
+;; Guardian Set Update: new index invalid
 (define-constant ERR_GSU_CHECK_INDEX (err u1304))
-;; Guardian Set Update emission payload unauthorized
+;; Guardian Set Update: emission payload unauthorized
 (define-constant ERR_GSU_CHECK_EMITTER (err u1305))
 ;; First guardian set is not being updated by the deployer
 (define-constant ERR_NOT_DEPLOYER (err u1306))
@@ -73,39 +73,39 @@
 (define-constant ERR_GSU_CHECK_OVERLAY (err u1307))
 ;; Empty guardian set
 (define-constant ERR_EMPTY_GUARDIAN_SET (err u1308))
-;; Guardian Set Update emission payload unauthorized
+;; Guardian Set Update: emission payload unauthorized
 (define-constant ERR_DUPLICATED_GUARDIAN_ADDRESSES (err u1309))
 ;; Unable to get stacks timestamp
 (define-constant ERR_STACKS_TIMESTAMP (err u1310))
 
-;; Consistency level is too large
-(define-constant ERR_EMIT_OVERFLOW_CONSISTENCY_LEVEL (err u1401))
-;; Nonce is too large
-(define-constant ERR_EMIT_OVERFLOW_NONCE (err u1402))
-;; Sequence is too large
-(define-constant ERR_EMIT_OVERFLOW_SEQUENCE (err u1403))
+;; Post Message: Consistency level is too large
+(define-constant ERR_POST_OVERFLOW_CONSISTENCY_LEVEL (err u1401))
+;; Post Message: Nonce is too large
+(define-constant ERR_POST_OVERFLOW_NONCE (err u1402))
+;; Post Message: Sequence is too large
+(define-constant ERR_POST_OVERFLOW_SEQUENCE (err u1403))
 
-;; Set Message Fee error parsing `module` field
+;; Set Message Fee: error parsing `module`
 (define-constant ERR_SMF_PARSING_MODULE (err u1501))
-;; Set Message Fee error parsing `action` field
+;; Set Message Fee: error parsing `action`
 (define-constant ERR_SMF_PARSING_ACTION (err u1502))
-;; Set Message Fee error parsing `chain` field
+;; Set Message Fee: error parsing `chain`
 (define-constant ERR_SMF_PARSING_CHAIN (err u1503))
-;; Set Message Fee error parsing first 128 bits of `fee` field
+;; Set Message Fee: error parsing first 128 bits of `fee`
 (define-constant ERR_SMF_PARSING_FEE_1 (err u1504))
-;; Set Message Fee error parsing second 128 bits of `fee` field
+;; Set Message Fee: error parsing second 128 bits of `fee`
 (define-constant ERR_SMF_PARSING_FEE_2 (err u1505))
-;; Set Message Fee overlay present in vaa bytes
+;; Set Message Fee: overlay present in vaa bytes
 (define-constant ERR_SMF_CHECK_OVERLAY (err u1506))
-;; Set Message Fee `fee` value too high
+;; Set Message Fee: `fee` value too high
 (define-constant ERR_SMF_CHECK_FEE (err u1507))
-;; Set Message Fee `module` is not expected value
+;; Set Message Fee: `module` is not expected value
 (define-constant ERR_SMF_CHECK_MODULE (err u1508))
-;; Set Message Fee `action` is not expected value for this message type
+;; Set Message Fee: `action` is not expected value for this message type
 (define-constant ERR_SMF_CHECK_ACTION (err u1509))
-;; Set Message Fee `chain` does not match this blockchain
+;; Set Message Fee: `chain` does not match this blockchain
 (define-constant ERR_SMF_CHECK_CHAIN (err u1510))
-;; Set Message Fee `sequence` is not next one expected
+;; Set Message Fee: `sequence` is not next one expected
 (define-constant ERR_SMF_CHECK_SEQUENCE (err u1511))
 
 ;; Guardian set upgrade emitting address
@@ -145,8 +145,8 @@
 (define-data-var active-guardian-set-id uint u0)
 ;; Keep track of exiting guardian set
 (define-data-var previous-guardian-set {set-id: uint, expires-at: uint} {set-id: u0, expires-at: u0})
-;; Fee to emit message to Wormhole guardians and sequence of VAA that last set fee
-(define-data-var emit-message-fee {value: uint, sequence: uint} {value: u0, sequence: u0})
+;; Fee to post message to Wormhole guardians and sequence of VAA that last set fee
+(define-data-var post-message-fee {value: uint, sequence: uint} {value: u0, sequence: u0})
 
 ;;;; Data maps
 
@@ -321,13 +321,13 @@
 
 ;; @desc Read current message fee
 (define-read-only (get-message-fee)
-  (get value (var-get emit-message-fee)))
+  (get value (var-get post-message-fee)))
 
-;; @desc Emit message for Guardians to  observe and package in to VAA
+;; @desc Post message for Guardians to observe and package in to VAA
 ;; @param payload: Raw data to send, specific to the contract sending the message
 ;; @param nonce: 32-bit nonce set by emitter
 ;; @param consistency-level-opt: Optional, use custom level instead of default
-(define-public (emit-message (payload (buff 8192)) (nonce uint) (consistency-level-opt (optional uint)))
+(define-public (post-message (payload (buff 8192)) (nonce uint) (consistency-level-opt (optional uint)))
   (let (
       (emitter contract-caller)
       (sequence (get-emitter-sequence emitter))
@@ -341,11 +341,11 @@
         payload: payload
       }))
     ;; `consistency-level` must fit into `u8` type
-    (asserts! (<= consistency-level MAX_VALUE_U8) ERR_EMIT_OVERFLOW_CONSISTENCY_LEVEL)
+    (asserts! (<= consistency-level MAX_VALUE_U8) ERR_POST_OVERFLOW_CONSISTENCY_LEVEL)
     ;; `nonce` must fit into `u32` type
-    (asserts! (<= nonce MAX_VALUE_U32) ERR_EMIT_OVERFLOW_NONCE)
+    (asserts! (<= nonce MAX_VALUE_U32) ERR_POST_OVERFLOW_NONCE)
     ;; `sequence` must fit into `u64` type
-    (asserts! (<= sequence MAX_VALUE_U64) ERR_EMIT_OVERFLOW_SEQUENCE)
+    (asserts! (<= sequence MAX_VALUE_U64) ERR_POST_OVERFLOW_SEQUENCE)
     ;; If a fee has been set, collect it
     (if (> fee u0)
       (try! (stx-transfer? fee tx-sender (as-contract tx-sender)))
@@ -357,25 +357,25 @@
     (map-set emitter-sequence emitter (+ sequence u1))
     (ok message)))
 
-;; @desc Set message fee for `emit-message` using VAA
+;; @desc Set message fee for `post-message` using VAA
 ;;       Returns `ok({value, sequence})` if successful
 ;;
 ;; @param vaa-bytes: VAA as raw bytes
 (define-public (set-message-fee (vaa-bytes (buff 8192)))
-  (let ((new-emit-message-fee (try! (parse-and-verify-set-message-fee vaa-bytes)))
-        (last-sequence (get sequence (var-get emit-message-fee))))
+  (let ((new-post-message-fee (try! (parse-and-verify-set-message-fee vaa-bytes)))
+        (last-sequence (get sequence (var-get post-message-fee))))
 
     ;; --- Message has been validated, check if we can apply update ---
     ;; Check sequence is the next one we expect
     ;; TODO: Is `sequence` unique for this type of message, or shared with guardian set or other governance updates?
-    (asserts! (is-eq (get sequence new-emit-message-fee) (+ last-sequence u1))
+    (asserts! (is-eq (get sequence new-post-message-fee) (+ last-sequence u1))
       ERR_SMF_CHECK_SEQUENCE)
 
-    (var-set emit-message-fee new-emit-message-fee)
+    (var-set post-message-fee new-post-message-fee)
     ;; TODO: Emit event?
-    (ok new-emit-message-fee)))
+    (ok new-post-message-fee)))
 
-;; @desc Parse and validate VAA for updating `emit-message` fee
+;; @desc Parse and validate VAA for updating `post-message` fee
 ;;       Returns `ok({value, sequence})` if successful
 ;;
 ;; @param vaa-bytes: VAA as raw bytes

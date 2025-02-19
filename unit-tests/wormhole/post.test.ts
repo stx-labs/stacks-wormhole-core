@@ -4,12 +4,12 @@ import { it, fc } from "@fast-check/vitest";
 
 // Constants from `wormhole-core`
 const DEFAULT_CONSISTENCY_LEVEL = 0;
-const ERR_EMIT_OVERFLOW_CONSISTENCY_LEVEL = 1401;
-const ERR_EMIT_OVERFLOW_NONCE = 1402;
+const ERR_POST_OVERFLOW_CONSISTENCY_LEVEL = 1401;
+const ERR_POST_OVERFLOW_NONCE = 1402;
 
 const contractName = "wormhole-core-v4";
 
-describe(`${contractName}::emit-message success`, () => {
+describe(`${contractName}::post-message success`, () => {
   const accounts = simnet.getAccounts();
   const deployer = accounts.get("deployer")!;
   const sender = accounts.get("wallet_1")!;
@@ -25,7 +25,7 @@ describe(`${contractName}::emit-message success`, () => {
 
       const res = simnet.callPublicFn(
         contractName,
-        `emit-message`,
+        `post-message`,
         [payload, nonce, Cl.none()],
         sender,
       );
@@ -54,7 +54,7 @@ describe(`${contractName}::emit-message success`, () => {
           const consistencyLevel = Cl.uint(fcConsistencyLevel);
           const res = simnet.callPublicFn(
             contractName,
-            `emit-message`,
+            `post-message`,
             [payload, nonce, Cl.some(consistencyLevel)],
             sender,
           );
@@ -80,7 +80,7 @@ describe(`${contractName}::emit-message success`, () => {
     // Use default `consistency-level`
     const res = simnet.callPublicFn(
       contractName,
-      `emit-message`,
+      `post-message`,
       [payload, nonce, Cl.none()],
       sender,
     );
@@ -108,7 +108,7 @@ describe(`${contractName}::emit-message success`, () => {
           const nonce = Cl.uint(fcNonce);
           const res = simnet.callPublicFn(
             contractName,
-            `emit-message`,
+            `post-message`,
             [payload, nonce, Cl.some(consistencyLevel)],
             sender,
           );
@@ -136,7 +136,7 @@ describe(`${contractName}::emit-message success`, () => {
     for (let i = 0; i < numMessages; i++) {
       const res = simnet.callPublicFn(
         contractName,
-        `emit-message`,
+        `post-message`,
         [payload, nonce, Cl.none()],
         sender,
       );
@@ -158,7 +158,7 @@ describe(`${contractName}::emit-message success`, () => {
 
     let res = simnet.callPublicFn(
       contractName,
-      `emit-message`,
+      `post-message`,
       [payload, nonce, Cl.none()],
       sender,
     );
@@ -175,8 +175,8 @@ describe(`${contractName}::emit-message success`, () => {
     const proxyContract = {
       name: "proxy-contract",
       code: [
-        `(define-public (emit-message-proxy (payload (buff 8192)) (nonce uint) (consistency-level-opt (optional uint)))`,
-        `  (contract-call? .${contractName} emit-message payload nonce consistency-level-opt))`,
+        `(define-public (post-message-proxy (payload (buff 8192)) (nonce uint) (consistency-level-opt (optional uint)))`,
+        `  (contract-call? .${contractName} post-message payload nonce consistency-level-opt))`,
       ].join("\n"),
     };
 
@@ -193,7 +193,7 @@ describe(`${contractName}::emit-message success`, () => {
     // Check that `emitter` is the proxy contract and `sequence` is 0
     res = simnet.callPublicFn(
       proxyContract.name,
-      `emit-message-proxy`,
+      `post-message-proxy`,
       [payload, nonce, Cl.none()],
       sender,
     );
@@ -222,7 +222,7 @@ describe(`${contractName}::emit-message success`, () => {
 
     let res = simnet.callPublicFn(
       contractName,
-      `emit-message`,
+      `post-message`,
       [payload, nonce, Cl.none()],
       sender,
     );
@@ -238,7 +238,7 @@ describe(`${contractName}::emit-message success`, () => {
   });
 });
 
-describe(`${contractName}::emit-message failure`, () => {
+describe(`${contractName}::post-message failure`, () => {
   const accounts = simnet.getAccounts();
   const sender = accounts.get("wallet_1")!;
 
@@ -249,11 +249,11 @@ describe(`${contractName}::emit-message failure`, () => {
 
     const res = simnet.callPublicFn(
       contractName,
-      `emit-message`,
+      `post-message`,
       [payload, nonce, Cl.some(consistencyLevel)],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(ERR_EMIT_OVERFLOW_CONSISTENCY_LEVEL));
+    expect(res.result).toBeErr(Cl.uint(ERR_POST_OVERFLOW_CONSISTENCY_LEVEL));
   });
 
   it("should fail if `nonce` exceeds max `u32` size", () => {
@@ -262,11 +262,11 @@ describe(`${contractName}::emit-message failure`, () => {
 
     const res = simnet.callPublicFn(
       contractName,
-      `emit-message`,
+      `post-message`,
       [payload, nonce, Cl.none()],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(ERR_EMIT_OVERFLOW_NONCE));
+    expect(res.result).toBeErr(Cl.uint(ERR_POST_OVERFLOW_NONCE));
   });
 
   it("should fail if `payload` exceeds 8192 bytes", () => {
@@ -277,7 +277,7 @@ describe(`${contractName}::emit-message failure`, () => {
     const f = () =>
       simnet.callPublicFn(
         contractName,
-        `emit-message`,
+        `post-message`,
         [payload, nonce, Cl.none()],
         sender,
       );
@@ -296,17 +296,17 @@ describe(`${contractName}::emit-message failure`, () => {
     for (let i = 0; i < attempts; i++) {
       const res = simnet.callPublicFn(
         contractName,
-        `emit-message`,
+        `post-message`,
         [payload, nonce, Cl.some(consistencyLevel)],
         sender,
       );
-      expect(res.result).toBeErr(Cl.uint(ERR_EMIT_OVERFLOW_CONSISTENCY_LEVEL));
+      expect(res.result).toBeErr(Cl.uint(ERR_POST_OVERFLOW_CONSISTENCY_LEVEL));
     }
 
     // Should succeed and have `sequence` of `u0`
     let res = simnet.callPublicFn(
       contractName,
-      `emit-message`,
+      `post-message`,
       [payload, nonce, Cl.none()],
       sender,
     );
