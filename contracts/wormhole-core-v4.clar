@@ -65,8 +65,8 @@
 (define-constant ERR_GSU_CHECK_CHAIN (err u1303))
 ;; Guardian Set Update: new index invalid
 (define-constant ERR_GSU_CHECK_INDEX (err u1304))
-;; Guardian Set Update: emission payload unauthorized
-(define-constant ERR_GSU_CHECK_EMITTER (err u1305))
+;; Governance: Message not from authorized chain/emitter
+(define-constant ERR_GOV_CHECK_EMITTER (err u1305))
 ;; First guardian set is not being updated by the deployer
 (define-constant ERR_NOT_DEPLOYER (err u1306))
 ;; Overlay present in vaa bytes
@@ -109,9 +109,9 @@
 (define-constant ERR_SMF_CHECK_SEQUENCE (err u1511))
 
 ;; Guardian set upgrade emitting address
-(define-constant GSU_EMITTING_ADDRESS 0x0000000000000000000000000000000000000000000000000000000000000004)
+(define-constant GOVERNANCE_EMITTING_ADDRESS 0x0000000000000000000000000000000000000000000000000000000000000004)
 ;; Guardian set upgrade emitting chain
-(define-constant GSU_EMITTING_CHAIN u1)
+(define-constant GOVERNANCE_CHAIN u1)
 ;; Stacks chain id attributed by Pyth
 (define-constant EXPECTED_CHAIN_ID (if is-in-mainnet 0xea86 0xc377))
 ;; Core string module
@@ -283,9 +283,9 @@
     (asserts! (is-eq (len uncompressed-public-keys) (len eth-addresses)) 
       ERR_GSU_UNCOMPRESSED_PUBLIC_KEYS)
     ;; Check emitting address
-    (asserts! (is-eq (get emitter-address vaa) GSU_EMITTING_ADDRESS) ERR_GSU_CHECK_EMITTER)
-    ;; Check emitting address
-    (asserts! (is-eq (get emitter-chain vaa) GSU_EMITTING_CHAIN) ERR_GSU_CHECK_EMITTER)
+    (asserts! (is-eq (get emitter-address vaa) GOVERNANCE_EMITTING_ADDRESS) ERR_GOV_CHECK_EMITTER)
+    ;; Check emitting chain
+    (asserts! (is-eq (get emitter-chain vaa) GOVERNANCE_CHAIN) ERR_GOV_CHECK_EMITTER)
     ;; ensure guardian set has atleast one member
     (asserts! (>= (len result) u1) ERR_EMPTY_GUARDIAN_SET)
     ;; Update storage
@@ -384,7 +384,10 @@
         (payload (get payload vaa))
         (fee (try! (parse-and-verify-set-message-fee-payload payload))))
 
-    ;; TODO: Check `emitter-chain` and `emitter-address`? What are the allowed values?
+    ;; Check emitting address
+    (asserts! (is-eq (get emitter-address vaa) GOVERNANCE_EMITTING_ADDRESS) ERR_GOV_CHECK_EMITTER)
+    ;; Check emitting chain
+    (asserts! (is-eq (get emitter-chain vaa) GOVERNANCE_CHAIN) ERR_GOV_CHECK_EMITTER)
 
     (ok {value: fee, sequence: (get sequence vaa)})))
 
