@@ -11,9 +11,11 @@ const contractName = "wormhole-core-v4";
 
 describe(`${contractName}::parse-and-verify-set-message-fee-payload success`, () => {
   const accounts = simnet.getAccounts();
+  const action = ACTION_SET_MESSAGE_FEE;
+  const chain = EXPECTED_CHAIN_ID;
   const sender = accounts.get("wallet_1")!;
 
-  it("should return `fee`", () => {
+  it("should parse and return valid payload", () => {
     const fee = 123456789;
     const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
       ACTION_SET_MESSAGE_FEE,
@@ -27,6 +29,13 @@ describe(`${contractName}::parse-and-verify-set-message-fee-payload success`, ()
       [Cl.buffer(Uint8Array.from(payload))],
       sender,
     );
-    expect(res.result).toBeOk(Cl.uint(fee));
+    expect(res.result).toBeOk(
+      Cl.tuple({
+        module: Cl.buffer(Uint8Array.from(wormhole.coreModule)),
+        action: Cl.uint(action),
+        fee: Cl.uint(fee),
+        chain: Cl.uint(chain),
+      }),
+    );
   });
 });

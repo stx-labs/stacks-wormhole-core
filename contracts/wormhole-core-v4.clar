@@ -65,7 +65,7 @@
 (define-constant ERR_GSU_CHECK_CHAIN (err u1303))
 ;; Guardian Set Update: new index invalid
 (define-constant ERR_GSU_CHECK_INDEX (err u1304))
-;; Governance: Message not from authorized chain/emitter
+;; Wormhole Governance: Message not from authorized chain/emitter
 (define-constant ERR_GOV_CHECK_EMITTER (err u1305))
 ;; First guardian set is not being updated by the deployer
 (define-constant ERR_NOT_DEPLOYER (err u1306))
@@ -108,9 +108,9 @@
 ;; Set Message Fee: `sequence` is not next one expected
 (define-constant ERR_SMF_CHECK_SEQUENCE (err u1511))
 
-;; Guardian set upgrade emitting address
+;; Wormhole Governance: emitting address
 (define-constant GOVERNANCE_EMITTING_ADDRESS 0x0000000000000000000000000000000000000000000000000000000000000004)
-;; Guardian set upgrade emitting chain
+;; Wormhole Governance: emitting chain
 (define-constant GOVERNANCE_CHAIN u1)
 ;; Stacks chain id attributed by Pyth
 (define-constant EXPECTED_CHAIN_ID (if is-in-mainnet 0xea86 0xc377))
@@ -145,8 +145,10 @@
 (define-data-var active-guardian-set-id uint u0)
 ;; Keep track of exiting guardian set
 (define-data-var previous-guardian-set {set-id: uint, expires-at: uint} {set-id: u0, expires-at: u0})
-;; Fee to post message to Wormhole guardians and sequence of VAA that last set fee
-(define-data-var post-message-fee {value: uint, sequence: uint} {value: u0, sequence: u0})
+;; Fee to post message to Wormhole guardians
+(define-data-var post-message-fee uint u0)
+;; Wormhold Governance: Keep track of VAA sequence to prevent replay/reordering
+(define-data-var governance-vaa-sequence uint u0)
 
 ;;;; Data maps
 
@@ -319,10 +321,6 @@
 (define-read-only (get-emitter-sequence (emitter principal))
   (default-to u0 (map-get? emitter-sequence contract-caller)))
 
-;; @desc Read current message fee
-(define-read-only (get-message-fee)
-  (get value (var-get post-message-fee)))
-
 ;; @desc Post message for Guardians to observe and package in to VAA
 ;; @param payload: Raw data to send, specific to the contract sending the message
 ;; @param nonce: 32-bit nonce set by emitter
@@ -332,7 +330,7 @@
       (emitter contract-caller)
       (sequence (get-emitter-sequence emitter))
       (consistency-level (default-to DEFAULT_CONSISTENCY_LEVEL consistency-level-opt))
-      (fee (get-message-fee))
+      (fee (var-get post-message-fee))
       (message {
         emitter: emitter,
         nonce: nonce,
@@ -358,38 +356,41 @@
     (ok message)))
 
 ;; @desc Set message fee for `post-message` using VAA
-;;       Returns `ok({value, sequence})` if successful
+;;       Returns `ok({fee, sequence})` if successful
 ;;
 ;; @param vaa-bytes: VAA as raw bytes
 (define-public (set-message-fee (vaa-bytes (buff 8192)))
-  (let ((new-post-message-fee (try! (parse-and-verify-set-message-fee vaa-bytes)))
-        (last-sequence (get sequence (var-get post-message-fee))))
+  (let ((fee-update (try! (parse-and-verify-set-message-fee vaa-bytes)))
+        (fee (get fee fee-update))
+        (sequence (get sequence fee-update)))
 
     ;; --- Message has been validated, check if we can apply update ---
-    ;; Check sequence is the next one we expect
-    ;; TODO: Is `sequence` unique for this type of message, or shared with guardian set or other governance updates?
-    (asserts! (is-eq (get sequence new-post-message-fee) (+ last-sequence u1))
-      ERR_SMF_CHECK_SEQUENCE)
+    ;; Check we are not processing an old message
+    ;; TODO: Add stricter sequence requirements?
+    (asserts! (> sequence (var-get governance-vaa-sequence)) ERR_SMF_CHECK_SEQUENCE)
 
-    (var-set post-message-fee new-post-message-fee)
+    ;; Commit state
+    (var-set governance-vaa-sequence sequence)
+    (var-set post-message-fee fee)
+
     ;; TODO: Emit event?
-    (ok new-post-message-fee)))
+    (ok fee-update)))
 
 ;; @desc Parse and validate VAA for updating `post-message` fee
-;;       Returns `ok({value, sequence})` if successful
+;;       Returns `ok({fee, sequence})` if successful
 ;;
 ;; @param vaa-bytes: VAA as raw bytes
 (define-public (parse-and-verify-set-message-fee (vaa-bytes (buff 8192)))
   (let ((vaa (try! (parse-and-verify-vaa vaa-bytes)))
         (payload (get payload vaa))
-        (fee (try! (parse-and-verify-set-message-fee-payload payload))))
+        (fee-update-message (try! (parse-and-verify-set-message-fee-payload payload))))
 
     ;; Check emitting address
     (asserts! (is-eq (get emitter-address vaa) GOVERNANCE_EMITTING_ADDRESS) ERR_GOV_CHECK_EMITTER)
     ;; Check emitting chain
     (asserts! (is-eq (get emitter-chain vaa) GOVERNANCE_CHAIN) ERR_GOV_CHECK_EMITTER)
 
-    (ok {value: fee, sequence: (get sequence vaa)})))
+    (ok {fee: (get fee fee-update-message), sequence: (get sequence vaa)})))
 
 ;; @desc Parse and validate VAA payload for `set-message-fee`
 ;;       Returns `ok(fee)` if successful
@@ -411,7 +412,11 @@
         (cursor-fee-first-128-bits (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-128 (get next cursor-chain))
           ERR_SMF_PARSING_FEE_1))
         (cursor-fee-second-128-bits (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-128 (get next cursor-fee-first-128-bits))
-          ERR_SMF_PARSING_FEE_2)))
+          ERR_SMF_PARSING_FEE_2))
+        (module (get value cursor-module))
+        (action (get value cursor-action))
+        (chain (get value cursor-chain))
+        (fee (get value cursor-fee-second-128-bits)))
 
     ;; --- Validate Message Data ---
     ;; Check no extra bytes in buffer
@@ -421,17 +426,22 @@
     (asserts! (is-eq (get value cursor-fee-first-128-bits) u0)
       ERR_SMF_CHECK_FEE)
     ;; Ensure that this message was emitted from authorized module
-    (asserts! (is-eq (get value cursor-module) CORE_STRING_MODULE)
+    (asserts! (is-eq module CORE_STRING_MODULE)
       ERR_SMF_CHECK_MODULE)
     ;; Ensure that this message is matching the adequate action
-    (asserts! (is-eq (get value cursor-action) ACTION_SET_MESSAGE_FEE)
+    (asserts! (is-eq action ACTION_SET_MESSAGE_FEE)
       ERR_SMF_CHECK_ACTION)
     ;; Ensure that this message is matching the expected chain
-    (asserts! (or (is-eq (get value cursor-chain) (buff-to-uint-be EXPECTED_CHAIN_ID)) (is-eq (get value cursor-chain) CORE_CHAIN_ID))
+    (asserts! (or (is-eq (get value cursor-chain) (buff-to-uint-be EXPECTED_CHAIN_ID)) (is-eq chain CORE_CHAIN_ID))
       ERR_SMF_CHECK_CHAIN)
 
-    ;; -- Checks Passed, Return Payload Data ---
-    (ok (get value cursor-fee-second-128-bits))))
+    ;; -- Checks Passed, Return Parsed Payload ---
+    (ok {
+      module: module,
+      action: action,
+      chain: chain,
+      fee: fee,
+    })))
 
 ;;;; Private functions
 
