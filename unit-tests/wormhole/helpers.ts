@@ -12,7 +12,6 @@ import { hmac } from "@noble/hashes/hmac";
 import { sha256 } from "@noble/hashes/sha256";
 import { gsuMainnetVaas } from "./fixtures";
 import { hexToBytes } from "@noble/hashes/utils";
-import { toBufferBE } from "bigint-buffer";
 
 const initialGovernanceDataSource = {
   chain: 1,
@@ -516,7 +515,7 @@ export namespace wormhole {
     v.writeUInt16BE(chain, 0);
     components.push(v);
 
-    v = toBufferBE(BigInt(fee), 32);
+    v = bigintToBuffer(fee, 32);
     components.push(v);
 
     return Buffer.concat(components.map((x) => Uint8Array.from(x)));
