@@ -7,6 +7,7 @@ const MAX_VALUE_U128 = 340282366920938463463374607431768211455n;
 
 // Constants from `wormhole-core`
 const ACTION_SET_MESSAGE_FEE = 3;
+const ERR_SMF_CHECK_OVERLAY = 1506;
 const ERR_SMF_CHECK_FEE = 1507;
 const ERR_SMF_CHECK_MODULE = 1508;
 const ERR_SMF_CHECK_ACTION = 1509;
@@ -125,4 +126,24 @@ describe(`${contractName}::parse-and-verify-set-message-fee-payload failure`, ()
   });
 
   // TODO: Payload too big/small
+  it("should fail if payload is larger than expected", () => {
+    let payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
+      ACTION_SET_MESSAGE_FEE,
+      EXPECTED_CHAIN_ID,
+      100,
+    );
+    const validPayloadLen = payload.length;
+    payload = Buffer.concat([Uint8Array.from(payload), new Uint8Array(1)]);
+    const actualPayloadLen = payload.length;
+
+    expect(actualPayloadLen).toBeGreaterThan(validPayloadLen);
+
+    const res = simnet.callPublicFn(
+      contractName,
+      `parse-and-verify-set-message-fee-payload`,
+      [Cl.buffer(Uint8Array.from(payload))],
+      sender,
+    );
+    expect(res.result).toBeErr(Cl.uint(ERR_SMF_CHECK_OVERLAY));
+  });
 });

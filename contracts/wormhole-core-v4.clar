@@ -361,12 +361,11 @@
 ;; @param vaa-bytes: VAA as raw bytes
 (define-public (set-message-fee (vaa-bytes (buff 8192)))
   (let ((vaa (try! (parse-and-verify-set-message-fee vaa-bytes)))
-        (vaa-hash (sha256 vaa-bytes))
         (fee (get fee (get payload vaa))))
 
     ;; --- Message has been validated, check if we can apply update ---
     ;; Check we are not re-processing an old message
-    (asserts! (map-insert governance-vaa-hashes vaa-hash true) ERR_GOV_CHECK_USED)
+    (asserts! (map-insert governance-vaa-hashes (sha256 vaa-bytes) true) ERR_GOV_CHECK_USED)
 
     ;; Commit state
     (var-set post-message-fee fee)
