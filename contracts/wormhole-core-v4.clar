@@ -65,8 +65,6 @@
 (define-constant ERR_GSU_CHECK_CHAIN (err u1303))
 ;; Guardian Set Update: new index invalid
 (define-constant ERR_GSU_CHECK_INDEX (err u1304))
-;; First guardian set is not being updated by the deployer
-(define-constant ERR_NOT_DEPLOYER (err u1306))
 ;; Overlay present in vaa bytes
 (define-constant ERR_GSU_CHECK_OVERLAY (err u1307))
 ;; Empty guardian set
@@ -140,8 +138,6 @@
 
 ;; Guardian Set Update uncompressed public keys invalid
 (define-data-var guardian-set-initialized bool false)
-;; Contract deployer
-(define-constant deployer contract-caller)
 ;; Keep track of the active guardian set-id
 (define-data-var active-guardian-set-id uint u0)
 ;; Keep track of exiting guardian set
@@ -268,10 +264,7 @@
 (define-public (update-guardians-set (guardian-set-vaa (buff 2048)) (uncompressed-public-keys (list 19 (buff 64))))
   (let ((vaa (if (var-get guardian-set-initialized)
           (try! (parse-and-verify-vaa guardian-set-vaa))
-          (begin
-            (asserts! (is-eq contract-caller deployer) ERR_NOT_DEPLOYER)
-            (get vaa (try! (parse-vaa guardian-set-vaa)))
-          )))
+          (get vaa (try! (parse-vaa guardian-set-vaa)))))
         (cursor-guardians-data (try! (parse-and-verify-guardians-set (get payload vaa))))
         (set-id (get new-index cursor-guardians-data))
         (eth-addresses (get guardians-eth-addresses cursor-guardians-data))
