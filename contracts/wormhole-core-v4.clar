@@ -65,8 +65,6 @@
 (define-constant ERR_GSU_CHECK_CHAIN (err u1303))
 ;; Guardian Set Update: new index invalid
 (define-constant ERR_GSU_CHECK_INDEX (err u1304))
-;; Wormhole Governance: Message not from authorized chain/emitter
-(define-constant ERR_GOV_CHECK_EMITTER (err u1305))
 ;; First guardian set is not being updated by the deployer
 (define-constant ERR_NOT_DEPLOYER (err u1306))
 ;; Overlay present in vaa bytes
@@ -105,8 +103,11 @@
 (define-constant ERR_SMF_CHECK_ACTION (err u1509))
 ;; Set Message Fee: `chain` does not match this blockchain
 (define-constant ERR_SMF_CHECK_CHAIN (err u1510))
-;; Set Message Fee: `sequence` is not next one expected
-(define-constant ERR_SMF_CHECK_SEQUENCE (err u1511))
+
+;; Wormhole Governance: Message not from authorized chain/emitter
+(define-constant ERR_GOV_CHECK_EMITTER (err u1601))
+;; Wormhole Governance: `sequence` is not next one expected
+(define-constant ERR_GOV_CHECK_USED (err u1602))
 
 ;; Wormhole Governance: emitting address
 (define-constant GOVERNANCE_EMITTING_ADDRESS 0x0000000000000000000000000000000000000000000000000000000000000004)
@@ -147,19 +148,18 @@
 (define-data-var previous-guardian-set {set-id: uint, expires-at: uint} {set-id: u0, expires-at: u0})
 ;; Fee to post message to Wormhole guardians
 (define-data-var post-message-fee uint u0)
-;; Wormhold Governance: Keep track of VAA sequence to prevent replay/reordering
-(define-data-var governance-vaa-sequence uint u0)
 
 ;;;; Data maps
 
 ;; Map tracking guardians set
 (define-map guardian-sets uint (list 19 { compressed-public-key: (buff 33), uncompressed-public-key: (buff 64) }))
-
 ;; Keep track of sequence state for message emitters
 (define-map emitter-sequence
     principal  ;; Contract emitting message
     uint       ;; Incremented each time emitter emits a message
 )
+;; Wormhold Governance: Keep track of consumed governance VAAs by hash
+(define-map governance-vaa-hashes (buff 32) bool)
 
 ;;;; Public functions
 
@@ -356,44 +356,41 @@
     (ok message)))
 
 ;; @desc Set message fee for `post-message` using VAA
-;;       Returns `ok({fee, sequence})` if successful
+;;       Returns `ok(fee)` if successful
 ;;
 ;; @param vaa-bytes: VAA as raw bytes
 (define-public (set-message-fee (vaa-bytes (buff 8192)))
-  (let ((fee-update (try! (parse-and-verify-set-message-fee vaa-bytes)))
-        (fee (get fee fee-update))
-        (sequence (get sequence fee-update)))
+  (let ((vaa (try! (parse-and-verify-set-message-fee vaa-bytes)))
+        (vaa-hash (sha256 vaa-bytes))
+        (fee (get fee (get payload vaa))))
 
     ;; --- Message has been validated, check if we can apply update ---
-    ;; Check we are not processing an old message
-    ;; TODO: Add stricter sequence requirements?
-    (asserts! (> sequence (var-get governance-vaa-sequence)) ERR_SMF_CHECK_SEQUENCE)
+    ;; Check we are not re-processing an old message
+    (asserts! (map-insert governance-vaa-hashes vaa-hash true) ERR_GOV_CHECK_USED)
 
     ;; Commit state
-    (var-set governance-vaa-sequence sequence)
     (var-set post-message-fee fee)
 
     ;; TODO: Emit event?
-    (ok fee-update)))
+    (ok fee)))
 
 ;; @desc Parse and validate VAA for updating `post-message` fee
-;;       Returns `ok({fee, sequence})` if successful
+;;       Returns parsed VAA as tuple if successful
 ;;
 ;; @param vaa-bytes: VAA as raw bytes
 (define-public (parse-and-verify-set-message-fee (vaa-bytes (buff 8192)))
-  (let ((vaa (try! (parse-and-verify-vaa vaa-bytes)))
-        (payload (get payload vaa))
-        (fee-update-message (try! (parse-and-verify-set-message-fee-payload payload))))
+  (let ((vaa (try! (parse-and-verify-vaa vaa-bytes))))
 
     ;; Check emitting address
     (asserts! (is-eq (get emitter-address vaa) GOVERNANCE_EMITTING_ADDRESS) ERR_GOV_CHECK_EMITTER)
     ;; Check emitting chain
     (asserts! (is-eq (get emitter-chain vaa) GOVERNANCE_CHAIN) ERR_GOV_CHECK_EMITTER)
 
-    (ok {fee: (get fee fee-update-message), sequence: (get sequence vaa)})))
+    ;; Replace payload raw bytes with parsed payload
+    (ok (merge vaa { payload: (try! (parse-and-verify-set-message-fee-payload (get payload vaa))) }))))
 
 ;; @desc Parse and validate VAA payload for `set-message-fee`
-;;       Returns `ok(fee)` if successful
+;;       Returns parsed payload as tuple if successful
 ;;
 ;; Expected message format for VAA `payload`:
 ;;   [32]byte    module     Should be "Core"

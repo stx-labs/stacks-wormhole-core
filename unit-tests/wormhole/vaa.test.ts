@@ -236,7 +236,7 @@ describe(`${contractName}::update-guardians-set failures`, () => {
       [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
     );
-    expect(res.result).toBeErr(Cl.uint(1305));
+    expect(res.result).toBeErr(Cl.uint(1601));
   });
 
   it("should fail if the emitter-chain is invalid", () => {
@@ -273,7 +273,7 @@ describe(`${contractName}::update-guardians-set failures`, () => {
       [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
     );
-    expect(res.result).toBeErr(Cl.uint(1305));
+    expect(res.result).toBeErr(Cl.uint(1601));
   });
 });
 
