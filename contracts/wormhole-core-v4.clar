@@ -107,20 +107,24 @@
 ;; Wormhole Governance: `sequence` is not next one expected
 (define-constant ERR_GOV_CHECK_USED (err u1602))
 
-;; Wormhole Governance: emitting address
-(define-constant GOVERNANCE_EMITTING_ADDRESS 0x0000000000000000000000000000000000000000000000000000000000000004)
 ;; Wormhole Governance: emitting chain
-(define-constant GOVERNANCE_CHAIN u1)
+(define-constant GOV_EMITTING_CHAIN u1)
+;; Wormhole Governance: emitting address
+(define-constant GOV_EMITTING_ADDRESS 0x0000000000000000000000000000000000000000000000000000000000000004)
+;; Wormhole Governance: Message intended for all chains
+(define-constant GOV_BROADCAST_CHAIN_ID u0)
+;; Wormhole Governance: ContractUpgrade action
+(define-constant GOV_ACTION_CONTRACT_UPGRADE u1)
+;; Wormhole Governance: GuardianSetUpgrade action
+(define-constant GOV_ACTION_GUARDIAN_SET_UPDATE u2)
+;; Wormhole Governance: SetMessageFee action
+(define-constant GOV_ACTION_SET_MESSAGE_FEE u3)
+;; Wormhole Governance: SetMessageFee action
+(define-constant GOV_ACTION_TRANSFER_FEES u4)
 ;; Stacks chain id attributed by Pyth
 (define-constant EXPECTED_CHAIN_ID (if is-in-mainnet 0xea86 0xc377))
 ;; Core string module
 (define-constant CORE_STRING_MODULE 0x00000000000000000000000000000000000000000000000000000000436f7265)
-;; Guardian set update action
-(define-constant ACTION_GUARDIAN_SET_UPDATE u2)
-;; Set Message Fee action
-(define-constant ACTION_SET_MESSAGE_FEE u3)
-;; Core chain ID
-(define-constant CORE_CHAIN_ID u0)
 ;; Guardian eth address size
 (define-constant GUARDIAN_ETH_ADDRESS_SIZE u20)
 ;; 24 hours in seconds
@@ -154,7 +158,7 @@
     principal  ;; Contract emitting message
     uint       ;; Incremented each time emitter emits a message
 )
-;; Wormhold Governance: Keep track of consumed governance VAAs by hash
+;; Wormhole Governance: Keep track of consumed governance VAAs by hash
 (define-map governance-vaa-hashes (buff 32) bool)
 
 ;;;; Public functions
@@ -278,11 +282,14 @@
     (asserts! (is-eq (len uncompressed-public-keys) (len eth-addresses)) 
       ERR_GSU_UNCOMPRESSED_PUBLIC_KEYS)
     ;; Check emitting address
-    (asserts! (is-eq (get emitter-address vaa) GOVERNANCE_EMITTING_ADDRESS) ERR_GOV_CHECK_EMITTER)
+    (asserts! (is-eq (get emitter-address vaa) GOV_EMITTING_ADDRESS) ERR_GOV_CHECK_EMITTER)
     ;; Check emitting chain
-    (asserts! (is-eq (get emitter-chain vaa) GOVERNANCE_CHAIN) ERR_GOV_CHECK_EMITTER)
+    (asserts! (is-eq (get emitter-chain vaa) GOV_EMITTING_CHAIN) ERR_GOV_CHECK_EMITTER)
     ;; ensure guardian set has atleast one member
     (asserts! (>= (len result) u1) ERR_EMPTY_GUARDIAN_SET)
+    ;; Check we are not re-processing an old message
+    ;; Not actually necessary if `guardian-set-id` is guaranteed to be unique and old guardian sets can't validate messages, but I'm not 100% sure of that
+    (asserts! (map-insert governance-vaa-hashes (sha256 guardian-set-vaa) true) ERR_GOV_CHECK_USED)
     ;; Update storage
     (map-set guardian-sets set-id result)
     (try! (set-new-guardian-set-id set-id))
@@ -374,9 +381,9 @@
   (let ((vaa (try! (parse-and-verify-vaa vaa-bytes))))
 
     ;; Check emitting address
-    (asserts! (is-eq (get emitter-address vaa) GOVERNANCE_EMITTING_ADDRESS) ERR_GOV_CHECK_EMITTER)
+    (asserts! (is-eq (get emitter-address vaa) GOV_EMITTING_ADDRESS) ERR_GOV_CHECK_EMITTER)
     ;; Check emitting chain
-    (asserts! (is-eq (get emitter-chain vaa) GOVERNANCE_CHAIN) ERR_GOV_CHECK_EMITTER)
+    (asserts! (is-eq (get emitter-chain vaa) GOV_EMITTING_CHAIN) ERR_GOV_CHECK_EMITTER)
 
     ;; Replace payload raw bytes with parsed payload
     (ok (merge vaa { payload: (try! (parse-and-verify-set-message-fee-payload (get payload vaa))) }))))
@@ -418,10 +425,10 @@
     (asserts! (is-eq module CORE_STRING_MODULE)
       ERR_SMF_CHECK_MODULE)
     ;; Ensure that this message is matching the adequate action
-    (asserts! (is-eq action ACTION_SET_MESSAGE_FEE)
+    (asserts! (is-eq action GOV_ACTION_SET_MESSAGE_FEE)
       ERR_SMF_CHECK_ACTION)
-    ;; Ensure that this message is matching the expected chain
-    (asserts! (or (is-eq (get value cursor-chain) (buff-to-uint-be EXPECTED_CHAIN_ID)) (is-eq chain CORE_CHAIN_ID))
+    ;; Ensure that this message is addressed to this chain
+    (asserts! (is-eq (get value cursor-chain) (buff-to-uint-be EXPECTED_CHAIN_ID))
       ERR_SMF_CHECK_CHAIN)
 
     ;; -- Checks Passed, Return Parsed Payload ---
@@ -545,10 +552,10 @@
     (asserts! (is-eq (get value cursor-module) CORE_STRING_MODULE) 
       ERR_GSU_CHECK_MODULE)
     ;; Ensure that this message is matching the adequate action
-    (asserts! (is-eq (get value cursor-action) ACTION_GUARDIAN_SET_UPDATE) 
+    (asserts! (is-eq (get value cursor-action) GOV_ACTION_GUARDIAN_SET_UPDATE)
       ERR_GSU_CHECK_ACTION)
     ;; Ensure that this message is matching the expected chain
-    (asserts! (or (is-eq (get value cursor-chain) (buff-to-uint-be EXPECTED_CHAIN_ID)) (is-eq (get value cursor-chain) CORE_CHAIN_ID) ) ERR_GSU_CHECK_CHAIN)
+    (asserts! (or (is-eq (get value cursor-chain) (buff-to-uint-be EXPECTED_CHAIN_ID)) (is-eq (get value cursor-chain) GOV_BROADCAST_CHAIN_ID) ) ERR_GSU_CHECK_CHAIN)
     (if (var-get guardian-set-initialized)
       ;; Ensure that next index = current index + 1
       (asserts! (is-eq (get value cursor-new-index) (+ u1 (var-get active-guardian-set-id))) ERR_GSU_CHECK_INDEX)

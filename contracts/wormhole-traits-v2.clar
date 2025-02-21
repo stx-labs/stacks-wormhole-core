@@ -22,5 +22,9 @@
       consistency-level: uint,
       payload: (buff 8192)
     } uint))
+    ;; Handle governance message: GuardianSetUpgrade
+    ;;(update-guardians-set (guardian-set-vaa (buff 2048)) (uncompressed-public-keys (list 19 (buff 64))))
+    ;;(set-message-fee ((buff 8192)) (response uint uint))
+    ;;(transfer-fees ((buff 8192)) (response uint uint))
   )
 )
