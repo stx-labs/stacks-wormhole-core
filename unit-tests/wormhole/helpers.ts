@@ -453,6 +453,7 @@ export namespace wormhole {
 
   export const validGuardianRotationModule = coreModule;
   export const validSetMessageFeeModule = coreModule;
+  export const validTransferFeesModule = coreModule;
 
   export const serializeGuardianUpdateVaaPayloadToBuffer = (
     keyChain: Guardian[],
@@ -516,6 +517,46 @@ export namespace wormhole {
     components.push(v);
 
     v = bigintToBuffer(fee, 32);
+    components.push(v);
+
+    return Buffer.concat(components.map((x) => Uint8Array.from(x)));
+  };
+
+  // Serialize payload for a TransferFees VAA
+  //
+  // Wire format reminder:
+  // ===========================
+  // [32]byte    module     (Module, should be "Core")
+  // u16         action     (Action type, `4` for TransferFees)
+  // u16         chain      (Blockchain ID which this message is intended for)
+  // u256        amount     (Amount to transfer from accumulated message fees)
+  // principal   recipient  (Recipient of message fees)
+  //
+  // See also: https://github.com/wormhole-foundation/wormhole/blob/main/whitepapers/0004_message_publishing.md
+  export const serializeTransferFeesVaaPayloadToBuffer = (
+    action: number,
+    chain: number,
+    amount: number | bigint,
+    recipient: string,
+    module = validSetMessageFeeModule,
+  ) => {
+    const components = [];
+    components.push(module);
+
+    // TODO: Is this correct? `action` is a `u8` in other governance messages
+    let v = Buffer.alloc(2);
+    v.writeUint16BE(action, 0);
+    components.push(v);
+
+    v = Buffer.alloc(2);
+    v.writeUInt16BE(chain, 0);
+    components.push(v);
+
+    v = bigintToBuffer(amount, 32);
+    components.push(v);
+
+    // Encode `recipient` as Stacks wire format
+    v = Buffer.from(Cl.serialize(Cl.principal(recipient)));
     components.push(v);
 
     return Buffer.concat(components.map((x) => Uint8Array.from(x)));

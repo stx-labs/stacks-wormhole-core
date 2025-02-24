@@ -526,17 +526,18 @@
           ERR_TXF_PARSING_AMOUNT_1))
         (cursor-amount-second-128-bits (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-128 (get next cursor-amount-first-128-bits))
           ERR_TXF_PARSING_AMOUNT_2))
-        (recipient (unwrap! (from-consensus-buff? principal (get bytes (get next cursor-amount-second-128-bits)))
-          ERR_TXF_PARSING_RECIPIENT))
+        (recipient-slice (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 slice (get next cursor-amount-second-128-bits) none))
         (module (get value cursor-module))
         (action (get value cursor-action))
         (chain (get value cursor-chain))
-        (amount (get value cursor-amount-second-128-bits)))
+        (amount (get value cursor-amount-second-128-bits))
+        (recipient (unwrap! (from-consensus-buff? principal recipient-slice)
+          ERR_TXF_PARSING_RECIPIENT)))
 
     ;; --- Validate Message Data ---
     ;; Check no extra bytes in buffer
-    (asserts! (is-eq (get pos (get next cursor-amount-second-128-bits)) (len vaa-payload))
-      ERR_TXF_CHECK_OVERLAY)
+    ;;(asserts! (is-eq (get pos (get next cursor-amount-second-128-bits)) (len vaa-payload))
+    ;;  ERR_TXF_CHECK_OVERLAY)
     ;; Check amount fits into `u128`, because that's the max value clarity can represent
     (asserts! (is-eq (get value cursor-amount-first-128-bits) u0)
       ERR_TXF_CHECK_FEE)
@@ -558,7 +559,6 @@
       amount: amount,
       recipient: recipient,
     })))
-
 
 ;;;; Private functions
 

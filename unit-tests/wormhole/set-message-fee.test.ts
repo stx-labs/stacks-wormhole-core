@@ -22,7 +22,7 @@ describe(`${contractName}::parse-and-verify-set-message-fee-payload success`, ()
   const chain = EXPECTED_CHAIN_ID;
   const sender = accounts.get("wallet_1")!;
 
-  it("should parse and return valid payload", () => {
+  it("should return parsed payload", () => {
     fc.assert(
       fc.property(fc.bigInt({ min: 0n, max: MAX_VALUE_U128 }), (fcFee) => {
         const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
@@ -125,7 +125,6 @@ describe(`${contractName}::parse-and-verify-set-message-fee-payload failure`, ()
     expect(res.result).toBeErr(Cl.uint(ERR_SMF_CHECK_CHAIN));
   });
 
-  // TODO: Payload too big/small
   it("should fail if payload is larger than expected", () => {
     let payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
       ACTION_SET_MESSAGE_FEE,
@@ -146,4 +145,6 @@ describe(`${contractName}::parse-and-verify-set-message-fee-payload failure`, ()
     );
     expect(res.result).toBeErr(Cl.uint(ERR_SMF_CHECK_OVERLAY));
   });
+
+  // TODO: Payload too small
 });
