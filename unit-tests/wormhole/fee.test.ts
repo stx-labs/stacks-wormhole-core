@@ -7,11 +7,11 @@ const MAX_VALUE_U128 = 340282366920938463463374607431768211455n;
 
 // Constants from `wormhole-core`
 const ACTION_SET_MESSAGE_FEE = 3;
-const ERR_SMF_CHECK_OVERLAY = 1506;
-const ERR_SMF_CHECK_FEE = 1507;
-const ERR_SMF_CHECK_MODULE = 1508;
-const ERR_SMF_CHECK_ACTION = 1509;
-const ERR_SMF_CHECK_CHAIN = 1510;
+const ERR_SMF_CHECK_OVERLAY = 1507;
+const ERR_SMF_CHECK_FEE = 1508;
+const ERR_SMF_CHECK_MODULE = 1509;
+const ERR_SMF_CHECK_ACTION = 1510;
+const ERR_SMF_CHECK_CHAIN = 1511;
 const EXPECTED_CHAIN_ID = 0xc377; // Value for testnet/devnet/simnet
 
 const contractName = "wormhole-core-v4";

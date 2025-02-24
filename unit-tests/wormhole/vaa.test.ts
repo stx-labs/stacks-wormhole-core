@@ -5,6 +5,9 @@ import { wormhole } from "./helpers";
 import { ParsedTransactionResult, tx } from "@hirosystems/clarinet-sdk";
 import { hexToBytes } from "@noble/hashes/utils";
 
+// Constants from `wormhole-core`
+const ERR_GOV_CHECK_EMITTER = 1701;
+
 const contractName = "wormhole-core-v4";
 const verbosity = 0;
 
@@ -236,7 +239,7 @@ describe(`${contractName}::update-guardians-set failures`, () => {
       [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
     );
-    expect(res.result).toBeErr(Cl.uint(1601));
+    expect(res.result).toBeErr(Cl.uint(ERR_GOV_CHECK_EMITTER));
   });
 
   it("should fail if the emitter-chain is invalid", () => {
@@ -273,7 +276,7 @@ describe(`${contractName}::update-guardians-set failures`, () => {
       [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
     );
-    expect(res.result).toBeErr(Cl.uint(1601));
+    expect(res.result).toBeErr(Cl.uint(ERR_GOV_CHECK_EMITTER));
   });
 });
 

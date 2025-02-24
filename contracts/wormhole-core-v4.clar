@@ -92,20 +92,43 @@
 ;; Set Message Fee: error parsing second 128 bits of `fee`
 (define-constant ERR_SMF_PARSING_FEE_2 (err u1505))
 ;; Set Message Fee: overlay present in vaa bytes
-(define-constant ERR_SMF_CHECK_OVERLAY (err u1506))
+(define-constant ERR_SMF_CHECK_OVERLAY (err u1507))
 ;; Set Message Fee: `fee` value too high
-(define-constant ERR_SMF_CHECK_FEE (err u1507))
+(define-constant ERR_SMF_CHECK_FEE (err u1508))
 ;; Set Message Fee: `module` is not expected value
-(define-constant ERR_SMF_CHECK_MODULE (err u1508))
+(define-constant ERR_SMF_CHECK_MODULE (err u1509))
 ;; Set Message Fee: `action` is not expected value for this message type
-(define-constant ERR_SMF_CHECK_ACTION (err u1509))
+(define-constant ERR_SMF_CHECK_ACTION (err u1510))
 ;; Set Message Fee: `chain` does not match this blockchain
-(define-constant ERR_SMF_CHECK_CHAIN (err u1510))
+(define-constant ERR_SMF_CHECK_CHAIN (err u1511))
+
+;; Transfer Fees: error parsing `module`
+(define-constant ERR_TXF_PARSING_MODULE (err u1601))
+;; Transfer Fees: error parsing `action`
+(define-constant ERR_TXF_PARSING_ACTION (err u1602))
+;; Transfer Fees: error parsing `chain`
+(define-constant ERR_TXF_PARSING_CHAIN (err u1603))
+;; Transfer Fees: error parsing first 128 bits of `fee`
+(define-constant ERR_TXF_PARSING_AMOUNT_1 (err u1604))
+;; Transfer Fees: error parsing second 128 bits of `fee`
+(define-constant ERR_TXF_PARSING_AMOUNT_2 (err u1605))
+;; Transfer Fees: error parsing `recipient`
+(define-constant ERR_TXF_PARSING_RECIPIENT (err u1606))
+;; Transfer Fees: overlay present in vaa bytes
+(define-constant ERR_TXF_CHECK_OVERLAY (err u1607))
+;; Transfer Fees: `fee` value too high
+(define-constant ERR_TXF_CHECK_FEE (err u1608))
+;; Transfer Fees: `module` is not expected value
+(define-constant ERR_TXF_CHECK_MODULE (err u1609))
+;; Transfer Fees: `action` is not expected value for this message type
+(define-constant ERR_TXF_CHECK_ACTION (err u1610))
+;; Transfer Fees: `chain` does not match this blockchain
+(define-constant ERR_TXF_CHECK_CHAIN (err u1611))
 
 ;; Wormhole Governance: Message not from authorized chain/emitter
-(define-constant ERR_GOV_CHECK_EMITTER (err u1601))
+(define-constant ERR_GOV_CHECK_EMITTER (err u1701))
 ;; Wormhole Governance: `sequence` is not next one expected
-(define-constant ERR_GOV_CHECK_USED (err u1602))
+(define-constant ERR_GOV_CHECK_USED (err u1702))
 
 ;; Wormhole Governance: emitting chain
 (define-constant GOV_EMITTING_CHAIN u1)
@@ -319,7 +342,11 @@
 ;; @desc Read from `emitter-sequence` map, defaulting to 0 if entry not found
 ;; @param principal: Emitter's account principal
 (define-read-only (get-emitter-sequence (emitter principal))
-  (default-to u0 (map-get? emitter-sequence contract-caller)))
+  (default-to u0 (map-get? emitter-sequence emitter)))
+
+;; Get this contrac's principla
+(define-read-only (get-contract-principal)
+  (as-contract tx-sender))
 
 ;; @desc Post message for Guardians to observe and package in to VAA
 ;; @param payload: Raw data to send, specific to the contract sending the message
@@ -346,7 +373,7 @@
     (asserts! (<= sequence MAX_VALUE_U64) ERR_POST_OVERFLOW_SEQUENCE)
     ;; If a fee has been set, collect it
     (if (> fee u0)
-      (try! (stx-transfer? fee tx-sender (as-contract tx-sender)))
+      (try! (stx-transfer? fee tx-sender (get-contract-principal)))
       true
     )
     ;; Message has passed checks, is valid, so emit
@@ -370,7 +397,7 @@
     ;; Commit state
     (var-set post-message-fee fee)
 
-    ;; TODO: Emit event?
+    ;; TODO: Emit event
     (ok fee)))
 
 ;; @desc Parse and validate VAA for updating `post-message` fee
@@ -394,7 +421,7 @@
 ;; Expected message format for VAA `payload`:
 ;;   [32]byte    module     Should be "Core"
 ;;   u16         action     Should be `3` for this message type
-;;   u16         chain      ???
+;;   u16         chain      Chain this action is intended for
 ;;   u256        fee        New fee to emit message (in uSTX)
 ;;
 ;; @param vaa-payload: VAA `payload` as raw bytes
@@ -438,6 +465,100 @@
       chain: chain,
       fee: fee,
     })))
+
+;; @desc Transfer message fees accumulated from `post-message` using VAA
+;;       Returns `ok({amount, recipient})` if successful
+;;
+;; @param vaa-bytes: VAA as raw bytes
+(define-public (transfer-fees (vaa-bytes (buff 8192)))
+  (let ((vaa (try! (parse-and-verify-transfer-fees vaa-bytes)))
+        (payload (get payload vaa))
+        (amount (get amount payload))
+        (recipient (get recipient payload)))
+
+    ;; --- Message has been validated, check if we can apply update ---
+    ;; Check we are not re-processing an old message
+    (asserts! (map-insert governance-vaa-hashes (sha256 vaa-bytes) true) ERR_GOV_CHECK_USED)
+
+    ;; Execute action
+    (try! (stx-transfer? amount (get-contract-principal) recipient))
+
+    ;; TODO: Emit event
+    (ok {
+      recipient: recipient,
+      amount: amount
+    })))
+
+;; @desc Parse and validate VAA for transferring `post-message` fees
+;;       Returns parsed VAA as tuple if successful
+;;
+;; @param vaa-bytes: VAA as raw bytes
+(define-public (parse-and-verify-transfer-fees (vaa-bytes (buff 8192)))
+  (let ((vaa (try! (parse-and-verify-vaa vaa-bytes))))
+
+    ;; Check emitting address
+    (asserts! (is-eq (get emitter-address vaa) GOV_EMITTING_ADDRESS) ERR_GOV_CHECK_EMITTER)
+    ;; Check emitting chain
+    (asserts! (is-eq (get emitter-chain vaa) GOV_EMITTING_CHAIN) ERR_GOV_CHECK_EMITTER)
+
+    ;; Replace payload raw bytes with parsed payload
+    (ok (merge vaa { payload: (try! (parse-and-verify-transfer-fees-payload (get payload vaa))) }))))
+
+;; @desc Parse and validate VAA payload for `transfer-fees`
+;;       Returns parsed payload as tuple if successful
+;;
+;; Expected message format for VAA `payload`:
+;;   [32]byte    module     Should be "Core"
+;;   u16         action     Should be `4` for this message type
+;;   u16         chain      Chain this action is intended for
+;;   u256        amount     Amount to send from collected message fees
+;;   ???         recipient  Recipient of message fees
+;;
+;; @param vaa-payload: VAA `payload` as raw bytes
+(define-public (parse-and-verify-transfer-fees-payload (vaa-payload (buff 8192)))
+  (let ((cursor-module (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-buff-32 { bytes: vaa-payload, pos: u0 })
+          ERR_TXF_PARSING_MODULE))
+        (cursor-action (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-16 (get next cursor-module))
+          ERR_TXF_PARSING_ACTION))
+        (cursor-chain (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-16 (get next cursor-action))
+          ERR_TXF_PARSING_CHAIN))
+        (cursor-amount-first-128-bits (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-128 (get next cursor-chain))
+          ERR_TXF_PARSING_AMOUNT_1))
+        (cursor-amount-second-128-bits (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-128 (get next cursor-amount-first-128-bits))
+          ERR_TXF_PARSING_AMOUNT_2))
+        (recipient (unwrap! (from-consensus-buff? principal (get bytes (get next cursor-amount-second-128-bits)))
+          ERR_TXF_PARSING_RECIPIENT))
+        (module (get value cursor-module))
+        (action (get value cursor-action))
+        (chain (get value cursor-chain))
+        (amount (get value cursor-amount-second-128-bits)))
+
+    ;; --- Validate Message Data ---
+    ;; Check no extra bytes in buffer
+    (asserts! (is-eq (get pos (get next cursor-amount-second-128-bits)) (len vaa-payload))
+      ERR_TXF_CHECK_OVERLAY)
+    ;; Check amount fits into `u128`, because that's the max value clarity can represent
+    (asserts! (is-eq (get value cursor-amount-first-128-bits) u0)
+      ERR_TXF_CHECK_FEE)
+    ;; Ensure that this message was emitted from authorized module
+    (asserts! (is-eq module CORE_STRING_MODULE)
+      ERR_TXF_CHECK_MODULE)
+    ;; Ensure that this message is matching the adequate action
+    (asserts! (is-eq action GOV_ACTION_TRANSFER_FEES)
+      ERR_TXF_CHECK_ACTION)
+    ;; Ensure that this message is addressed to this chain
+    (asserts! (is-eq (get value cursor-chain) (buff-to-uint-be EXPECTED_CHAIN_ID))
+      ERR_TXF_CHECK_CHAIN)
+
+    ;; -- Checks Passed, Return Parsed Payload ---
+    (ok {
+      module: module,
+      action: action,
+      chain: chain,
+      amount: amount,
+      recipient: recipient,
+    })))
+
 
 ;;;; Private functions
 
