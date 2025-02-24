@@ -493,7 +493,7 @@ export namespace wormhole {
   // Wire format reminder:
   // ===========================
   // [32]byte    module     (Module, should be "Core")
-  // u16         action     (Action type, `3` for SetMessageFee)
+  // u8          action     (Action type, `3` for SetMessageFee)
   // u16         chain      (Blockchain ID which this message is intended for)
   // u256        fee        (New fee (in uSTX) to emit a message to Wormhole Guardians)
   //
@@ -507,9 +507,8 @@ export namespace wormhole {
     const components = [];
     components.push(module);
 
-    // TODO: Is this correct? `action` is a `u8` in other governance messages
-    let v = Buffer.alloc(2);
-    v.writeUint16BE(action, 0);
+    let v = Buffer.alloc(1);
+    v.writeUint8(action, 0);
     components.push(v);
 
     v = Buffer.alloc(2);
@@ -527,7 +526,7 @@ export namespace wormhole {
   // Wire format reminder:
   // ===========================
   // [32]byte    module     (Module, should be "Core")
-  // u16         action     (Action type, `4` for TransferFees)
+  // u8          action     (Action type, `4` for TransferFees)
   // u16         chain      (Blockchain ID which this message is intended for)
   // u256        amount     (Amount to transfer from accumulated message fees)
   // principal   recipient  (Recipient of message fees)
@@ -543,9 +542,8 @@ export namespace wormhole {
     const components = [];
     components.push(module);
 
-    // TODO: Is this correct? `action` is a `u8` in other governance messages
-    let v = Buffer.alloc(2);
-    v.writeUint16BE(action, 0);
+    let v = Buffer.alloc(1);
+    v.writeUint8(action, 0);
     components.push(v);
 
     v = Buffer.alloc(2);

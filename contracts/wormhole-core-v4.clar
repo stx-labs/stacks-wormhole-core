@@ -420,7 +420,7 @@
 ;;
 ;; Expected message format for VAA `payload`:
 ;;   [32]byte    module     Should be "Core"
-;;   u16         action     Should be `3` for this message type
+;;   u8          action     Should be `3` for this message type
 ;;   u16         chain      Chain this action is intended for
 ;;   u256        fee        New fee to emit message (in uSTX)
 ;;
@@ -428,7 +428,7 @@
 (define-public (parse-and-verify-set-message-fee-payload (vaa-payload (buff 8192)))
   (let ((cursor-module (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-buff-32 { bytes: vaa-payload, pos: u0 })
           ERR_SMF_PARSING_MODULE))
-        (cursor-action (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-16 (get next cursor-module))
+        (cursor-action (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-8 (get next cursor-module))
           ERR_SMF_PARSING_ACTION))
         (cursor-chain (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-16 (get next cursor-action))
           ERR_SMF_PARSING_CHAIN))
@@ -509,7 +509,7 @@
 ;;
 ;; Expected message format for VAA `payload`:
 ;;   [32]byte    module     Should be "Core"
-;;   u16         action     Should be `4` for this message type
+;;   u8          action     Should be `4` for this message type
 ;;   u16         chain      Chain this action is intended for
 ;;   u256        amount     Amount to send from collected message fees
 ;;   ???         recipient  Recipient of message fees
@@ -518,7 +518,7 @@
 (define-public (parse-and-verify-transfer-fees-payload (vaa-payload (buff 8192)))
   (let ((cursor-module (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-buff-32 { bytes: vaa-payload, pos: u0 })
           ERR_TXF_PARSING_MODULE))
-        (cursor-action (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-16 (get next cursor-module))
+        (cursor-action (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-8 (get next cursor-module))
           ERR_TXF_PARSING_ACTION))
         (cursor-chain (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-16 (get next cursor-action))
           ERR_TXF_PARSING_CHAIN))
