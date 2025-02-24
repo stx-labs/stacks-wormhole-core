@@ -42,34 +42,34 @@
 ;; Guardian signature not comprised in guardian set specified
 (define-constant ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY (err u1103))
 
-;; Guardian Set Update: error parsing `module`
+;; Guardian Set Upgrade: error parsing `module`
 (define-constant ERR_GSU_PARSING_MODULE (err u1201))
-;; Guardian Set Update: error parsing `action`
+;; Guardian Set Upgrade: error parsing `action`
 (define-constant ERR_GSU_PARSING_ACTION (err u1202))
-;; Guardian Set Update: error parsing `chain`
+;; Guardian Set Upgrade: error parsing `chain`
 (define-constant ERR_GSU_PARSING_CHAIN (err u1203))
-;; Guardian Set Update: error parsing `index`
+;; Guardian Set Upgrade: error parsing `index`
 (define-constant ERR_GSU_PARSING_INDEX (err u1204))
-;; Guardian Set Update: error parsing `length`
+;; Guardian Set Upgrade: error parsing `length`
 (define-constant ERR_GSU_PARSING_GUARDIAN_LEN (err u1205))
-;; Guardian Set Update: guardians payload is malformed
+;; Guardian Set Upgrade: guardians payload is malformed
 (define-constant ERR_GSU_PARSING_GUARDIANS_BYTES (err u1206))
-;; Guardian Set Update: error parsing pubkeys
+;; Guardian Set Upgrade: error parsing pubkeys
 (define-constant ERR_GSU_UNCOMPRESSED_PUBLIC_KEYS (err u1207))
 
-;; Guardian Set Update: initiated by an unauthorized module
+;; Guardian Set Upgrade: initiated by an unauthorized module
 (define-constant ERR_GSU_CHECK_MODULE (err u1301))
-;; Guardian Set Update: initiated from an unauthorized module
+;; Guardian Set Upgrade: initiated from an unauthorized module
 (define-constant ERR_GSU_CHECK_ACTION (err u1302))
-;; Guardian Set Update: initiated from an unauthorized module
+;; Guardian Set Upgrade: initiated from an unauthorized module
 (define-constant ERR_GSU_CHECK_CHAIN (err u1303))
-;; Guardian Set Update: new index invalid
+;; Guardian Set Upgrade: new index invalid
 (define-constant ERR_GSU_CHECK_INDEX (err u1304))
 ;; Overlay present in vaa bytes
 (define-constant ERR_GSU_CHECK_OVERLAY (err u1307))
 ;; Empty guardian set
 (define-constant ERR_EMPTY_GUARDIAN_SET (err u1308))
-;; Guardian Set Update: emission payload unauthorized
+;; Guardian Set Upgrade: emission payload unauthorized
 (define-constant ERR_DUPLICATED_GUARDIAN_ADDRESSES (err u1309))
 ;; Unable to get stacks timestamp
 (define-constant ERR_STACKS_TIMESTAMP (err u1310))
@@ -288,7 +288,7 @@
 ;; @param uncompressed-public-keys: uncompressed public keys, used for recomputing
 ;; the addresses embedded in the VAA. `secp256k1-verify` returns a compressed 
 ;; public key, and uncompressing the key in clarity would be inefficient and expensive. 
-(define-public (update-guardians-set (guardian-set-vaa (buff 2048)) (uncompressed-public-keys (list 19 (buff 64))))
+(define-public (guardian-set-upgrade (guardian-set-vaa (buff 2048)) (uncompressed-public-keys (list 19 (buff 64))))
   (let ((vaa (if (var-get guardian-set-initialized)
           (try! (parse-and-verify-vaa guardian-set-vaa))
           (get vaa (try! (parse-vaa guardian-set-vaa)))))

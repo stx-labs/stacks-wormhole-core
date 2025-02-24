@@ -63,7 +63,7 @@ describe(`${contractName}::parse-vaa success`, () => {
   });
 });
 
-describe(`${contractName}::update-guardians-set failures`, () => {
+describe(`${contractName}::guardian-set-upgrade failures`, () => {
   const accounts = simnet.getAccounts();
   const deployer = accounts.get("deployer")!;
   const keychain = wormhole.generateGuardianSetKeychain(19);
@@ -94,7 +94,7 @@ describe(`${contractName}::update-guardians-set failures`, () => {
     }
     const res = simnet.callPublicFn(
       contractName,
-      `update-guardians-set`,
+      `guardian-set-upgrade`,
       [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
     );
@@ -127,7 +127,7 @@ describe(`${contractName}::update-guardians-set failures`, () => {
     }
     const res = simnet.callPublicFn(
       contractName,
-      `update-guardians-set`,
+      `guardian-set-upgrade`,
       [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
     );
@@ -160,7 +160,7 @@ describe(`${contractName}::update-guardians-set failures`, () => {
     }
     const res = simnet.callPublicFn(
       contractName,
-      `update-guardians-set`,
+      `guardian-set-upgrade`,
       [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
     );
@@ -196,7 +196,7 @@ describe(`${contractName}::update-guardians-set failures`, () => {
     }
     const res = simnet.callPublicFn(
       contractName,
-      `update-guardians-set`,
+      `guardian-set-upgrade`,
       [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
     );
@@ -235,7 +235,7 @@ describe(`${contractName}::update-guardians-set failures`, () => {
     }
     const res = simnet.callPublicFn(
       contractName,
-      `update-guardians-set`,
+      `guardian-set-upgrade`,
       [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
     );
@@ -272,7 +272,7 @@ describe(`${contractName}::update-guardians-set failures`, () => {
     }
     const res = simnet.callPublicFn(
       contractName,
-      `update-guardians-set`,
+      `guardian-set-upgrade`,
       [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
     );
@@ -280,7 +280,7 @@ describe(`${contractName}::update-guardians-set failures`, () => {
   });
 });
 
-describe(`${contractName}::update-guardians-set success`, () => {
+describe(`${contractName}::guardian-set-upgrade success`, () => {
   const accounts = simnet.getAccounts();
   const deployer = accounts.get("deployer")!;
   const sender = accounts.get("wallet_1")!;
@@ -381,7 +381,7 @@ describe(`${contractName}::update-guardians-set success`, () => {
     let res = simnet.mineBlock([
       tx.callPublicFn(
         contractName,
-        `update-guardians-set`,
+        `guardian-set-upgrade`,
         [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
         sender,
       ),
@@ -436,7 +436,7 @@ describe(`${contractName}::update-guardians-set success`, () => {
     let res = simnet.mineBlock([
       tx.callPublicFn(
         contractName,
-        `update-guardians-set`,
+        `guardian-set-upgrade`,
         [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
         sender,
       ),
@@ -680,7 +680,7 @@ describe(`${contractName}::parse-and-verify-vaa failures`, () => {
   });
 });
 
-describe(`${contractName}::update-guardians-set mainnet guardian rotations`, () => {
+describe(`${contractName}::guardian-set-upgrade mainnet guardian rotations`, () => {
   const accounts = simnet.getAccounts();
   const deployer = accounts.get("deployer")!;
   const sender = accounts.get("wallet_1")!;

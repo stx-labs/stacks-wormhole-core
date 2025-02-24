@@ -551,7 +551,7 @@ export namespace wormhole {
     let result = simnet.mineBlock([
       tx.callPublicFn(
         contractName,
-        `update-guardians-set`,
+        `guardian-set-upgrade`,
         [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
         txSenderAddress,
       ),
@@ -569,7 +569,7 @@ export namespace wormhole {
     const block = simnet.mineBlock([
       tx.callPublicFn(
         contractName,
-        "update-guardians-set",
+        "guardian-set-upgrade",
         [vaaRotation1, Cl.list(publicKeysRotation1)],
         txSenderAddress,
       ),
@@ -587,7 +587,7 @@ export namespace wormhole {
     const block = simnet.mineBlock([
       tx.callPublicFn(
         contractName,
-        "update-guardians-set",
+        "guardian-set-upgrade",
         [vaaRotation2, Cl.list(publicKeysRotation2)],
         txSenderAddress,
       ),
