@@ -227,9 +227,7 @@ export namespace wormhole {
     opts?: VaaHeaderBuildOptions,
   ): VaaHeaderBuildOptions => {
     let signatures = [];
-    const messageHash = keccak_256(
-      keccak_256(Uint8Array.from(serializeVaaBodyToBuffer(body))),
-    );
+    const messageHash = hashVaaBody(body);
 
     for (let guardian of keychain) {
       const signature = secp.sign(messageHash, guardian.secretKey);
@@ -386,6 +384,12 @@ export namespace wormhole {
       guardianSetId: guardianSetId as number,
       signatures: signatures as Uint8Array[],
     };
+  };
+
+  export const hashVaaBody = (body: VaaBody): Uint8Array => {
+    return keccak_256(
+      keccak_256(Uint8Array.from(serializeVaaBodyToBuffer(body))),
+    );
   };
 
   export const serializeVaaToBuffer = (

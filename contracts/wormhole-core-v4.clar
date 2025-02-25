@@ -257,6 +257,7 @@
           payload: (get value cursor-payload),
         },
         recovered-public-keys: (get value public-keys-results),
+        vaa-body-hash: vaa-body-hash,
     })))
 
 ;; @desc Parse and check the validity of a Verified Action Approval (VAA)
@@ -281,7 +282,10 @@
       (asserts! (>= (len (get result signatures-from-active-guardians)) (get-quorum (len active-guardians)))
         ERR_VAA_CHECKS_THRESHOLD_SIGNATURE)
       ;; Good to go!
-      (ok (get vaa message)))))
+      (ok {
+        vaa: (get vaa message),
+        vaa-body-hash: (get vaa-body-hash message)
+      }))))
 
 ;; @desc Update the active set of guardians 
 ;; @param guardian-set-vaa: VAA embedding the Guardian Set Update information
@@ -289,9 +293,11 @@
 ;; the addresses embedded in the VAA. `secp256k1-verify` returns a compressed 
 ;; public key, and uncompressing the key in clarity would be inefficient and expensive. 
 (define-public (guardian-set-upgrade (guardian-set-vaa (buff 2048)) (uncompressed-public-keys (list 19 (buff 64))))
-  (let ((vaa (if (var-get guardian-set-initialized)
+  (let ((message (if (var-get guardian-set-initialized)
           (try! (parse-and-verify-vaa guardian-set-vaa))
-          (get vaa (try! (parse-vaa guardian-set-vaa)))))
+          (try! (parse-vaa guardian-set-vaa))))
+        (vaa (get vaa message))
+        (vaa-body-hash (get vaa-body-hash message))
         (cursor-guardians-data (try! (parse-and-verify-guardians-set (get payload vaa))))
         (set-id (get new-index cursor-guardians-data))
         (eth-addresses (get guardians-eth-addresses cursor-guardians-data))
@@ -312,7 +318,7 @@
     (asserts! (>= (len result) u1) ERR_EMPTY_GUARDIAN_SET)
     ;; Check we are not re-processing an old message
     ;; Not actually necessary if `guardian-set-id` is guaranteed to be unique and old guardian sets can't validate messages, but I'm not 100% sure of that
-    (asserts! (map-insert governance-vaa-hashes (sha256 guardian-set-vaa) true) ERR_GOV_CHECK_USED)
+    (asserts! (map-insert governance-vaa-hashes vaa-body-hash true) ERR_GOV_CHECK_USED)
     ;; Update storage
     (map-set guardian-sets set-id result)
     (try! (set-new-guardian-set-id set-id))
@@ -387,12 +393,13 @@
 ;;
 ;; @param vaa-bytes: VAA as raw bytes
 (define-public (set-message-fee (vaa-bytes (buff 8192)))
-  (let ((vaa (try! (parse-and-verify-set-message-fee vaa-bytes)))
+  (let ((message (try! (parse-and-verify-set-message-fee vaa-bytes)))
+        (vaa (get vaa message))
         (fee (get fee (get payload vaa))))
 
     ;; --- Message has been validated, check if we can apply update ---
     ;; Check we are not re-processing an old message
-    (asserts! (map-insert governance-vaa-hashes (sha256 vaa-bytes) true) ERR_GOV_CHECK_USED)
+    (asserts! (map-insert governance-vaa-hashes (get vaa-body-hash message) true) ERR_GOV_CHECK_USED)
 
     ;; Commit state
     (var-set post-message-fee fee)
@@ -405,7 +412,8 @@
 ;;
 ;; @param vaa-bytes: VAA as raw bytes
 (define-public (parse-and-verify-set-message-fee (vaa-bytes (buff 8192)))
-  (let ((vaa (try! (parse-and-verify-vaa vaa-bytes))))
+  (let ((message (try! (parse-and-verify-vaa vaa-bytes)))
+        (vaa (get vaa message)))
 
     ;; Check emitting address
     (asserts! (is-eq (get emitter-address vaa) GOV_EMITTING_ADDRESS) ERR_GOV_CHECK_EMITTER)
@@ -413,7 +421,10 @@
     (asserts! (is-eq (get emitter-chain vaa) GOV_EMITTING_CHAIN) ERR_GOV_CHECK_EMITTER)
 
     ;; Replace payload raw bytes with parsed payload
-    (ok (merge vaa { payload: (try! (parse-and-verify-set-message-fee-payload (get payload vaa))) }))))
+    (ok {
+      vaa: (merge vaa { payload: (try! (parse-and-verify-set-message-fee-payload (get payload vaa))) }),
+      vaa-body-hash: (get vaa-body-hash message)
+    })))
 
 ;; @desc Parse and validate VAA payload for `set-message-fee`
 ;;       Returns parsed payload as tuple if successful
@@ -471,14 +482,15 @@
 ;;
 ;; @param vaa-bytes: VAA as raw bytes
 (define-public (transfer-fees (vaa-bytes (buff 8192)))
-  (let ((vaa (try! (parse-and-verify-transfer-fees vaa-bytes)))
+  (let ((message (try! (parse-and-verify-transfer-fees vaa-bytes)))
+        (vaa (get vaa message))
         (payload (get payload vaa))
         (amount (get amount payload))
         (recipient (get recipient payload)))
 
     ;; --- Message has been validated, check if we can apply update ---
     ;; Check we are not re-processing an old message
-    (asserts! (map-insert governance-vaa-hashes (sha256 vaa-bytes) true) ERR_GOV_CHECK_USED)
+    (asserts! (map-insert governance-vaa-hashes (get vaa-body-hash message) true) ERR_GOV_CHECK_USED)
 
     ;; Execute action
     (try! (stx-transfer? amount (get-contract-principal) recipient))
@@ -494,7 +506,8 @@
 ;;
 ;; @param vaa-bytes: VAA as raw bytes
 (define-public (parse-and-verify-transfer-fees (vaa-bytes (buff 8192)))
-  (let ((vaa (try! (parse-and-verify-vaa vaa-bytes))))
+  (let ((message (try! (parse-and-verify-vaa vaa-bytes)))
+        (vaa (get vaa message)))
 
     ;; Check emitting address
     (asserts! (is-eq (get emitter-address vaa) GOV_EMITTING_ADDRESS) ERR_GOV_CHECK_EMITTER)
@@ -502,7 +515,10 @@
     (asserts! (is-eq (get emitter-chain vaa) GOV_EMITTING_CHAIN) ERR_GOV_CHECK_EMITTER)
 
     ;; Replace payload raw bytes with parsed payload
-    (ok (merge vaa { payload: (try! (parse-and-verify-transfer-fees-payload (get payload vaa))) }))))
+    (ok {
+      vaa: (merge vaa { payload: (try! (parse-and-verify-transfer-fees-payload (get payload vaa))) }),
+      vaa-body-hash: (get vaa-body-hash message)
+    })))
 
 ;; @desc Parse and validate VAA payload for `transfer-fees`
 ;;       Returns parsed payload as tuple if successful

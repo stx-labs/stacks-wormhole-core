@@ -54,6 +54,7 @@ describe(`${contractName}::parse-vaa success`, () => {
             Cl.tuple({
               vaa: decodedVaa,
               "recovered-public-keys": Cl.list(guardiansPublicKeys),
+              "vaa-body-hash": Cl.buffer(wormhole.hashVaaBody(body)),
             }),
           );
         },
@@ -501,6 +502,7 @@ describe(`${contractName}::parse-and-verify-vaa success`, () => {
             Cl.tuple({
               vaa: decodedVaa,
               "recovered-public-keys": Cl.list(guardiansPublicKeys),
+              "vaa-body-hash": Cl.buffer(wormhole.hashVaaBody(body)),
             }),
           );
         },
@@ -533,7 +535,12 @@ describe(`${contractName}::parse-and-verify-vaa success`, () => {
       [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );
-    expect(res.result).toBeOk(decodedVaa);
+    expect(res.result).toBeOk(
+      Cl.tuple({
+        vaa: decodedVaa,
+        "vaa-body-hash": Cl.buffer(wormhole.hashVaaBody(body)),
+      }),
+    );
   });
 });
 
