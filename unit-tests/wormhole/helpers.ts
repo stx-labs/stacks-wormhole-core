@@ -637,4 +637,36 @@ export namespace wormhole {
     ]);
     return block;
   }
+
+  export function setMessageFee(
+    keychain: wormhole.Guardian[],
+    guardianSetId: number,
+    fee: number | bigint,
+    chain: number,
+    contractName: string,
+    txSenderAddress: string,
+  ) {
+    const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
+      3,
+      chain,
+      fee,
+    );
+    const body = wormhole.buildValidVaaBodySpecs({
+      payload: Uint8Array.from(payload),
+      emitter: wormhole.GovernanceUpdateEmitter,
+    });
+    const header = wormhole.buildValidVaaHeader(keychain, body, {
+      version: 1,
+      guardianSetId,
+    });
+    const vaa = wormhole.serializeVaaToBuffer(header, body);
+
+    const result = simnet.callPublicFn(
+      contractName,
+      `set-message-fee`,
+      [Cl.buffer(Uint8Array.from(vaa))],
+      txSenderAddress,
+    );
+    return result;
+  }
 }

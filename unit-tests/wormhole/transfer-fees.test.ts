@@ -7,6 +7,7 @@ import { hexToBytes } from "@noble/hashes/utils";
 const MAX_VALUE_U128 = 340282366920938463463374607431768211455n;
 
 // Constants from `wormhole-core`
+const ACTION_SET_MESSAGE_FEE = 3;
 const ACTION_TRANSFER_FEES = 4;
 const ERR_TXF_CHECK_OVERLAY = 1607;
 const ERR_TXF_CHECK_FEE = 1608;
@@ -170,10 +171,11 @@ describe(`${contractName}::transfer-fees`, () => {
   const keychain = wormhole.generateGuardianSetKeychain(19);
 
   // Before starting the test suite, we have to...
-  // - Setup the guardian set.
+  // - Set the guardian set
   // - Set message fee rate
-  // - Emit a message to fund contract
+  // - Post a message to fund contract
   beforeEach(async () => {
+    // Setup guardians
     let [result, vaaHeader, vaaBody] = wormhole.applyGuardianSetUpdate(
       keychain,
       1,
@@ -199,6 +201,46 @@ describe(`${contractName}::transfer-fees`, () => {
         vaa: serializeVaaToClarityValue,
       }),
     );
+
+    // Setup message fee
+    const fee = 1_000_000_000_000n;
+    let res = wormhole.setMessageFee(
+      keychain,
+      1,
+      fee,
+      EXPECTED_CHAIN_ID,
+      contractName,
+      deployer,
+    );
+    expect(res.result).toBeOk(Cl.uint(fee));
+
+    // Post message to fund contract
+    const nonce = Cl.uint(0);
+    const consistencyLevel = Cl.uint(0);
+    const payload = Cl.buffer(new Uint8Array(1024));
+    res = simnet.callPublicFn(
+      contractName,
+      `post-message`,
+      [payload, nonce, Cl.some(consistencyLevel)],
+      sender,
+    );
+    expect(res.result).toBeOk(
+      Cl.tuple({
+        emitter: Cl.principal(sender),
+        nonce,
+        sequence: Cl.uint(0),
+        "consistency-level": consistencyLevel,
+        payload,
+      }),
+    );
+
+    // Check contract balance
+    const assets = simnet.getAssetsMap();
+    const stxBalances = assets.get("STX")!;
+    const contractPrinciple = `${deployer}.${contractName}`;
+    const contractBalance = stxBalances.get(contractPrinciple)!;
+
+    expect(contractBalance).toEqual(fee);
   });
 
   it.skip("should succeed and return `ok({amount, recipient})`", () => {

@@ -253,6 +253,51 @@ describe(`${contractName}::set-message-fee`, () => {
     expect(res.result).toBeErr(Cl.uint(ERR_GOV_CHECK_REPLAY));
   });
 
+  it("should collect fees when `post-message` called", () => {
+    // Setup message fee
+    const fee = 300n;
+    const numMessages = 50;
+    let res = wormhole.setMessageFee(
+      keychain,
+      1,
+      fee,
+      EXPECTED_CHAIN_ID,
+      contractName,
+      deployer,
+    );
+    expect(res.result).toBeOk(Cl.uint(fee));
+
+    // Post message to fund contract
+    const nonce = Cl.uint(0);
+    const consistencyLevel = Cl.uint(0);
+    const payload = Cl.buffer(new Uint8Array(1024));
+    for (let i = 0; i < numMessages; i++) {
+      res = simnet.callPublicFn(
+        contractName,
+        `post-message`,
+        [payload, nonce, Cl.some(consistencyLevel)],
+        sender,
+      );
+      expect(res.result).toBeOk(
+        Cl.tuple({
+          emitter: Cl.principal(sender),
+          nonce,
+          sequence: Cl.uint(i),
+          "consistency-level": consistencyLevel,
+          payload,
+        }),
+      );
+    }
+
+    // Check contract balance
+    const assets = simnet.getAssetsMap();
+    const stxBalances = assets.get("STX")!;
+    const contractPrinciple = `${deployer}.${contractName}`;
+    const contractBalance = stxBalances.get(contractPrinciple)!;
+
+    expect(contractBalance).toEqual(fee * BigInt(numMessages));
+  });
+
   it("should fail if `emitter.chain` is invalid", () => {
     let emitter = {
       chain: 17,
