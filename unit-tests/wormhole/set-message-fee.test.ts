@@ -186,28 +186,36 @@ describe(`${contractName}::set-message-fee`, () => {
   });
 
   it("should succeed and return `ok(fee)`", () => {
-    const fee = 100;
-    const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
-      ACTION_SET_MESSAGE_FEE,
-      EXPECTED_CHAIN_ID,
-      fee,
+    fc.assert(
+      fc.property(
+        fc.bigInt({ min: 0n, max: MAX_VALUE_U128 }),
+        fc.bigInt({ min: 0n, max: MAX_VALUE_U128 }),
+        (fee, sequence) => {
+          const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
+            ACTION_SET_MESSAGE_FEE,
+            EXPECTED_CHAIN_ID,
+            fee,
+          );
+          let body = wormhole.buildValidVaaBodySpecs({
+            payload: Uint8Array.from(payload),
+            emitter: wormhole.GovernanceUpdateEmitter,
+            sequence,
+          });
+          let header = wormhole.buildValidVaaHeader(keychain, body, {
+            version: 1,
+            guardianSetId: 1,
+          });
+          let vaa = wormhole.serializeVaaToBuffer(header, body);
+          const res = simnet.callPublicFn(
+            contractName,
+            `set-message-fee`,
+            [Cl.buffer(Uint8Array.from(vaa))],
+            sender,
+          );
+          expect(res.result).toBeOk(Cl.uint(fee));
+        },
+      ),
     );
-    let body = wormhole.buildValidVaaBodySpecs({
-      payload: Uint8Array.from(payload),
-      emitter: wormhole.GovernanceUpdateEmitter,
-    });
-    let header = wormhole.buildValidVaaHeader(keychain, body, {
-      version: 1,
-      guardianSetId: 1,
-    });
-    let vaa = wormhole.serializeVaaToBuffer(header, body);
-    const res = simnet.callPublicFn(
-      contractName,
-      `set-message-fee`,
-      [Cl.buffer(Uint8Array.from(vaa))],
-      sender,
-    );
-    expect(res.result).toBeOk(Cl.uint(fee));
   });
 
   it("should fail if message is replayed", () => {
