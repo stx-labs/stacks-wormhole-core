@@ -246,7 +246,7 @@ describe(`${contractName}::transfer-fees`, () => {
     let totalAmountTransferred = 0n;
     fc.assert(
       fc.property(
-        fc.bigInt({ min: 1n, max: 100n }),
+        fc.bigInt({ min: 1n, max: 100n }), // Small amounts so we don't run out
         fc.bigInt({ min: 0n, max: MAX_VALUE_U128 }),
         (amount, sequence) => {
           const payload = wormhole.serializeTransferFeesVaaPayloadToBuffer(
@@ -290,7 +290,7 @@ describe(`${contractName}::transfer-fees`, () => {
   });
 
   it("should fail if message is replayed", () => {
-    const amount = 100;
+    const amount = 100n;
     const payload = wormhole.serializeTransferFeesVaaPayloadToBuffer(
       ACTION_TRANSFER_FEES,
       EXPECTED_CHAIN_ID,
@@ -326,6 +326,12 @@ describe(`${contractName}::transfer-fees`, () => {
       sender,
     );
     expect(res.result).toBeErr(Cl.uint(ERR_GOV_CHECK_REPLAY));
+
+    // Check recipient balance
+    const stxBalances = simnet.getAssetsMap().get("STX")!;
+    const recipientBalance = stxBalances.get(recipient)!;
+
+    expect(recipientBalance).toEqual(amount);
   });
 
   it("should fail if core contract doesn't have the funds", () => {
@@ -353,6 +359,12 @@ describe(`${contractName}::transfer-fees`, () => {
     );
     // Error code from `stx-transfer?`
     expect(res.result).toBeErr(Cl.uint(1));
+
+    // Check recipient balance
+    const stxBalances = simnet.getAssetsMap().get("STX")!;
+    const recipientBalance = stxBalances.get(recipient)!;
+
+    expect(recipientBalance).toEqual(0n);
   });
 
   it("should fail if `emitter.chain` is invalid", () => {
@@ -382,6 +394,12 @@ describe(`${contractName}::transfer-fees`, () => {
       sender,
     );
     expect(res.result).toBeErr(Cl.uint(ERR_GOV_CHECK_EMITTER));
+
+    // Check recipient balance
+    const stxBalances = simnet.getAssetsMap().get("STX")!;
+    const recipientBalance = stxBalances.get(recipient)!;
+
+    expect(recipientBalance).toEqual(0n);
   });
 
   it("should fail if `emitter.address` is invalid", () => {
@@ -413,6 +431,12 @@ describe(`${contractName}::transfer-fees`, () => {
       sender,
     );
     expect(res.result).toBeErr(Cl.uint(ERR_GOV_CHECK_EMITTER));
+
+    // Check recipient balance
+    const stxBalances = simnet.getAssetsMap().get("STX")!;
+    const recipientBalance = stxBalances.get(recipient)!;
+
+    expect(recipientBalance).toEqual(0n);
   });
 
   // TODO: Invalid recipient
