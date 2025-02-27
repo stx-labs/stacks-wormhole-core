@@ -169,6 +169,7 @@ describe(`${contractName}::transfer-fees`, () => {
   const sender = accounts.get("wallet_1")!;
   const recipient = accounts.get("empty")!;
   const keychain = wormhole.generateGuardianSetKeychain(19);
+  const contractPrinciple = `${deployer}.${contractName}`;
 
   // Before starting the test suite, we have to...
   // - Set the guardian set
@@ -236,13 +237,15 @@ describe(`${contractName}::transfer-fees`, () => {
 
     // Check contract balance
     const stxBalances = simnet.getAssetsMap().get("STX")!;
-    const contractPrinciple = `${deployer}.${contractName}`;
     const contractBalance = stxBalances.get(contractPrinciple)!;
 
     expect(contractBalance).toEqual(fee);
   });
 
   it("should succeed, transfer fees, and return `ok({amount, recipient})`", () => {
+    let stxBalances = simnet.getAssetsMap().get("STX")!;
+    const initialContractBalance = stxBalances.get(contractPrinciple)!;
+
     let totalAmountTransferred = 0n;
     fc.assert(
       fc.property(
@@ -283,10 +286,12 @@ describe(`${contractName}::transfer-fees`, () => {
     );
 
     // Check recipient balance
-    const stxBalances = simnet.getAssetsMap().get("STX")!;
+    stxBalances = simnet.getAssetsMap().get("STX")!;
     const recipientBalance = stxBalances.get(recipient)!;
+    const contractBalance = stxBalances.get(contractPrinciple)!;
 
     expect(recipientBalance).toEqual(totalAmountTransferred);
+    expect(contractBalance).toEqual(initialContractBalance - totalAmountTransferred);
   });
 
   it("should fail if message is replayed", () => {
