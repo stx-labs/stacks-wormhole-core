@@ -49,7 +49,6 @@ describe(`${contractName}::parse-vaa success`, () => {
             [Cl.buffer(Uint8Array.from(vaa))],
             sender,
           );
-          res.result;
           expect(res.result).toBeOk(
             Cl.tuple({
               vaa: decodedVaa,

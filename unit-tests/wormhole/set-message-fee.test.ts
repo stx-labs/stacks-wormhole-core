@@ -1,5 +1,5 @@
 import { Cl } from "@stacks/transactions";
-import { expect, describe } from "vitest";
+import { expect, describe, beforeEach } from "vitest";
 import { it, fc } from "@fast-check/vitest";
 import { wormhole } from "./helpers";
 
@@ -12,6 +12,7 @@ const ERR_SMF_CHECK_FEE = 1508;
 const ERR_SMF_CHECK_MODULE = 1509;
 const ERR_SMF_CHECK_ACTION = 1510;
 const ERR_SMF_CHECK_CHAIN = 1511;
+const ERR_GOV_CHECK_REPLAY = 1702;
 const EXPECTED_CHAIN_ID = 0xc377; // Value for testnet/devnet/simnet
 
 const contractName = "wormhole-core-v4";
@@ -147,4 +148,98 @@ describe(`${contractName}::parse-and-verify-set-message-fee-payload failure`, ()
   });
 
   // TODO: Payload too small
+});
+
+describe(`${contractName}::set-message-fee`, () => {
+  const accounts = simnet.getAccounts();
+  const deployer = accounts.get("deployer")!;
+  const sender = accounts.get("wallet_1")!;
+  const keychain = wormhole.generateGuardianSetKeychain(19);
+
+  // Before starting the test suite, we have to setup the guardian set.
+  beforeEach(async () => {
+    let [result, vaaHeader, vaaBody] = wormhole.applyGuardianSetUpdate(
+      keychain,
+      1,
+      deployer,
+      contractName,
+    );
+    let [serializeVaaToClarityValue, _] = wormhole.serializeVaaToClarityValue(
+      vaaHeader as wormhole.VaaHeader,
+      vaaBody as wormhole.VaaBody,
+      keychain,
+    );
+
+    expect(result).toBeOk(
+      Cl.tuple({
+        result: Cl.tuple({
+          "guardians-eth-addresses": Cl.list(
+            keychain.map((g) => Cl.buffer(g.ethereumAddress)),
+          ),
+          "guardians-public-keys": Cl.list(
+            keychain.map((g) => Cl.buffer(g.uncompressedPublicKey)),
+          ),
+        }),
+        vaa: serializeVaaToClarityValue,
+      }),
+    );
+  });
+
+  it("should succeed and return `ok(fee)`", () => {
+    const fee = 100;
+    const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
+      ACTION_SET_MESSAGE_FEE,
+      EXPECTED_CHAIN_ID,
+      fee,
+    );
+    let body = wormhole.buildValidVaaBodySpecs({
+      payload: Uint8Array.from(payload),
+      emitter: wormhole.GovernanceUpdateEmitter,
+    });
+    let header = wormhole.buildValidVaaHeader(keychain, body, {
+      version: 1,
+      guardianSetId: 1,
+    });
+    let vaa = wormhole.serializeVaaToBuffer(header, body);
+    const res = simnet.callPublicFn(
+      contractName,
+      `set-message-fee`,
+      [Cl.buffer(Uint8Array.from(vaa))],
+      sender,
+    );
+    expect(res.result).toBeOk(Cl.uint(fee));
+  });
+
+  it("should fail if message is replayed", () => {
+    const fee = 100;
+    const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
+      ACTION_SET_MESSAGE_FEE,
+      EXPECTED_CHAIN_ID,
+      fee,
+    );
+    let body = wormhole.buildValidVaaBodySpecs({
+      payload: Uint8Array.from(payload),
+      emitter: wormhole.GovernanceUpdateEmitter,
+    });
+    let header = wormhole.buildValidVaaHeader(keychain, body, {
+      version: 1,
+      guardianSetId: 1,
+    });
+    let vaa = wormhole.serializeVaaToBuffer(header, body);
+    let res = simnet.callPublicFn(
+      contractName,
+      `set-message-fee`,
+      [Cl.buffer(Uint8Array.from(vaa))],
+      sender,
+    );
+    expect(res.result).toBeOk(Cl.uint(fee));
+    // Submit same message again, should fail
+    res = simnet.callPublicFn(
+      contractName,
+      `set-message-fee`,
+      [Cl.buffer(Uint8Array.from(vaa))],
+      sender,
+    );
+    expect(res.result).toBeErr(Cl.uint(ERR_GOV_CHECK_REPLAY));
+  });
 });
