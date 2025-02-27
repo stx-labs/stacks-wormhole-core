@@ -345,7 +345,7 @@ describe(`${contractName}::transfer-fees`, () => {
       sender,
     );
     // Error code from `stx-transfer?`
-    expect(res.result).toBeErr(Cl.uint(4));
+    expect(res.result).toBeErr(Cl.uint(1));
   });
 
   it("should fail if `emitter.chain` is invalid", () => {

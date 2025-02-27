@@ -493,7 +493,7 @@
     (asserts! (map-insert governance-vaa-hashes (get vaa-body-hash message) true) ERR_GOV_CHECK_REPLAY)
 
     ;; Execute action
-    (try! (stx-transfer? amount (get-contract-principal) recipient))
+    (try! (as-contract (stx-transfer? amount tx-sender recipient)))
 
     ;; TODO: Emit event
     (ok {
