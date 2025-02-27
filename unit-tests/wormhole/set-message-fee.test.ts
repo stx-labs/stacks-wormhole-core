@@ -2,6 +2,7 @@ import { Cl } from "@stacks/transactions";
 import { expect, describe, beforeEach } from "vitest";
 import { it, fc } from "@fast-check/vitest";
 import { wormhole } from "./helpers";
+import { hexToBytes } from "@noble/hashes/utils";
 
 const MAX_VALUE_U128 = 340282366920938463463374607431768211455n;
 
@@ -12,6 +13,7 @@ const ERR_SMF_CHECK_FEE = 1508;
 const ERR_SMF_CHECK_MODULE = 1509;
 const ERR_SMF_CHECK_ACTION = 1510;
 const ERR_SMF_CHECK_CHAIN = 1511;
+const ERR_GOV_CHECK_EMITTER = 1701;
 const ERR_GOV_CHECK_REPLAY = 1702;
 const EXPECTED_CHAIN_ID = 0xc377; // Value for testnet/devnet/simnet
 
@@ -196,12 +198,12 @@ describe(`${contractName}::set-message-fee`, () => {
             EXPECTED_CHAIN_ID,
             fee,
           );
-          let body = wormhole.buildValidVaaBodySpecs({
+          const body = wormhole.buildValidVaaBodySpecs({
             payload: Uint8Array.from(payload),
             emitter: wormhole.GovernanceUpdateEmitter,
             sequence,
           });
-          let header = wormhole.buildValidVaaHeader(keychain, body, {
+          const header = wormhole.buildValidVaaHeader(keychain, body, {
             version: 1,
             guardianSetId: 1,
           });
@@ -225,15 +227,15 @@ describe(`${contractName}::set-message-fee`, () => {
       EXPECTED_CHAIN_ID,
       fee,
     );
-    let body = wormhole.buildValidVaaBodySpecs({
+    const body = wormhole.buildValidVaaBodySpecs({
       payload: Uint8Array.from(payload),
       emitter: wormhole.GovernanceUpdateEmitter,
     });
-    let header = wormhole.buildValidVaaHeader(keychain, body, {
+    const header = wormhole.buildValidVaaHeader(keychain, body, {
       version: 1,
       guardianSetId: 1,
     });
-    let vaa = wormhole.serializeVaaToBuffer(header, body);
+    const vaa = wormhole.serializeVaaToBuffer(header, body);
     let res = simnet.callPublicFn(
       contractName,
       `set-message-fee`,
@@ -249,5 +251,63 @@ describe(`${contractName}::set-message-fee`, () => {
       sender,
     );
     expect(res.result).toBeErr(Cl.uint(ERR_GOV_CHECK_REPLAY));
+  });
+
+  it("should fail if `emitter.chain` is invalid", () => {
+    let emitter = {
+      chain: 17,
+      address: wormhole.GovernanceUpdateEmitter.address,
+    };
+    const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
+      ACTION_SET_MESSAGE_FEE,
+      EXPECTED_CHAIN_ID,
+      100,
+    );
+    const body = wormhole.buildValidVaaBodySpecs({
+      payload: Uint8Array.from(payload),
+      emitter,
+    });
+    const header = wormhole.buildValidVaaHeader(keychain, body, {
+      version: 1,
+      guardianSetId: 1,
+    });
+    const vaa = wormhole.serializeVaaToBuffer(header, body);
+    const res = simnet.callPublicFn(
+      contractName,
+      `set-message-fee`,
+      [Cl.buffer(Uint8Array.from(vaa))],
+      sender,
+    );
+    expect(res.result).toBeErr(Cl.uint(ERR_GOV_CHECK_EMITTER));
+  });
+
+  it("should fail if `emitter.address` is invalid", () => {
+    let emitter = {
+      chain: wormhole.GovernanceUpdateEmitter.chain,
+      address: hexToBytes(
+        "0000000000000000000000000000000000000000000000000000000000000009",
+      ),
+    };
+    const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
+      ACTION_SET_MESSAGE_FEE,
+      EXPECTED_CHAIN_ID,
+      100,
+    );
+    const body = wormhole.buildValidVaaBodySpecs({
+      payload: Uint8Array.from(payload),
+      emitter,
+    });
+    const header = wormhole.buildValidVaaHeader(keychain, body, {
+      version: 1,
+      guardianSetId: 1,
+    });
+    const vaa = wormhole.serializeVaaToBuffer(header, body);
+    const res = simnet.callPublicFn(
+      contractName,
+      `set-message-fee`,
+      [Cl.buffer(Uint8Array.from(vaa))],
+      sender,
+    );
+    expect(res.result).toBeErr(Cl.uint(ERR_GOV_CHECK_EMITTER));
   });
 });
