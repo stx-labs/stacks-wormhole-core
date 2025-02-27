@@ -290,8 +290,7 @@ describe(`${contractName}::set-message-fee`, () => {
     }
 
     // Check contract balance
-    const assets = simnet.getAssetsMap();
-    const stxBalances = assets.get("STX")!;
+    const stxBalances = simnet.getAssetsMap().get("STX")!;
     const contractPrinciple = `${deployer}.${contractName}`;
     const contractBalance = stxBalances.get(contractPrinciple)!;
 

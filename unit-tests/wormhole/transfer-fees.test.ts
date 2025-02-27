@@ -15,7 +15,7 @@ const ERR_TXF_CHECK_MODULE = 1609;
 const ERR_TXF_CHECK_ACTION = 1610;
 const ERR_TXF_CHECK_CHAIN = 1611;
 const ERR_GOV_CHECK_EMITTER = 1701;
-const ERR_GOV_CHECK_REPLAY = 1701;
+const ERR_GOV_CHECK_REPLAY = 1702;
 const EXPECTED_CHAIN_ID = 0xc377; // Value for testnet/devnet/simnet
 
 const contractName = "wormhole-core-v4";
@@ -25,7 +25,7 @@ describe(`${contractName}::parse-and-verify-transfer-fees-payload success`, () =
   const action = ACTION_TRANSFER_FEES;
   const chain = EXPECTED_CHAIN_ID;
   const sender = accounts.get("wallet_1")!;
-  const recipient = accounts.get("wallet_2")!;
+  const recipient = accounts.get("empty")!;
 
   it("should return parsed payload", () => {
     fc.assert(
@@ -60,7 +60,7 @@ describe(`${contractName}::parse-and-verify-transfer-fees-payload success`, () =
 describe(`${contractName}::parse-and-verify-transfer-fees-payload failure`, () => {
   const accounts = simnet.getAccounts();
   const sender = accounts.get("wallet_1")!;
-  const recipient = accounts.get("wallet_2")!;
+  const recipient = accounts.get("empty")!;
 
   it("should fail if `amount` exceeds max `u128`", () => {
     const amount = MAX_VALUE_U128 + 1n;
@@ -167,7 +167,7 @@ describe(`${contractName}::transfer-fees`, () => {
   const accounts = simnet.getAccounts();
   const deployer = accounts.get("deployer")!;
   const sender = accounts.get("wallet_1")!;
-  const recipient = accounts.get("wallet_2")!;
+  const recipient = accounts.get("empty")!;
   const keychain = wormhole.generateGuardianSetKeychain(19);
 
   // Before starting the test suite, we have to...
@@ -235,15 +235,15 @@ describe(`${contractName}::transfer-fees`, () => {
     );
 
     // Check contract balance
-    const assets = simnet.getAssetsMap();
-    const stxBalances = assets.get("STX")!;
+    const stxBalances = simnet.getAssetsMap().get("STX")!;
     const contractPrinciple = `${deployer}.${contractName}`;
     const contractBalance = stxBalances.get(contractPrinciple)!;
 
     expect(contractBalance).toEqual(fee);
   });
 
-  it.skip("should succeed and return `ok({amount, recipient})`", () => {
+  it("should succeed, transfer fees, and return `ok({amount, recipient})`", () => {
+    let totalAmountTransferred = 0n;
     fc.assert(
       fc.property(
         fc.bigInt({ min: 1n, max: 100n }),
@@ -277,12 +277,19 @@ describe(`${contractName}::transfer-fees`, () => {
               recipient: Cl.principal(recipient),
             }),
           );
+          totalAmountTransferred += amount;
         },
       ),
     );
+
+    // Check recipient balance
+    const stxBalances = simnet.getAssetsMap().get("STX")!;
+    const recipientBalance = stxBalances.get(recipient)!;
+
+    expect(recipientBalance).toEqual(totalAmountTransferred);
   });
 
-  it.skip("should fail if message is replayed", () => {
+  it("should fail if message is replayed", () => {
     const amount = 100;
     const payload = wormhole.serializeTransferFeesVaaPayloadToBuffer(
       ACTION_TRANSFER_FEES,

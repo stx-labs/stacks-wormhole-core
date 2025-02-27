@@ -7,6 +7,9 @@ genesis:
     - name: deployer
       address: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
       balance: "100000000000000"
+    - name: empty
+      address: STVCT7ABJ6FPKG9FF46NE27MKJPTJSKT5CK0W813
+      balance: "0"
     - name: faucet
       address: STNHKEPYEPJ8ET55ZZ0M5A34J0R3N5FM2CMMMAZ6
       balance: "100000000000000"

@@ -72,6 +72,13 @@ balance = 100_000_000_000_000
 # stx_address: STNHKEPYEPJ8ET55ZZ0M5A34J0R3N5FM2CMMMAZ6
 # btc_address: mjSrB3wS4xab3kYqFktwBzfTdPg367ZJ2d
 
+[accounts.empty]
+mnemonic = "kidney around rural flock virus ability anger festival visit craft hello power dolphin crush gym original cost lab once win apple toilet problem they"
+balance = 0
+# secret_key: f2e88036d0f755103f2a60275821dfcb6a30255d61598204c8093aa3b69729b901
+# stx_address: ST11ZRJXZ8MBJN9DVG1D7J3GE7B4A76W38S7189HR
+# btc_address: mmiRojRTwLnBGpSgnJz719SjUdKThAYzQG
+
 [devnet]
 docker_host = "/var/run/docker.sock"
 disable_stacks_explorer = false
