@@ -109,7 +109,7 @@ describe(`${contractName}::parse-and-verify-set-message-fee-payload failure`, ()
     expect(res.result).toBeErr(Cl.uint(ERR_SMF_CHECK_ACTION));
   });
 
-  it("should fail if `chain` does not this chain's ID", () => {
+  it("should fail if `chain` does not match this chain's ID", () => {
     const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
       ACTION_SET_MESSAGE_FEE,
       0x3333,

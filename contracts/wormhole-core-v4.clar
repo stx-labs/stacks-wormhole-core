@@ -127,8 +127,8 @@
 
 ;; Wormhole Governance: Message not from authorized chain/emitter
 (define-constant ERR_GOV_CHECK_EMITTER (err u1701))
-;; Wormhole Governance: `sequence` is not next one expected
-(define-constant ERR_GOV_CHECK_USED (err u1702))
+;; Wormhole Governance: message already processed
+(define-constant ERR_GOV_CHECK_REPLAY (err u1702))
 
 ;; Wormhole Governance: emitting chain
 (define-constant GOV_EMITTING_CHAIN u1)
@@ -316,9 +316,9 @@
     (asserts! (is-eq (get emitter-chain vaa) GOV_EMITTING_CHAIN) ERR_GOV_CHECK_EMITTER)
     ;; ensure guardian set has atleast one member
     (asserts! (>= (len result) u1) ERR_EMPTY_GUARDIAN_SET)
-    ;; Check we are not re-processing an old message
-    ;; Not actually necessary if `guardian-set-id` is guaranteed to be unique and old guardian sets can't validate messages, but I'm not 100% sure of that
-    (asserts! (map-insert governance-vaa-hashes vaa-body-hash true) ERR_GOV_CHECK_USED)
+    ;; Skip this check to minimize state growth
+    ;; We already check that `setId` is incrementing, and that is sufficient to prevent replay
+    ;;(asserts! (map-insert governance-vaa-hashes vaa-body-hash true) ERR_GOV_CHECK_REPLAY)
     ;; Update storage
     (map-set guardian-sets set-id result)
     (try! (set-new-guardian-set-id set-id))
@@ -399,7 +399,7 @@
 
     ;; --- Message has been validated, check if we can apply update ---
     ;; Check we are not re-processing an old message
-    (asserts! (map-insert governance-vaa-hashes (get vaa-body-hash message) true) ERR_GOV_CHECK_USED)
+    (asserts! (map-insert governance-vaa-hashes (get vaa-body-hash message) true) ERR_GOV_CHECK_REPLAY)
 
     ;; Commit state
     (var-set post-message-fee fee)
@@ -490,7 +490,7 @@
 
     ;; --- Message has been validated, check if we can apply update ---
     ;; Check we are not re-processing an old message
-    (asserts! (map-insert governance-vaa-hashes (get vaa-body-hash message) true) ERR_GOV_CHECK_USED)
+    (asserts! (map-insert governance-vaa-hashes (get vaa-body-hash message) true) ERR_GOV_CHECK_REPLAY)
 
     ;; Execute action
     (try! (stx-transfer? amount (get-contract-principal) recipient))

@@ -116,7 +116,7 @@ describe(`${contractName}::parse-and-verify-transfer-fees-payload failure`, () =
     expect(res.result).toBeErr(Cl.uint(ERR_TXF_CHECK_ACTION));
   });
 
-  it("should fail if `chain` does not this chain's ID", () => {
+  it("should fail if `chain` does not match this chain's ID", () => {
     const payload = wormhole.serializeTransferFeesVaaPayloadToBuffer(
       ACTION_TRANSFER_FEES,
       0x3333,
