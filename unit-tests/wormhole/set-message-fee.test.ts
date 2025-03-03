@@ -3,31 +3,17 @@ import { expect, describe, beforeEach } from "vitest";
 import { it, fc } from "@fast-check/vitest";
 import { wormhole } from "./helpers";
 import { hexToBytes } from "@noble/hashes/utils";
+import { WormholeCore as WC, MaxValue } from "./constants";
 
-const MAX_VALUE_U128 = 340282366920938463463374607431768211455n;
-
-// Constants from `wormhole-core`
-const ACTION_SET_MESSAGE_FEE = 3;
-const ERR_SMF_CHECK_OVERLAY = 1507;
-const ERR_SMF_CHECK_FEE = 1508;
-const ERR_SMF_CHECK_MODULE = 1509;
-const ERR_SMF_CHECK_ACTION = 1510;
-const ERR_SMF_CHECK_CHAIN = 1511;
-const ERR_GOV_CHECK_EMITTER = 1701;
-const ERR_GOV_CHECK_REPLAY = 1702;
-const EXPECTED_CHAIN_ID = 0xc377; // Value for testnet/devnet/simnet
-
-const contractName = "wormhole-core-v4";
-
-describe(`${contractName}::parse-and-verify-set-message-fee-payload success`, () => {
+describe(`${WC.CONTRACT_NAME}::parse-and-verify-set-message-fee-payload success`, () => {
   const accounts = simnet.getAccounts();
-  const action = ACTION_SET_MESSAGE_FEE;
-  const chain = EXPECTED_CHAIN_ID;
+  const action = WC.ACTION_SET_MESSAGE_FEE;
+  const chain = WC.EXPECTED_CHAIN_ID;
   const sender = accounts.get("wallet_1")!;
 
   it("should return parsed payload", () => {
     fc.assert(
-      fc.property(fc.bigInt({ min: 0n, max: MAX_VALUE_U128 }), (fcFee) => {
+      fc.property(fc.bigInt({ min: 0n, max: MaxValue.U128 }), (fcFee) => {
         const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
           action,
           chain,
@@ -35,7 +21,7 @@ describe(`${contractName}::parse-and-verify-set-message-fee-payload success`, ()
         );
 
         const res = simnet.callPublicFn(
-          contractName,
+          WC.CONTRACT_NAME,
           `parse-and-verify-set-message-fee-payload`,
           [Cl.buffer(Uint8Array.from(payload))],
           sender,
@@ -53,25 +39,25 @@ describe(`${contractName}::parse-and-verify-set-message-fee-payload success`, ()
   });
 });
 
-describe(`${contractName}::parse-and-verify-set-message-fee-payload failure`, () => {
+describe(`${WC.CONTRACT_NAME}::parse-and-verify-set-message-fee-payload failure`, () => {
   const accounts = simnet.getAccounts();
   const sender = accounts.get("wallet_1")!;
 
   it("should fail if `fee` exceeds max `u128`", () => {
-    const fee = MAX_VALUE_U128 + 1n;
+    const fee = MaxValue.U128 + 1n;
     const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
-      ACTION_SET_MESSAGE_FEE,
-      EXPECTED_CHAIN_ID,
+      WC.ACTION_SET_MESSAGE_FEE,
+      WC.EXPECTED_CHAIN_ID,
       fee,
     );
 
     const res = simnet.callPublicFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `parse-and-verify-set-message-fee-payload`,
       [Cl.buffer(Uint8Array.from(payload))],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(ERR_SMF_CHECK_FEE));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_SMF_CHECK_FEE));
   });
 
   it("should fail if `module` is not 'core'", () => {
@@ -81,57 +67,57 @@ describe(`${contractName}::parse-and-verify-set-message-fee-payload failure`, ()
       "hex",
     );
     const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
-      ACTION_SET_MESSAGE_FEE,
-      EXPECTED_CHAIN_ID,
+      WC.ACTION_SET_MESSAGE_FEE,
+      WC.EXPECTED_CHAIN_ID,
       100,
       module,
     );
 
     const res = simnet.callPublicFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `parse-and-verify-set-message-fee-payload`,
       [Cl.buffer(Uint8Array.from(payload))],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(ERR_SMF_CHECK_MODULE));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_SMF_CHECK_MODULE));
   });
 
   it("should fail if `action` does not correspond to Wormhole SetMessageFee message", () => {
     const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
       7,
-      EXPECTED_CHAIN_ID,
+      WC.EXPECTED_CHAIN_ID,
       100,
     );
 
     const res = simnet.callPublicFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `parse-and-verify-set-message-fee-payload`,
       [Cl.buffer(Uint8Array.from(payload))],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(ERR_SMF_CHECK_ACTION));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_SMF_CHECK_ACTION));
   });
 
   it("should fail if `chain` does not match this chain's ID", () => {
     const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
-      ACTION_SET_MESSAGE_FEE,
+      WC.ACTION_SET_MESSAGE_FEE,
       0x3333,
       100,
     );
 
     const res = simnet.callPublicFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `parse-and-verify-set-message-fee-payload`,
       [Cl.buffer(Uint8Array.from(payload))],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(ERR_SMF_CHECK_CHAIN));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_SMF_CHECK_CHAIN));
   });
 
   it("should fail if payload is larger than expected", () => {
     let payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
-      ACTION_SET_MESSAGE_FEE,
-      EXPECTED_CHAIN_ID,
+      WC.ACTION_SET_MESSAGE_FEE,
+      WC.EXPECTED_CHAIN_ID,
       100,
     );
     const validPayloadLen = payload.length;
@@ -141,18 +127,18 @@ describe(`${contractName}::parse-and-verify-set-message-fee-payload failure`, ()
     expect(actualPayloadLen).toBeGreaterThan(validPayloadLen);
 
     const res = simnet.callPublicFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `parse-and-verify-set-message-fee-payload`,
       [Cl.buffer(Uint8Array.from(payload))],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(ERR_SMF_CHECK_OVERLAY));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_SMF_CHECK_OVERLAY));
   });
 
   // TODO: Payload too small
 });
 
-describe(`${contractName}::set-message-fee`, () => {
+describe(`${WC.CONTRACT_NAME}::set-message-fee`, () => {
   const accounts = simnet.getAccounts();
   const deployer = accounts.get("deployer")!;
   const sender = accounts.get("wallet_1")!;
@@ -164,7 +150,7 @@ describe(`${contractName}::set-message-fee`, () => {
       keychain,
       1,
       deployer,
-      contractName,
+      WC.CONTRACT_NAME,
     );
     let [serializeVaaToClarityValue, _] = wormhole.serializeVaaToClarityValue(
       vaaHeader as wormhole.VaaHeader,
@@ -190,12 +176,12 @@ describe(`${contractName}::set-message-fee`, () => {
   it("should succeed and return `ok(fee)`", () => {
     fc.assert(
       fc.property(
-        fc.bigInt({ min: 0n, max: MAX_VALUE_U128 }),
-        fc.bigInt({ min: 0n, max: MAX_VALUE_U128 }),
+        fc.bigInt({ min: 0n, max: MaxValue.U128 }),
+        fc.bigInt({ min: 0n, max: MaxValue.U128 }),
         (fee, sequence) => {
           const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
-            ACTION_SET_MESSAGE_FEE,
-            EXPECTED_CHAIN_ID,
+            WC.ACTION_SET_MESSAGE_FEE,
+            WC.EXPECTED_CHAIN_ID,
             fee,
           );
           const body = wormhole.buildValidVaaBodySpecs({
@@ -209,7 +195,7 @@ describe(`${contractName}::set-message-fee`, () => {
           });
           let vaa = wormhole.serializeVaaToBuffer(header, body);
           const res = simnet.callPublicFn(
-            contractName,
+            WC.CONTRACT_NAME,
             `set-message-fee`,
             [Cl.buffer(Uint8Array.from(vaa))],
             sender,
@@ -223,8 +209,8 @@ describe(`${contractName}::set-message-fee`, () => {
   it("should fail if message is replayed", () => {
     const fee = 100;
     const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
-      ACTION_SET_MESSAGE_FEE,
-      EXPECTED_CHAIN_ID,
+      WC.ACTION_SET_MESSAGE_FEE,
+      WC.EXPECTED_CHAIN_ID,
       fee,
     );
     const body = wormhole.buildValidVaaBodySpecs({
@@ -237,7 +223,7 @@ describe(`${contractName}::set-message-fee`, () => {
     });
     const vaa = wormhole.serializeVaaToBuffer(header, body);
     let res = simnet.callPublicFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `set-message-fee`,
       [Cl.buffer(Uint8Array.from(vaa))],
       sender,
@@ -245,12 +231,12 @@ describe(`${contractName}::set-message-fee`, () => {
     expect(res.result).toBeOk(Cl.uint(fee));
     // Submit same message again, should fail
     res = simnet.callPublicFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `set-message-fee`,
       [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(ERR_GOV_CHECK_REPLAY));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_CHECK_REPLAY));
   });
 
   it("should collect fees when `post-message` called", () => {
@@ -261,8 +247,8 @@ describe(`${contractName}::set-message-fee`, () => {
       keychain,
       1,
       fee,
-      EXPECTED_CHAIN_ID,
-      contractName,
+      WC.EXPECTED_CHAIN_ID,
+      WC.CONTRACT_NAME,
       deployer,
     );
     expect(res.result).toBeOk(Cl.uint(fee));
@@ -273,7 +259,7 @@ describe(`${contractName}::set-message-fee`, () => {
     const payload = Cl.buffer(new Uint8Array(1024));
     for (let i = 0; i < numMessages; i++) {
       res = simnet.callPublicFn(
-        contractName,
+        WC.CONTRACT_NAME,
         `post-message`,
         [payload, nonce, Cl.some(consistencyLevel)],
         sender,
@@ -291,7 +277,7 @@ describe(`${contractName}::set-message-fee`, () => {
 
     // Check contract balance
     const stxBalances = simnet.getAssetsMap().get("STX")!;
-    const contractPrinciple = `${deployer}.${contractName}`;
+    const contractPrinciple = `${deployer}.${WC.CONTRACT_NAME}`;
     const contractBalance = stxBalances.get(contractPrinciple)!;
 
     expect(contractBalance).toEqual(fee * BigInt(numMessages));
@@ -303,8 +289,8 @@ describe(`${contractName}::set-message-fee`, () => {
       address: wormhole.GovernanceUpdateEmitter.address,
     };
     const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
-      ACTION_SET_MESSAGE_FEE,
-      EXPECTED_CHAIN_ID,
+      WC.ACTION_SET_MESSAGE_FEE,
+      WC.EXPECTED_CHAIN_ID,
       100,
     );
     const body = wormhole.buildValidVaaBodySpecs({
@@ -317,12 +303,12 @@ describe(`${contractName}::set-message-fee`, () => {
     });
     const vaa = wormhole.serializeVaaToBuffer(header, body);
     const res = simnet.callPublicFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `set-message-fee`,
       [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(ERR_GOV_CHECK_EMITTER));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_CHECK_EMITTER));
   });
 
   it("should fail if `emitter.address` is invalid", () => {
@@ -333,8 +319,8 @@ describe(`${contractName}::set-message-fee`, () => {
       ),
     };
     const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
-      ACTION_SET_MESSAGE_FEE,
-      EXPECTED_CHAIN_ID,
+      WC.ACTION_SET_MESSAGE_FEE,
+      WC.EXPECTED_CHAIN_ID,
       100,
     );
     const body = wormhole.buildValidVaaBodySpecs({
@@ -347,11 +333,11 @@ describe(`${contractName}::set-message-fee`, () => {
     });
     const vaa = wormhole.serializeVaaToBuffer(header, body);
     const res = simnet.callPublicFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `set-message-fee`,
       [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(ERR_GOV_CHECK_EMITTER));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_CHECK_EMITTER));
   });
 });

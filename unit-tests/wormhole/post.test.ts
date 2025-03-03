@@ -1,15 +1,9 @@
 import { Cl } from "@stacks/transactions";
 import { expect, describe } from "vitest";
 import { it, fc } from "@fast-check/vitest";
+import { WormholeCore as WC } from "./constants";
 
-// Constants from `wormhole-core`
-const DEFAULT_CONSISTENCY_LEVEL = 0;
-const ERR_POST_OVERFLOW_CONSISTENCY_LEVEL = 1401;
-const ERR_POST_OVERFLOW_NONCE = 1402;
-
-const contractName = "wormhole-core-v4";
-
-describe(`${contractName}::post-message success`, () => {
+describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
   const accounts = simnet.getAccounts();
   const deployer = accounts.get("deployer")!;
   const sender = accounts.get("wallet_1")!;
@@ -24,7 +18,7 @@ describe(`${contractName}::post-message success`, () => {
       const nonce = Cl.uint(1000 + i);
 
       const res = simnet.callPublicFn(
-        contractName,
+        WC.CONTRACT_NAME,
         `post-message`,
         [payload, nonce, Cl.none()],
         sender,
@@ -34,7 +28,7 @@ describe(`${contractName}::post-message success`, () => {
           emitter,
           nonce,
           sequence: Cl.uint(i),
-          "consistency-level": Cl.uint(DEFAULT_CONSISTENCY_LEVEL),
+          "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),
           payload,
         }),
       );
@@ -53,7 +47,7 @@ describe(`${contractName}::post-message success`, () => {
         .property(fc.nat(255), (fcConsistencyLevel) => {
           const consistencyLevel = Cl.uint(fcConsistencyLevel);
           const res = simnet.callPublicFn(
-            contractName,
+            WC.CONTRACT_NAME,
             `post-message`,
             [payload, nonce, Cl.some(consistencyLevel)],
             sender,
@@ -79,7 +73,7 @@ describe(`${contractName}::post-message success`, () => {
 
     // Use default `consistency-level`
     const res = simnet.callPublicFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `post-message`,
       [payload, nonce, Cl.none()],
       sender,
@@ -89,7 +83,7 @@ describe(`${contractName}::post-message success`, () => {
         emitter,
         nonce,
         sequence: Cl.uint(0),
-        "consistency-level": Cl.uint(DEFAULT_CONSISTENCY_LEVEL),
+        "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),
         payload,
       }),
     );
@@ -98,7 +92,7 @@ describe(`${contractName}::post-message success`, () => {
   it("should allow any 32-bit nonce", () => {
     const emitter = Cl.principal(sender);
     const payload = Cl.buffer(new Uint8Array(1024));
-    const consistencyLevel = Cl.uint(DEFAULT_CONSISTENCY_LEVEL);
+    const consistencyLevel = Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL);
 
     let sequence = 0;
 
@@ -107,7 +101,7 @@ describe(`${contractName}::post-message success`, () => {
         .property(fc.nat(2 ** 32 - 1), (fcNonce) => {
           const nonce = Cl.uint(fcNonce);
           const res = simnet.callPublicFn(
-            contractName,
+            WC.CONTRACT_NAME,
             `post-message`,
             [payload, nonce, Cl.some(consistencyLevel)],
             sender,
@@ -135,7 +129,7 @@ describe(`${contractName}::post-message success`, () => {
     // `wormhole-core ` should not check for nonce reuse
     for (let i = 0; i < numMessages; i++) {
       const res = simnet.callPublicFn(
-        contractName,
+        WC.CONTRACT_NAME,
         `post-message`,
         [payload, nonce, Cl.none()],
         sender,
@@ -145,7 +139,7 @@ describe(`${contractName}::post-message success`, () => {
           emitter,
           nonce,
           sequence: Cl.uint(i),
-          "consistency-level": Cl.uint(DEFAULT_CONSISTENCY_LEVEL),
+          "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),
           payload,
         }),
       );
@@ -157,7 +151,7 @@ describe(`${contractName}::post-message success`, () => {
     const nonce = Cl.uint(111);
 
     let res = simnet.callPublicFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `post-message`,
       [payload, nonce, Cl.none()],
       sender,
@@ -167,7 +161,7 @@ describe(`${contractName}::post-message success`, () => {
         emitter: Cl.principal(sender),
         nonce,
         sequence: Cl.uint(0),
-        "consistency-level": Cl.uint(DEFAULT_CONSISTENCY_LEVEL),
+        "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),
         payload,
       }),
     );
@@ -176,7 +170,7 @@ describe(`${contractName}::post-message success`, () => {
       name: "proxy-contract",
       code: [
         `(define-public (post-message-proxy (payload (buff 8192)) (nonce uint) (consistency-level-opt (optional uint)))`,
-        `  (contract-call? .${contractName} post-message payload nonce consistency-level-opt))`,
+        `  (contract-call? .${WC.CONTRACT_NAME} post-message payload nonce consistency-level-opt))`,
       ].join("\n"),
     };
 
@@ -202,7 +196,7 @@ describe(`${contractName}::post-message success`, () => {
         emitter: Cl.principal(`${deployer}.${proxyContract.name}`),
         nonce,
         sequence: Cl.uint(0),
-        "consistency-level": Cl.uint(DEFAULT_CONSISTENCY_LEVEL),
+        "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),
         payload,
       }),
     );
@@ -221,7 +215,7 @@ describe(`${contractName}::post-message success`, () => {
     expect(payload.buffer.length).toBe(8192);
 
     let res = simnet.callPublicFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `post-message`,
       [payload, nonce, Cl.none()],
       sender,
@@ -231,14 +225,14 @@ describe(`${contractName}::post-message success`, () => {
         emitter,
         nonce,
         sequence: Cl.uint(0),
-        "consistency-level": Cl.uint(DEFAULT_CONSISTENCY_LEVEL),
+        "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),
         payload,
       }),
     );
   });
 });
 
-describe(`${contractName}::post-message failure`, () => {
+describe(`${WC.CONTRACT_NAME}::post-message failure`, () => {
   const accounts = simnet.getAccounts();
   const sender = accounts.get("wallet_1")!;
 
@@ -248,12 +242,12 @@ describe(`${contractName}::post-message failure`, () => {
     const consistencyLevel = Cl.uint(2 ** 8);
 
     const res = simnet.callPublicFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `post-message`,
       [payload, nonce, Cl.some(consistencyLevel)],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(ERR_POST_OVERFLOW_CONSISTENCY_LEVEL));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_POST_OVERFLOW_CONSISTENCY_LEVEL));
   });
 
   it("should fail if `nonce` exceeds max `u32` size", () => {
@@ -261,12 +255,12 @@ describe(`${contractName}::post-message failure`, () => {
     const nonce = Cl.uint(2 ** 32);
 
     const res = simnet.callPublicFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `post-message`,
       [payload, nonce, Cl.none()],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(ERR_POST_OVERFLOW_NONCE));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_POST_OVERFLOW_NONCE));
   });
 
   it("should fail if `payload` exceeds 8192 bytes", () => {
@@ -276,7 +270,7 @@ describe(`${contractName}::post-message failure`, () => {
     // We don't get an error value because the contract is never called
     const f = () =>
       simnet.callPublicFn(
-        contractName,
+        WC.CONTRACT_NAME,
         `post-message`,
         [payload, nonce, Cl.none()],
         sender,
@@ -295,17 +289,19 @@ describe(`${contractName}::post-message failure`, () => {
     // Should all fail and not increment `sequence`
     for (let i = 0; i < attempts; i++) {
       const res = simnet.callPublicFn(
-        contractName,
+        WC.CONTRACT_NAME,
         `post-message`,
         [payload, nonce, Cl.some(consistencyLevel)],
         sender,
       );
-      expect(res.result).toBeErr(Cl.uint(ERR_POST_OVERFLOW_CONSISTENCY_LEVEL));
+      expect(res.result).toBeErr(
+        Cl.uint(WC.ERR_POST_OVERFLOW_CONSISTENCY_LEVEL),
+      );
     }
 
     // Should succeed and have `sequence` of `u0`
     let res = simnet.callPublicFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `post-message`,
       [payload, nonce, Cl.none()],
       sender,
@@ -315,7 +311,7 @@ describe(`${contractName}::post-message failure`, () => {
         emitter,
         nonce,
         sequence: Cl.uint(0),
-        "consistency-level": Cl.uint(DEFAULT_CONSISTENCY_LEVEL),
+        "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),
         payload,
       }),
     );
