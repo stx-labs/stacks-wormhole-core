@@ -42,9 +42,9 @@ export namespace wormhole {
       let ethereumAddress = keccak_256(uncompressedPublicKey).slice(12, 32);
       keychain.push({
         guardianId: i,
-        secretKey: secretKey,
-        uncompressedPublicKey: uncompressedPublicKey,
-        ethereumAddress: ethereumAddress,
+        secretKey,
+        uncompressedPublicKey,
+        ethereumAddress,
         compressedPublicKey: secp.getPublicKey(secretKey, true),
       });
     }

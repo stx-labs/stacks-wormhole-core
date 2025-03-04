@@ -25,7 +25,18 @@
     uint       ;; Incremented each time emitter emits a message
 )
 
+;; Since this contract can't be updated, provide a dynamically-typed key/value store,
+;; which can be used if additional state is required by future core contract updates.
+;;
+;; If additional state is necessary, it may be preferable to deploy another state contract instead of using this map,
+;; depending on the size, complexity, and the performance needs of the additional state
+;;
+;; This option is here to provide options and flexibility for future core contract updates
+(define-map kv-store (string-ascii 32) (buff 4096))
+
 ;;;; Public functions
+
+;; ALL PUBLIC FUNCTIONS WHICH MODIFY STATE MUST CALL `check-caller`
 
 ;; @desc Set which `wormhole-core` contract which is allowed to modify state in this contract
 (define-public (set-active-wormhole-core-contract (core-contract principal))
@@ -45,7 +56,25 @@
       (map-set emitter-sequence emitter (+ sequence u1))
       (ok sequence))))
 
+;; @desc Set raw buffer in key/value store using `map-insert` (fails if entry exists)
+;;       Caller is responsible for serializing data with `to-consensus-buff?`
+;;       If no error, returns `(ok bool)` with the result of `map-insert`
+(define-public (kv-store-insert (key (string-ascii 32)) (value (buff 4096)))
+  (begin
+    (try! (check-caller))
+    (ok (map-insert kv-store key value))))
+
+;; @desc Set raw buffer in key/value store using `map-set` (overwrites existing entries)
+;;       Caller is responsible for serializing data with `to-consensus-buff?`
+;;       If no error, returns `(ok bool)` with the result of `map-set`
+(define-public (kv-store-set (key (string-ascii 32)) (value (buff 4096)))
+  (begin
+    (try! (check-caller))
+    (ok (map-set kv-store key value))))
+
 ;;;; Read-only functions
+
+;; These functions do not modify state and can be called by anyone
 
 ;; @desc Check that the calling contract is the currently active `wormhole-core` contract
 ;;       This must be called in any function that modifies state
@@ -56,5 +85,10 @@
 
 (define-read-only (get-emitter-sequence (emitter principal))
   (map-get? emitter-sequence emitter))
+
+;; @desc Return raw buffer from key/value store
+;;       Caller is responsible for deserializing data with `from-consensus-buff?`
+(define-read-only (kv-store-get? (key (string-ascii 32)))
+  (map-get? kv-store key))
 
 ;;;; Private functions
