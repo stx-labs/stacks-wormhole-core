@@ -33,5 +33,11 @@ export class WormholeCore {
   static readonly ERR_TXF_CHECK_CHAIN = 1611;
 
   static readonly ERR_GOV_CHECK_EMITTER = 1701;
-  static readonly ERR_GOV_CHECK_REPLAY = 1702;
+}
+
+// Constants from `wormhole-core-state` Clarity contract
+export class WormholeCoreState {
+  static readonly CONTRACT_NAME = "wormhole-core-state-v1";
+  // Must match what is in `$(CONTRACT_NAME}.clar`
+  static readonly ERR_STATE_VAA_REPLAYED = 10003;
 }

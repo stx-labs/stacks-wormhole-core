@@ -9,8 +9,12 @@
 
 ;;;; Constants
 
+;; State contract not initialized (no active core contract set)
 (define-constant ERR_STATE_UNINITIALIZED (err u10001))
+;; Caller is not active core contract
 (define-constant ERR_STATE_UNAUTHORIZED (err u10002))
+;; VAA has already been used
+(define-constant ERR_STATE_VAA_REPLAYED (err u10003))
 
 ;;;; Data vars
 
@@ -24,6 +28,8 @@
     principal  ;; Contract emitting message
     uint       ;; Incremented each time emitter emits a message
 )
+;; Wormhole Governance: Keep track of consumed governance VAAs by hash to prevent replay attacks
+(define-map consumed-governance-vaa-hashes (buff 32) bool)
 
 ;; Since this contract can't be updated, provide a dynamically-typed key/value store,
 ;; which can be used if additional state is required by future core contract updates.
@@ -55,6 +61,17 @@
     (let ((sequence (default-to u0 (get-emitter-sequence emitter))))
       (map-set emitter-sequence emitter (+ sequence u1))
       (ok sequence))))
+
+;; @desc Track hashes of processed governance VAAs so we don't replay them
+;;       Returns `(ok true)` if the VAA is marked as "consumed"
+;;       On failure, returns (err ...)` does not consume the VAA
+;;
+;; @param hash: Governance VAA hash, computed by `(keccak256 (keccak256 vaa-body))`
+(define-public (consume-governance-vaa (hash (buff 32)))
+  (begin
+    (try! (check-caller))
+    (asserts! (map-insert consumed-governance-vaa-hashes hash true) ERR_STATE_VAA_REPLAYED)
+    (ok true)))
 
 ;; @desc Set raw buffer in key/value store using `map-insert` (fails if entry exists)
 ;;       Caller is responsible for serializing data with `to-consensus-buff?`

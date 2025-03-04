@@ -3,7 +3,11 @@ import { expect, describe, beforeEach } from "vitest";
 import { it, fc } from "@fast-check/vitest";
 import { wormhole } from "./helpers";
 import { hexToBytes } from "@noble/hashes/utils";
-import { WormholeCore as WC, MaxValue } from "./constants";
+import {
+  WormholeCore as WC,
+  WormholeCoreState as WCS,
+  MaxValue,
+} from "./constants";
 
 describe(`${WC.CONTRACT_NAME}::parse-and-verify-set-message-fee-payload success`, () => {
   const accounts = simnet.getAccounts();
@@ -241,7 +245,7 @@ describe(`${WC.CONTRACT_NAME}::set-message-fee`, () => {
       [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_CHECK_REPLAY));
+    expect(res.result).toBeErr(Cl.uint(WCS.ERR_STATE_VAA_REPLAYED));
   });
 
   it("should collect fees when `post-message` called", () => {

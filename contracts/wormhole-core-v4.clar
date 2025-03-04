@@ -127,8 +127,6 @@
 
 ;; Wormhole Governance: Message not from authorized chain/emitter
 (define-constant ERR_GOV_CHECK_EMITTER (err u1701))
-;; Wormhole Governance: message already processed
-(define-constant ERR_GOV_CHECK_REPLAY (err u1702))
 
 ;; Wormhole Governance: emitting chain
 (define-constant GOV_EMITTING_CHAIN u1)
@@ -176,8 +174,6 @@
 
 ;; Map tracking guardians set
 (define-map guardian-sets uint (list 19 { compressed-public-key: (buff 33), uncompressed-public-key: (buff 64) }))
-;; Wormhole Governance: Keep track of consumed governance VAAs by hash
-(define-map governance-vaa-hashes (buff 32) bool)
 
 ;;;; Public functions
 
@@ -321,7 +317,7 @@
     (asserts! (>= (len result) u1) ERR_EMPTY_GUARDIAN_SET)
     ;; Skip this check to minimize state growth
     ;; We already check that `setId` is incrementing, and that is sufficient to prevent replay
-    ;;(asserts! (map-insert governance-vaa-hashes vaa-body-hash true) ERR_GOV_CHECK_REPLAY)
+    ;;(try! (contract-call? .wormhole-core-state-v1 consume-governance-vaa (get vaa-body-hash message)))
     ;; Update storage
     (map-set guardian-sets set-id result)
     (try! (set-new-guardian-set-id set-id))
@@ -395,7 +391,7 @@
 
     ;; --- Message has been validated, check if we can apply update ---
     ;; Check we are not re-processing an old message
-    (asserts! (map-insert governance-vaa-hashes (get vaa-body-hash message) true) ERR_GOV_CHECK_REPLAY)
+    (try! (contract-call? .wormhole-core-state-v1 consume-governance-vaa (get vaa-body-hash message)))
 
     ;; Commit state
     (var-set post-message-fee fee)
@@ -486,7 +482,7 @@
 
     ;; --- Message has been validated, check if we can apply update ---
     ;; Check we are not re-processing an old message
-    (asserts! (map-insert governance-vaa-hashes (get vaa-body-hash message) true) ERR_GOV_CHECK_REPLAY)
+    (try! (contract-call? .wormhole-core-state-v1 consume-governance-vaa (get vaa-body-hash message)))
 
     ;; Execute action
     (try! (as-contract (stx-transfer? amount tx-sender recipient)))
