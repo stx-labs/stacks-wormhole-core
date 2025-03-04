@@ -156,6 +156,11 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
   const keychain = wormhole.generateGuardianSetKeychain(19);
   const contractPrinciple = `${deployer}.${WC.CONTRACT_NAME}`;
 
+  beforeEach(async () => {
+    let res = wormhole.initializeState(WC.CONTRACT_NAME, deployer);
+    expect(res.result).toBeOk(Cl.bool(true));
+  });
+
   // Before starting the test suite, we have to...
   // - Set the guardian set
   // - Set message fee rate

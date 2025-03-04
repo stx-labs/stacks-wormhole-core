@@ -4,14 +4,14 @@ import { it, fc } from "@fast-check/vitest";
 import { wormhole } from "./helpers";
 import { ParsedTransactionResult, tx } from "@hirosystems/clarinet-sdk";
 import { hexToBytes } from "@noble/hashes/utils";
+import { WormholeCore as WC } from "./constants";
 
 // Constants from `wormhole-core`
 const ERR_GOV_CHECK_EMITTER = 1701;
 
-const contractName = "wormhole-core-v4";
 const verbosity = 0;
 
-describe(`${contractName}::parse-vaa success`, () => {
+describe(`${WC.CONTRACT_NAME}::parse-vaa success`, () => {
   const accounts = simnet.getAccounts();
   const sender = accounts.get("wallet_1")!;
   const keychain = wormhole.generateGuardianSetKeychain(19);
@@ -44,7 +44,7 @@ describe(`${contractName}::parse-vaa success`, () => {
             wormhole.serializeVaaToClarityValue(header, body, keychain);
 
           const res = simnet.callReadOnlyFn(
-            contractName,
+            WC.CONTRACT_NAME,
             `parse-vaa`,
             [Cl.buffer(Uint8Array.from(vaa))],
             sender,
@@ -63,10 +63,15 @@ describe(`${contractName}::parse-vaa success`, () => {
   });
 });
 
-describe(`${contractName}::guardian-set-upgrade failures`, () => {
+describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade failures`, () => {
   const accounts = simnet.getAccounts();
   const deployer = accounts.get("deployer")!;
   const keychain = wormhole.generateGuardianSetKeychain(19);
+
+  beforeEach(async () => {
+    let res = wormhole.initializeState(WC.CONTRACT_NAME, deployer);
+    expect(res.result).toBeOk(Cl.bool(true));
+  });
 
   it("should fail if the chain is invalid", () => {
     // Before performing this test, we need to setup the guardian set
@@ -93,7 +98,7 @@ describe(`${contractName}::guardian-set-upgrade failures`, () => {
       uncompressedPublicKey.push(Cl.buffer(guardian.uncompressedPublicKey));
     }
     const res = simnet.callPublicFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `guardian-set-upgrade`,
       [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
@@ -126,7 +131,7 @@ describe(`${contractName}::guardian-set-upgrade failures`, () => {
       uncompressedPublicKey.push(Cl.buffer(guardian.uncompressedPublicKey));
     }
     const res = simnet.callPublicFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `guardian-set-upgrade`,
       [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
@@ -159,7 +164,7 @@ describe(`${contractName}::guardian-set-upgrade failures`, () => {
       uncompressedPublicKey.push(Cl.buffer(guardian.uncompressedPublicKey));
     }
     const res = simnet.callPublicFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `guardian-set-upgrade`,
       [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
@@ -195,7 +200,7 @@ describe(`${contractName}::guardian-set-upgrade failures`, () => {
       uncompressedPublicKey.push(Cl.buffer(guardian.uncompressedPublicKey));
     }
     const res = simnet.callPublicFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `guardian-set-upgrade`,
       [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
@@ -234,7 +239,7 @@ describe(`${contractName}::guardian-set-upgrade failures`, () => {
       uncompressedPublicKey.push(Cl.buffer(guardian.uncompressedPublicKey));
     }
     const res = simnet.callPublicFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `guardian-set-upgrade`,
       [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
@@ -271,7 +276,7 @@ describe(`${contractName}::guardian-set-upgrade failures`, () => {
       uncompressedPublicKey.push(Cl.buffer(guardian.uncompressedPublicKey));
     }
     const res = simnet.callPublicFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `guardian-set-upgrade`,
       [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
@@ -280,7 +285,7 @@ describe(`${contractName}::guardian-set-upgrade failures`, () => {
   });
 });
 
-describe(`${contractName}::guardian-set-upgrade success`, () => {
+describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade success`, () => {
   const accounts = simnet.getAccounts();
   const deployer = accounts.get("deployer")!;
   const sender = accounts.get("wallet_1")!;
@@ -288,13 +293,18 @@ describe(`${contractName}::guardian-set-upgrade success`, () => {
   const guardianSet2Keys = wormhole.generateGuardianSetKeychain(19);
   let guardianSet1 = Cl.tuple({});
 
+  beforeEach(async () => {
+    let res = wormhole.initializeState(WC.CONTRACT_NAME, deployer);
+    expect(res.result).toBeOk(Cl.bool(true));
+  });
+
   // Before starting the test suite, we have to setup the guardian set.
   beforeEach(async () => {
     let [result, vaaHeader, vaaBody] = wormhole.applyGuardianSetUpdate(
       guardianSet1Keys,
       1,
       deployer,
-      contractName,
+      WC.CONTRACT_NAME,
     );
     let [serializeVaaToClarityValue, _] = wormhole.serializeVaaToClarityValue(
       vaaHeader as wormhole.VaaHeader,
@@ -331,7 +341,7 @@ describe(`${contractName}::guardian-set-upgrade success`, () => {
 
   it("should return the set 1 as active", () => {
     let res = simnet.callReadOnlyFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `get-active-guardian-set`,
       [],
       sender,
@@ -380,7 +390,7 @@ describe(`${contractName}::guardian-set-upgrade success`, () => {
     );
     let res = simnet.mineBlock([
       tx.callPublicFn(
-        contractName,
+        WC.CONTRACT_NAME,
         `guardian-set-upgrade`,
         [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
         sender,
@@ -401,7 +411,7 @@ describe(`${contractName}::guardian-set-upgrade success`, () => {
     );
 
     res = simnet.callReadOnlyFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `get-active-guardian-set`,
       [],
       sender,
@@ -435,7 +445,7 @@ describe(`${contractName}::guardian-set-upgrade success`, () => {
     }
     let res = simnet.mineBlock([
       tx.callPublicFn(
-        contractName,
+        WC.CONTRACT_NAME,
         `guardian-set-upgrade`,
         [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
         sender,
@@ -445,12 +455,17 @@ describe(`${contractName}::guardian-set-upgrade success`, () => {
   });
 });
 
-describe(`${contractName}::parse-and-verify-vaa success`, () => {
+describe(`${WC.CONTRACT_NAME}::parse-and-verify-vaa success`, () => {
   const accounts = simnet.getAccounts();
   const deployer = accounts.get("deployer")!;
   const sender = accounts.get("wallet_1")!;
   const guardianSet1Keys = wormhole.generateGuardianSetKeychain(19);
   // const guardianSet2Keys = wormhole.generateGuardianSetKeychain(19);
+
+  beforeEach(async () => {
+    let res = wormhole.initializeState(WC.CONTRACT_NAME, deployer);
+    expect(res.result).toBeOk(Cl.bool(true));
+  });
 
   // Before starting the test suite, we have to setup the guardian set.
   beforeEach(async () => {
@@ -458,7 +473,7 @@ describe(`${contractName}::parse-and-verify-vaa success`, () => {
       guardianSet1Keys,
       1,
       deployer,
-      contractName,
+      WC.CONTRACT_NAME,
     );
   });
 
@@ -491,7 +506,7 @@ describe(`${contractName}::parse-and-verify-vaa success`, () => {
             wormhole.serializeVaaToClarityValue(header, body, guardianSet1Keys);
 
           const res = simnet.callReadOnlyFn(
-            contractName,
+            WC.CONTRACT_NAME,
             `parse-vaa`,
             [Cl.buffer(Uint8Array.from(vaa))],
             sender,
@@ -529,7 +544,7 @@ describe(`${contractName}::parse-and-verify-vaa success`, () => {
     );
 
     const res = simnet.callReadOnlyFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `parse-and-verify-vaa`,
       [Cl.buffer(Uint8Array.from(vaa))],
       sender,
@@ -543,11 +558,16 @@ describe(`${contractName}::parse-and-verify-vaa success`, () => {
   });
 });
 
-describe(`${contractName}::parse-and-verify-vaa failures`, () => {
+describe(`${WC.CONTRACT_NAME}::parse-and-verify-vaa failures`, () => {
   const accounts = simnet.getAccounts();
   const deployer = accounts.get("deployer")!;
   const sender = accounts.get("wallet_1")!;
   const guardianSet1Keys = wormhole.generateGuardianSetKeychain(19);
+
+  beforeEach(async () => {
+    let res = wormhole.initializeState(WC.CONTRACT_NAME, deployer);
+    expect(res.result).toBeOk(Cl.bool(true));
+  });
 
   // Before starting the test suite, we have to setup the guardian set.
   beforeEach(async () => {
@@ -555,7 +575,7 @@ describe(`${contractName}::parse-and-verify-vaa failures`, () => {
       guardianSet1Keys,
       1,
       deployer,
-      contractName,
+      WC.CONTRACT_NAME,
     );
   });
 
@@ -574,7 +594,7 @@ describe(`${contractName}::parse-and-verify-vaa failures`, () => {
       uncompressedPublicKey.push(Cl.buffer(guardian.uncompressedPublicKey));
     }
     const res = simnet.callReadOnlyFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `parse-and-verify-vaa`,
       [Cl.buffer(Uint8Array.from(vaa))],
       sender,
@@ -597,7 +617,7 @@ describe(`${contractName}::parse-and-verify-vaa failures`, () => {
       uncompressedPublicKey.push(Cl.buffer(guardian.uncompressedPublicKey));
     }
     const res = simnet.callReadOnlyFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `parse-and-verify-vaa`,
       [Cl.buffer(Uint8Array.from(vaa))],
       sender,
@@ -624,7 +644,7 @@ describe(`${contractName}::parse-and-verify-vaa failures`, () => {
       uncompressedPublicKey.push(Cl.buffer(guardian.uncompressedPublicKey));
     }
     const res = simnet.callReadOnlyFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `parse-and-verify-vaa`,
       [Cl.buffer(Uint8Array.from(vaa))],
       sender,
@@ -649,7 +669,7 @@ describe(`${contractName}::parse-and-verify-vaa failures`, () => {
       uncompressedPublicKey.push(Cl.buffer(guardian.uncompressedPublicKey));
     }
     const res = simnet.callReadOnlyFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `parse-and-verify-vaa`,
       [Cl.buffer(Uint8Array.from(vaa))],
       sender,
@@ -677,7 +697,7 @@ describe(`${contractName}::parse-and-verify-vaa failures`, () => {
       uncompressedPublicKey.push(Cl.buffer(guardian.uncompressedPublicKey));
     }
     const res = simnet.callReadOnlyFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `parse-and-verify-vaa`,
       [Cl.buffer(Uint8Array.from(vaa))],
       sender,
@@ -686,15 +706,20 @@ describe(`${contractName}::parse-and-verify-vaa failures`, () => {
   });
 });
 
-describe(`${contractName}::guardian-set-upgrade mainnet guardian rotations`, () => {
+describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade mainnet guardian rotations`, () => {
   const accounts = simnet.getAccounts();
   const deployer = accounts.get("deployer")!;
   const sender = accounts.get("wallet_1")!;
   let block: ParsedTransactionResult[] | undefined = undefined;
 
+  beforeEach(async () => {
+    let res = wormhole.initializeState(WC.CONTRACT_NAME, deployer);
+    expect(res.result).toBeOk(Cl.bool(true));
+  });
+
   // Before starting the test suite, we have to setup the guardian set.
   beforeEach(async () => {
-    block = wormhole.applyMainnetGuardianSetUpdates(deployer, contractName);
+    block = wormhole.applyMainnetGuardianSetUpdates(deployer, WC.CONTRACT_NAME);
   });
 
   it("should succeed handling the 2 guardians rotations", () => {
@@ -705,7 +730,7 @@ describe(`${contractName}::guardian-set-upgrade mainnet guardian rotations`, () 
 
     const newUpdateBlock = wormhole.applyNextMainnetGuardianSetUpdates(
       sender,
-      contractName,
+      WC.CONTRACT_NAME,
     );
     expect(newUpdateBlock!).toHaveLength(1);
     newUpdateBlock!.forEach((b: ParsedTransactionResult) => {

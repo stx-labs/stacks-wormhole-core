@@ -1,12 +1,18 @@
 import { Cl } from "@stacks/transactions";
-import { expect, describe } from "vitest";
+import { expect, describe, beforeEach } from "vitest";
 import { it, fc } from "@fast-check/vitest";
+import { wormhole } from "./helpers";
 import { WormholeCore as WC } from "./constants";
 
 describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
   const accounts = simnet.getAccounts();
   const deployer = accounts.get("deployer")!;
   const sender = accounts.get("wallet_1")!;
+
+  beforeEach(async () => {
+    let res = wormhole.initializeState(WC.CONTRACT_NAME, deployer);
+    expect(res.result).toBeOk(Cl.bool(true));
+  });
 
   it("should emit message and increment `sequence`", () => {
     const emitter = Cl.principal(sender);
@@ -234,7 +240,13 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
 
 describe(`${WC.CONTRACT_NAME}::post-message failure`, () => {
   const accounts = simnet.getAccounts();
+  const deployer = accounts.get("deployer")!;
   const sender = accounts.get("wallet_1")!;
+
+  beforeEach(async () => {
+    let res = wormhole.initializeState(WC.CONTRACT_NAME, deployer);
+    expect(res.result).toBeOk(Cl.bool(true));
+  });
 
   it("should fail if `consistency-level` exceeds max `u8` size", () => {
     const payload = Cl.buffer(new Uint8Array(1024));

@@ -144,6 +144,11 @@ describe(`${WC.CONTRACT_NAME}::set-message-fee`, () => {
   const sender = accounts.get("wallet_1")!;
   const keychain = wormhole.generateGuardianSetKeychain(19);
 
+  beforeEach(async () => {
+    let res = wormhole.initializeState(WC.CONTRACT_NAME, deployer);
+    expect(res.result).toBeOk(Cl.bool(true));
+  });
+
   // Before starting the test suite, we have to setup the guardian set.
   beforeEach(async () => {
     let [result, vaaHeader, vaaBody] = wormhole.applyGuardianSetUpdate(

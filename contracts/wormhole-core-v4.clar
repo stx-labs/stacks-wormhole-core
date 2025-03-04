@@ -1,7 +1,7 @@
 ;; Title: wormhole-core
 ;; Version: v4
-;; Check for latest version: https://github.com/Trust-Machines/stacks-pyth-bridge#latest-version
-;; Report an issue: https://github.com/Trust-Machines/stacks-pyth-bridge/issues
+;; Check for latest version: https://github.com/hirosystems/stacks-wormhole-core#latest-version
+;; Report an issue: https://github.com/hirosystems/stacks-wormhole-core/issues
 
 ;;;; Traits
 
@@ -176,15 +176,18 @@
 
 ;; Map tracking guardians set
 (define-map guardian-sets uint (list 19 { compressed-public-key: (buff 33), uncompressed-public-key: (buff 64) }))
-;; Keep track of sequence state for message emitters
-(define-map emitter-sequence
-    principal  ;; Contract emitting message
-    uint       ;; Incremented each time emitter emits a message
-)
 ;; Wormhole Governance: Keep track of consumed governance VAAs by hash
 (define-map governance-vaa-hashes (buff 32) bool)
 
 ;;;; Public functions
+
+;; @desc Initialize the state contract
+;;       Only needs to be called once, when the state contract is first deployed
+;;       State contract must be initialized before calling any other functions in this contract
+;;       Returns `(ok true)` on success
+(define-public (initialize-state)
+  (set-state-owner (get-contract-principal))
+)
 
 ;; @desc Parse a Verified Action Approval (VAA)
 ;; 
@@ -345,11 +348,6 @@
         guardians: guardians
       })))
 
-;; @desc Read from `emitter-sequence` map, defaulting to 0 if entry not found
-;; @param principal: Emitter's account principal
-(define-read-only (get-emitter-sequence (emitter principal))
-  (default-to u0 (map-get? emitter-sequence emitter)))
-
 ;; Get this contrac's principla
 (define-read-only (get-contract-principal)
   (as-contract tx-sender))
@@ -359,34 +357,32 @@
 ;; @param nonce: 32-bit nonce set by emitter
 ;; @param consistency-level-opt: Optional, use custom level instead of default
 (define-public (post-message (payload (buff 8192)) (nonce uint) (consistency-level-opt (optional uint)))
-  (let (
-      (emitter contract-caller)
-      (sequence (get-emitter-sequence emitter))
-      (consistency-level (default-to DEFAULT_CONSISTENCY_LEVEL consistency-level-opt))
-      (fee (var-get post-message-fee))
-      (message {
-        emitter: emitter,
-        nonce: nonce,
-        sequence: sequence,
-        consistency-level: consistency-level,
-        payload: payload
-      }))
+  (let ((emitter contract-caller)
+        (consistency-level (default-to DEFAULT_CONSISTENCY_LEVEL consistency-level-opt))
+        (fee (var-get post-message-fee)))
     ;; `consistency-level` must fit into `u8` type
     (asserts! (<= consistency-level MAX_VALUE_U8) ERR_POST_OVERFLOW_CONSISTENCY_LEVEL)
     ;; `nonce` must fit into `u32` type
     (asserts! (<= nonce MAX_VALUE_U32) ERR_POST_OVERFLOW_NONCE)
-    ;; `sequence` must fit into `u64` type
-    (asserts! (<= sequence MAX_VALUE_U64) ERR_POST_OVERFLOW_SEQUENCE)
     ;; If a fee has been set, collect it
     (if (> fee u0)
       (try! (stx-transfer? fee tx-sender (get-contract-principal)))
       true
     )
-    ;; Message has passed checks, is valid, so emit
-    (print message)
-    ;; Increment `sequence` for next message
-    (map-set emitter-sequence emitter (+ sequence u1))
-    (ok message)))
+    
+    (let ((sequence-unchecked (try! (contract-call? .wormhole-core-state-v1 consume-emitter-sequence emitter)))
+          ;; `sequence` must fit into `u64` type, otherwise saturate
+          (sequence (if (<= sequence-unchecked MAX_VALUE_U64) sequence-unchecked MAX_VALUE_U64))
+          (message {
+            emitter: emitter,
+            nonce: nonce,
+            sequence: sequence,
+            consistency-level: consistency-level,
+            payload: payload
+          }))
+      ;; Message has passed checks, and we got a sequence number, so emit to watchers
+      (print message)
+      (ok message))))
 
 ;; @desc Set message fee for `post-message` using VAA
 ;;       Returns `ok(fee)` if successful
@@ -764,4 +760,9 @@
       (latest-stacks-timestamp (unwrap! (get-stacks-block-info? time (- stacks-block-height u1)) ERR_STACKS_TIMESTAMP))
     ) (ok (and (is-eq prev-guardian-set-id set-id) (>= prev-guardian-set-expires-at latest-stacks-timestamp))))
   )
+)
+
+;; @desc Set which `wormhole-core` contract is allowed to use the state contract
+(define-private (set-state-owner (core-contract principal))
+  (contract-call? .wormhole-core-state-v1 set-active-wormhole-core-contract core-contract)
 )

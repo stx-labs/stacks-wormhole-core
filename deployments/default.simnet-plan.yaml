@@ -71,6 +71,11 @@ plan:
     - id: 1
       transactions:
         - emulated-contract-publish:
+            contract-name: wormhole-core-state-v1
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: contracts/wormhole-core-state-v1.clar
+            clarity-version: 3
+        - emulated-contract-publish:
             contract-name: wormhole-traits-v2
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
             path: contracts/wormhole-traits-v2.clar
