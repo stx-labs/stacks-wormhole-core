@@ -50,12 +50,22 @@
 ;; ALL PUBLIC FUNCTIONS WHICH MODIFY STATE MUST CALL `check-caller`
 
 ;; @desc Set which `wormhole-core` contract which is allowed to modify state in this contract
+;;
+;; Returns:
+;;   - (ok true):  If active core contract was changed
+;;   - (ok false): If new core contract was the same as current active core contract
+;;   - (err ...):  If caller does not have permission to set active core contract
 (define-public (set-active-wormhole-core-contract (core-contract principal))
   (let ((check (check-caller)))
     ;; Assert that current active contract is uninitialized or matches caller
     (asserts! (or (is-eq check (ok true)) (is-eq check ERR_STATE_UNINITIALIZED)) check)
-    (var-set active-wormhole-core-contract (some core-contract))
-    (ok true)))
+    (if (is-eq (var-get active-wormhole-core-contract) (some core-contract))
+      ;; New contract is same as current active contract
+      (ok false)
+      ;; New contract different from current active contract
+      (begin
+        (var-set active-wormhole-core-contract (some core-contract))
+        (ok true)))))
 
 ;; @desc Get next sequence # for emitter and mark it as used
 ;;       On success, returns `(ok sequence)` and increments emitter's sequence

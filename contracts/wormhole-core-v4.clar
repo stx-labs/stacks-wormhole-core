@@ -161,7 +161,11 @@
 
 ;;;; Data vars
 
-;; THESE MUST ALL BE EXPORTED IN `export-state`!
+;; True if ALL state (in both `wormhole-core` and `wormhole-core-state`) has been initialized
+;; Does not require Guardian set to be initialized
+(define-data-var state-initialized bool false)
+
+;; ----- DATA VARS BELOW THIS LINE MUST BE EXPORTED IN `export-state`! -----
 
 ;; Guardian Set Update uncompressed public keys invalid
 (define-data-var guardian-set-initialized bool false)
@@ -182,11 +186,22 @@
 
 ;; @desc Initialize the state contract
 ;;       Only needs to be called once, when the state contract is first deployed
+;;       It is safe to call repeatedly but will have no effect
 ;;       State contract must be initialized before calling any other functions in this contract
-;;       Returns `(ok true)` on success
+;;
+;; Returns
+;;  - (ok true):  State was initialized
+;;  - (ok false): State was already initialized
+;;  - (err ...):  Permissions or other error
 (define-public (initialize-state-contract)
-  (set-state-contract-owner (get-contract-principal))
-)
+  ;; The only time this function will ever return `(ok true)` is on the first call from any version of `wormhole-core`
+  (if (try! (set-state-contract-owner (get-contract-principal)))
+    ;; This is the initial deployment of `wormhole-core` and the first time ever calling this
+    (begin
+      (var-set state-initialized true)
+      (ok true))
+    ;; This is not the initial deployment, and `initialized` should be set when importing data
+    (ok false)))
 
 ;; @desc Export state stored in *this* contract.
 ;;       THIS DOES NOT EXPORT STATE FROM `wormhole-core-state` CONTRACT!
