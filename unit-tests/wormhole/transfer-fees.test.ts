@@ -161,7 +161,7 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
   const contractPrinciple = `${deployer}.${WC.CONTRACT_NAME}`;
 
   beforeEach(async () => {
-    let res = wormhole.initializeState(WC.CONTRACT_NAME, deployer);
+    let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
     expect(res.result).toBeOk(Cl.bool(true));
   });
 

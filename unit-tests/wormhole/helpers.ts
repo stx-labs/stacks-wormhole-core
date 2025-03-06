@@ -672,13 +672,13 @@ export namespace wormhole {
 
   // This links `wormhole-core` to it's state in `wormhole-core-state`
   // This needs to be called before any other contracts in `wormhole-core`
-  export function initializeState(
+  export function initializeStateContract(
     contractName: string,
     txSenderAddress: string,
   ) {
     const result = simnet.callPublicFn(
       contractName,
-      `initialize-state`,
+      `initialize-state-contract`,
       [],
       txSenderAddress,
     );

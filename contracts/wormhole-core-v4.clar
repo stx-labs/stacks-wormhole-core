@@ -182,8 +182,8 @@
 ;;       Only needs to be called once, when the state contract is first deployed
 ;;       State contract must be initialized before calling any other functions in this contract
 ;;       Returns `(ok true)` on success
-(define-public (initialize-state)
-  (set-state-owner (get-contract-principal))
+(define-public (initialize-state-contract)
+  (set-state-contract-owner (get-contract-principal))
 )
 
 ;; @desc Parse a Verified Action Approval (VAA)
@@ -760,6 +760,6 @@
 )
 
 ;; @desc Set which `wormhole-core` contract is allowed to use the state contract
-(define-private (set-state-owner (core-contract principal))
+(define-private (set-state-contract-owner (core-contract principal))
   (contract-call? .wormhole-core-state-v1 set-active-wormhole-core-contract core-contract)
 )

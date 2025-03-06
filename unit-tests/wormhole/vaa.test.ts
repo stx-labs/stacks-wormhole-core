@@ -69,7 +69,7 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade failures`, () => {
   const keychain = wormhole.generateGuardianSetKeychain(19);
 
   beforeEach(async () => {
-    let res = wormhole.initializeState(WC.CONTRACT_NAME, deployer);
+    let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
     expect(res.result).toBeOk(Cl.bool(true));
   });
 
@@ -294,7 +294,7 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade success`, () => {
   let guardianSet1 = Cl.tuple({});
 
   beforeEach(async () => {
-    let res = wormhole.initializeState(WC.CONTRACT_NAME, deployer);
+    let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
     expect(res.result).toBeOk(Cl.bool(true));
   });
 
@@ -463,7 +463,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-vaa success`, () => {
   // const guardianSet2Keys = wormhole.generateGuardianSetKeychain(19);
 
   beforeEach(async () => {
-    let res = wormhole.initializeState(WC.CONTRACT_NAME, deployer);
+    let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
     expect(res.result).toBeOk(Cl.bool(true));
   });
 
@@ -565,7 +565,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-vaa failures`, () => {
   const guardianSet1Keys = wormhole.generateGuardianSetKeychain(19);
 
   beforeEach(async () => {
-    let res = wormhole.initializeState(WC.CONTRACT_NAME, deployer);
+    let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
     expect(res.result).toBeOk(Cl.bool(true));
   });
 
@@ -713,7 +713,7 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade mainnet guardian rotations`,
   let block: ParsedTransactionResult[] | undefined = undefined;
 
   beforeEach(async () => {
-    let res = wormhole.initializeState(WC.CONTRACT_NAME, deployer);
+    let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
     expect(res.result).toBeOk(Cl.bool(true));
   });
 

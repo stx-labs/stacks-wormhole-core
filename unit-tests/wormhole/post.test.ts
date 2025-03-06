@@ -10,7 +10,7 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
   const sender = accounts.get("wallet_1")!;
 
   beforeEach(async () => {
-    let res = wormhole.initializeState(WC.CONTRACT_NAME, deployer);
+    let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
     expect(res.result).toBeOk(Cl.bool(true));
   });
 
@@ -244,7 +244,7 @@ describe(`${WC.CONTRACT_NAME}::post-message failure`, () => {
   const sender = accounts.get("wallet_1")!;
 
   beforeEach(async () => {
-    let res = wormhole.initializeState(WC.CONTRACT_NAME, deployer);
+    let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
     expect(res.result).toBeOk(Cl.bool(true));
   });
 

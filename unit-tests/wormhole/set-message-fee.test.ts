@@ -149,7 +149,7 @@ describe(`${WC.CONTRACT_NAME}::set-message-fee`, () => {
   const keychain = wormhole.generateGuardianSetKeychain(19);
 
   beforeEach(async () => {
-    let res = wormhole.initializeState(WC.CONTRACT_NAME, deployer);
+    let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
     expect(res.result).toBeOk(Cl.bool(true));
   });
 
