@@ -161,6 +161,8 @@
 
 ;;;; Data vars
 
+;; THESE MUST ALL BE EXPORTED IN `export-state`!
+
 ;; Guardian Set Update uncompressed public keys invalid
 (define-data-var guardian-set-initialized bool false)
 ;; Keep track of the active guardian set-id
@@ -172,7 +174,7 @@
 
 ;;;; Data maps
 
-;; WARNING: It's not a good idea to store maps here!
+;; WARNING: It's not a good idea to store maps in this contract!
 ;; There is no limit to how big they can get and this can make import/export during a ContractUpgrade operation impossible
 ;; Please use a separate state contract like `wormhold-core-state` for maps!
 
@@ -185,6 +187,22 @@
 (define-public (initialize-state-contract)
   (set-state-contract-owner (get-contract-principal))
 )
+
+;; @desc Export state stored in *this* contract.
+;;       THIS DOES NOT EXPORT STATE FROM `wormhole-core-state` CONTRACT!
+;;
+;; Steps to update `wormhole-core` contract:
+;;   1. Make some changes to `wormhole-core`
+;;   2. Governance contract publishes VAA with address of updated `wormhole-core` contract
+;;   3. Have new contract call this contract's `export-state` to initialize it's own state
+;;
+;; TODO: This contract currently lacks a mechanism to import data.
+;;       If this contract ever needs to be updated, that will need to be added
+(define-read-only (export-state) {
+    guardian-set-initialized: (var-get guardian-set-initialized),
+    active-guardian-set-id: (var-get active-guardian-set-id),
+    previous-guardian-set: (var-get previous-guardian-set),
+    post-message-fee: (var-get post-message-fee)})
 
 ;; @desc Parse a Verified Action Approval (VAA)
 ;; 
