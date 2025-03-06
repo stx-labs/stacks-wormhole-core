@@ -4,8 +4,11 @@
 ;; Report an issue: https://github.com/hirosystems/stacks-wormhole-core/issues
 
 ;; Store the state for `wormhole-core`
-;; `wormhole-core` in intended to be upgradeable, but this contract is not
-;; So this should only store state and have the minimal amount of code possible needed to securely manage state for `wormhole-core`
+;; `wormhole-core` in intended to be upgradeable, but this contract is not.
+;; This contract is *specifically* meant for state that can grow unbounded.
+;; State with a finite size can be stored in `wormhole-core`,
+;; and we can use an import/export function to move that state when we get a ContractUpgrade VAA
+;; This contract should contain as little logic as possible, because it is not upgradeable
 
 ;;;; Constants
 
@@ -30,6 +33,8 @@
 )
 ;; Wormhole Governance: Keep track of consumed governance VAAs by hash to prevent replay attacks
 (define-map consumed-governance-vaa-hashes (buff 32) bool)
+;; Map tracking guardians set
+(define-map guardian-sets uint (list 19 { compressed-public-key: (buff 33), uncompressed-public-key: (buff 64) }))
 
 ;; Since this contract can't be updated, provide a dynamically-typed key/value store,
 ;; which can be used if additional state is required by future core contract updates.
@@ -89,6 +94,16 @@
     (try! (check-caller))
     (ok (map-set kv-store key value))))
 
+;; @desc Set guardian set
+;;       Does not check if index already exists, that is responsibility of core contract
+;;       If no error, returns `(ok bool)` with the result of `map-set`
+;; @param set-id: Guardian set ID
+;; @param guardian-set: List of 19 Guardian pubkeys
+(define-public (guardian-sets-set (set-id uint) (guardian-set (list 19 { compressed-public-key: (buff 33), uncompressed-public-key: (buff 64) })))
+  (begin
+    (try! (check-caller))
+    (ok (map-set guardian-sets set-id guardian-set))))
+
 ;;;; Read-only functions
 
 ;; These functions do not modify state and can be called by anyone
@@ -105,7 +120,10 @@
 
 ;; @desc Return raw buffer from key/value store
 ;;       Caller is responsible for deserializing data with `from-consensus-buff?`
-(define-read-only (kv-store-get? (key (string-ascii 32)))
+(define-read-only (kv-store-get (key (string-ascii 32)))
   (map-get? kv-store key))
 
-;;;; Private functions
+;; @desc Return guardian set
+;; @param set-id: Guardian set ID
+(define-read-only (guardian-sets-get (set-id uint))
+  (map-get? guardian-sets set-id))

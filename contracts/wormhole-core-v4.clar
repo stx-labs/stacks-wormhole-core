@@ -172,8 +172,9 @@
 
 ;;;; Data maps
 
-;; Map tracking guardians set
-(define-map guardian-sets uint (list 19 { compressed-public-key: (buff 33), uncompressed-public-key: (buff 64) }))
+;; WARNING: It's not a good idea to store maps here!
+;; There is no limit to how big they can get and this can make import/export during a ContractUpgrade operation impossible
+;; Please use a separate state contract like `wormhold-core-state` for maps!
 
 ;;;; Public functions
 
@@ -268,7 +269,7 @@
       )
       ;; Ensure that the guardian-set-id is the active one or unexpired previous one
       (asserts! (try! (is-valid-guardian-set guardian-set-id)) ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY)
-    (let ((active-guardians (unwrap! (map-get? guardian-sets guardian-set-id) ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY))
+    (let ((active-guardians (unwrap! (contract-call? .wormhole-core-state-v1 guardian-sets-get guardian-set-id) ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY))
           (signatures-from-active-guardians (fold batch-check-active-public-keys (get recovered-public-keys message)
             {
                 active-guardians: active-guardians,
@@ -319,7 +320,7 @@
     ;; We already check that `setId` is incrementing, and that is sufficient to prevent replay
     ;;(try! (contract-call? .wormhole-core-state-v1 consume-governance-vaa (get vaa-body-hash message)))
     ;; Update storage
-    (map-set guardian-sets set-id result)
+    (try! (contract-call? .wormhole-core-state-v1 guardian-sets-set set-id result))
     (try! (set-new-guardian-set-id set-id))
     (var-set guardian-set-initialized true)
     ;; Emit Event
@@ -338,7 +339,7 @@
 
 (define-read-only (get-active-guardian-set) 
   (let ((set-id (var-get active-guardian-set-id))
-        (guardians (unwrap-panic (map-get? guardian-sets set-id))))
+        (guardians (unwrap-panic (contract-call? .wormhole-core-state-v1 guardian-sets-get set-id))))
       (ok {
         set-id: set-id,
         guardians: guardians
