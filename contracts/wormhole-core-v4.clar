@@ -128,6 +128,9 @@
 ;; Wormhole Governance: Message not from authorized chain/emitter
 (define-constant ERR_GOV_CHECK_EMITTER (err u1701))
 
+;; Deployment State: This deployment is not the active core contract
+(define-constant ERR_DEPLOYMENT_STATE_NOT_ACTIVE (err u1702))
+
 ;; Wormhole Governance: emitting chain
 (define-constant GOV_EMITTING_CHAIN u1)
 ;; Wormhole Governance: emitting address
@@ -161,9 +164,12 @@
 
 ;;;; Data vars
 
-;; True if ALL state (in both `wormhole-core` and `wormhole-core-state`) has been initialized
-;; Does not require Guardian set to be initialized
-(define-data-var state-initialized bool false)
+;; `deployment-state` can have one of the following values:
+(define-constant DEPLOYMENT_STATE_UNITIALIZED u0) ;; This deployment has not been initialized and is not ready for use
+(define-constant DEPLOYMENT_STATE_ACTIVE      u1) ;; This deployment has been initialized and is the active wormhole core contract
+(define-constant DEPLOYMENT_STATE_DEPRECATED  u2) ;; This deployment has been upgraded and is no longer active
+;; The state of this particular deployment of the core contract
+(define-data-var deployment-state uint DEPLOYMENT_STATE_UNITIALIZED)
 
 ;; ----- DATA VARS BELOW THIS LINE MUST BE EXPORTED IN `export-state`! -----
 
@@ -198,10 +204,24 @@
   (if (try! (set-state-contract-owner (get-contract-principal)))
     ;; This is the initial deployment of `wormhole-core` and the first time ever calling this
     (begin
-      (var-set state-initialized true)
+      (var-set deployment-state DEPLOYMENT_STATE_ACTIVE)
       (ok true))
     ;; This is not the initial deployment, and `initialized` should be set when importing data
     (ok false)))
+
+;; @desc Get current state of this contract deployment
+(define-read-only (get-deployment-state)
+  (var-get deployment-state))
+
+;; @desc Returns true if this is the currently active core contract deployment (can only be one at any time)
+(define-read-only (is-active-deployment)
+  (is-eq (get-deployment-state) DEPLOYMENT_STATE_ACTIVE))
+
+;; @desc Like `is-active-deployment` but returns error instead of bool
+(define-read-only (check-active-deployment)
+  (begin
+    (asserts! (is-active-deployment) ERR_DEPLOYMENT_STATE_NOT_ACTIVE)
+    (ok true)))
 
 ;; @desc Export state stored in *this* contract.
 ;;       THIS DOES NOT EXPORT STATE FROM `wormhole-core-state` CONTRACT!
