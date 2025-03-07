@@ -42,7 +42,7 @@
     ;; TODO: Handle governance message: ContractUpgrade
     ;; Handle governance message: GuardianSetUpgrade
     ;;(guardian-set-upgrade ((buff 2048)) ((list 19 (buff 64))))
-    ;;(contract-upgrade ((buff 8192)) (response uint principal))
+    (contract-upgrade ((buff 8192)) (response principal uint))
     ;; Handle governance message: SetMessageFee
     (set-message-fee ((buff 8192)) (response uint uint))
     ;; Handle governance message: TransferFees

@@ -32,7 +32,7 @@ export class WormholeCore {
   static readonly ERR_TXF_CHECK_ACTION = 1610;
   static readonly ERR_TXF_CHECK_CHAIN = 1611;
 
-  static readonly ERR_GOV_CHECK_EMITTER = 1701;
+  static readonly ERR_GOV_CHECK_EMITTER = 1801;
 }
 
 // Constants from `wormhole-core-state` Clarity contract

@@ -118,8 +118,8 @@
 (define-constant ERR_TXF_PARSING_RECIPIENT (err u1606))
 ;; Transfer Fees: overlay present in vaa bytes
 (define-constant ERR_TXF_CHECK_OVERLAY (err u1607))
-;; Transfer Fees: `fee` value too high
-(define-constant ERR_TXF_CHECK_FEE (err u1608))
+;; Transfer Fees: `amount` value too high
+(define-constant ERR_TXF_CHECK_AMOUNT (err u1608))
 ;; Transfer Fees: `module` is not expected value
 (define-constant ERR_TXF_CHECK_MODULE (err u1609))
 ;; Transfer Fees: `action` is not expected value for this message type
@@ -127,8 +127,25 @@
 ;; Transfer Fees: `chain` does not match this blockchain
 (define-constant ERR_TXF_CHECK_CHAIN (err u1611))
 
+;; Contract Upgrade: error parsing `module`
+(define-constant ERR_UPG_PARSING_MODULE (err u1701))
+;; Contract Upgrade: error parsing `action`
+(define-constant ERR_UPG_PARSING_ACTION (err u1702))
+;; Contract Upgrade: error parsing `chain`
+(define-constant ERR_UPG_PARSING_CHAIN (err u1703))
+;; Contract Upgrade: error parsing `contract`
+(define-constant ERR_UPG_PARSING_CONTRACT (err u1706))
+;; Contract Upgrade: overlay present in vaa bytes
+(define-constant ERR_UPG_CHECK_OVERLAY (err u1707))
+;; Contract Upgrade: `module` is not expected value
+(define-constant ERR_UPG_CHECK_MODULE (err u1709))
+;; Contract Upgrade: `action` is not expected value for this message type
+(define-constant ERR_UPG_CHECK_ACTION (err u1710))
+;; Contract Upgrade: `chain` does not match this blockchain
+(define-constant ERR_UPG_CHECK_CHAIN (err u1711))
+
 ;; Wormhole Governance: Message not from authorized chain/emitter
-(define-constant ERR_GOV_CHECK_EMITTER (err u1701))
+(define-constant ERR_GOV_CHECK_EMITTER (err u1801))
 
 ;; Deployment State: This deployment is not the active core contract
 (define-constant ERR_DEPLOYMENT_STATE_NOT_ACTIVE (err u1702))
@@ -604,7 +621,7 @@
     ;;  ERR_TXF_CHECK_OVERLAY)
     ;; Check amount fits into `u128`, because that's the max value clarity can represent
     (asserts! (is-eq (get value cursor-amount-first-128-bits) u0)
-      ERR_TXF_CHECK_FEE)
+      ERR_TXF_CHECK_AMOUNT)
     ;; Ensure that this message was emitted from authorized module
     (asserts! (is-eq module CORE_STRING_MODULE)
       ERR_TXF_CHECK_MODULE)
@@ -622,6 +639,91 @@
       chain: chain,
       amount: amount,
       recipient: recipient,
+    })))
+
+;; @desc Upgrade wormhole-core contract to new deployment
+;;       Returns `ok(contract)` if successful
+;;
+;; @param vaa-bytes: VAA as raw bytes
+(define-public (contract-upgrade (vaa-bytes (buff 8192)))
+  (let ((message (try! (parse-and-verify-contract-upgrade vaa-bytes)))
+        (vaa (get vaa message))
+        (payload (get payload vaa))
+        (contract (get contract payload)))
+
+    ;; --- Message has been validated, check if we can apply update ---
+    ;; Check we are not re-processing an old message
+    (try! (contract-call? .wormhole-core-state-v1 consume-governance-vaa (get vaa-body-hash message)))
+
+    ;; Execute action
+    ;; TODO
+
+    ;; TODO: Emit event
+    (ok contract)))
+
+;; @desc Parse and validate VAA for updating `wormhole-core` contract
+;;       Returns parsed VAA as tuple if successful
+;;
+;; @param vaa-bytes: VAA as raw bytes
+(define-read-only (parse-and-verify-contract-upgrade (vaa-bytes (buff 8192)))
+  (let ((message (try! (parse-and-verify-vaa vaa-bytes)))
+        (vaa (get vaa message)))
+
+    ;; Check emitting address
+    (asserts! (is-eq (get emitter-address vaa) GOV_EMITTING_ADDRESS) ERR_GOV_CHECK_EMITTER)
+    ;; Check emitting chain
+    (asserts! (is-eq (get emitter-chain vaa) GOV_EMITTING_CHAIN) ERR_GOV_CHECK_EMITTER)
+
+    ;; Replace payload raw bytes with parsed payload
+    (ok {
+      vaa: (merge vaa { payload: (try! (parse-and-verify-contract-upgrade-payload (get payload vaa))) }),
+      vaa-body-hash: (get vaa-body-hash message)
+    })))
+
+;; @desc Parse and validate VAA payload for `contract-upgrade`
+;;       Returns parsed payload as tuple if successful
+;;
+;; Expected message format for VAA `payload`:
+;;   [32]byte    module     Should be "Core"
+;;   u8          action     Should be `1` for this message type
+;;   u16         chain      Chain this action is intended for
+;;   ???         recipient  Recipient of message fees
+;;
+;; @param vaa-payload: VAA `payload` as raw bytes
+(define-read-only (parse-and-verify-contract-upgrade-payload (vaa-payload (buff 8192)))
+  (let ((cursor-module (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-buff-32 { bytes: vaa-payload, pos: u0 })
+          ERR_UPG_PARSING_MODULE))
+        (cursor-action (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-8 (get next cursor-module))
+          ERR_UPG_PARSING_ACTION))
+        (cursor-chain (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-16 (get next cursor-action))
+          ERR_UPG_PARSING_CHAIN))
+        (contract-slice (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 slice (get next cursor-chain) none))
+        (module (get value cursor-module))
+        (action (get value cursor-action))
+        (chain (get value cursor-chain))
+        (contract (unwrap! (from-consensus-buff? principal contract-slice)
+          ERR_UPG_PARSING_CONTRACT)))
+
+    ;; --- Validate Message Data ---
+    ;; Check no extra bytes in buffer
+    ;;(asserts! (is-eq (get pos (get next cursor-amount-second-128-bits)) (len vaa-payload))
+    ;;  ERR_TXF_CHECK_OVERLAY)
+    ;; Ensure that this message was emitted from authorized module
+    (asserts! (is-eq module CORE_STRING_MODULE)
+      ERR_UPG_CHECK_MODULE)
+    ;; Ensure that this message is matching the adequate action
+    (asserts! (is-eq action GOV_ACTION_CONTRACT_UPGRADE)
+      ERR_UPG_CHECK_ACTION)
+    ;; Ensure that this message is addressed to this chain
+    (asserts! (is-eq (get value cursor-chain) (buff-to-uint-be EXPECTED_CHAIN_ID))
+      ERR_UPG_CHECK_CHAIN)
+
+    ;; -- Checks Passed, Return Parsed Payload ---
+    (ok {
+      module: module,
+      action: action,
+      chain: chain,
+      contract: contract,
     })))
 
 ;;;; Private functions

@@ -6,9 +6,6 @@ import { ParsedTransactionResult, tx } from "@hirosystems/clarinet-sdk";
 import { hexToBytes } from "@noble/hashes/utils";
 import { WormholeCore as WC } from "./constants";
 
-// Constants from `wormhole-core`
-const ERR_GOV_CHECK_EMITTER = 1701;
-
 const verbosity = 0;
 
 describe(`${WC.CONTRACT_NAME}::parse-vaa success`, () => {
@@ -244,7 +241,7 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade failures`, () => {
       [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
     );
-    expect(res.result).toBeErr(Cl.uint(ERR_GOV_CHECK_EMITTER));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_CHECK_EMITTER));
   });
 
   it("should fail if the emitter-chain is invalid", () => {
@@ -281,7 +278,7 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade failures`, () => {
       [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
     );
-    expect(res.result).toBeErr(Cl.uint(ERR_GOV_CHECK_EMITTER));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_CHECK_EMITTER));
   });
 });
 
