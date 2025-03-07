@@ -24,7 +24,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-set-message-fee-payload success`
           fcFee,
         );
 
-        const res = simnet.callPublicFn(
+        const res = simnet.callReadOnlyFn(
           WC.CONTRACT_NAME,
           `parse-and-verify-set-message-fee-payload`,
           [Cl.buffer(Uint8Array.from(payload))],
@@ -55,7 +55,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-set-message-fee-payload failure`
       fee,
     );
 
-    const res = simnet.callPublicFn(
+    const res = simnet.callReadOnlyFn(
       WC.CONTRACT_NAME,
       `parse-and-verify-set-message-fee-payload`,
       [Cl.buffer(Uint8Array.from(payload))],
@@ -77,7 +77,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-set-message-fee-payload failure`
       module,
     );
 
-    const res = simnet.callPublicFn(
+    const res = simnet.callReadOnlyFn(
       WC.CONTRACT_NAME,
       `parse-and-verify-set-message-fee-payload`,
       [Cl.buffer(Uint8Array.from(payload))],
@@ -93,7 +93,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-set-message-fee-payload failure`
       100,
     );
 
-    const res = simnet.callPublicFn(
+    const res = simnet.callReadOnlyFn(
       WC.CONTRACT_NAME,
       `parse-and-verify-set-message-fee-payload`,
       [Cl.buffer(Uint8Array.from(payload))],
@@ -109,7 +109,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-set-message-fee-payload failure`
       100,
     );
 
-    const res = simnet.callPublicFn(
+    const res = simnet.callReadOnlyFn(
       WC.CONTRACT_NAME,
       `parse-and-verify-set-message-fee-payload`,
       [Cl.buffer(Uint8Array.from(payload))],
@@ -130,7 +130,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-set-message-fee-payload failure`
 
     expect(actualPayloadLen).toBeGreaterThan(validPayloadLen);
 
-    const res = simnet.callPublicFn(
+    const res = simnet.callReadOnlyFn(
       WC.CONTRACT_NAME,
       `parse-and-verify-set-message-fee-payload`,
       [Cl.buffer(Uint8Array.from(payload))],

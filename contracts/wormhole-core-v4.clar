@@ -457,7 +457,7 @@
 ;;       Returns parsed VAA as tuple if successful
 ;;
 ;; @param vaa-bytes: VAA as raw bytes
-(define-public (parse-and-verify-set-message-fee (vaa-bytes (buff 8192)))
+(define-read-only (parse-and-verify-set-message-fee (vaa-bytes (buff 8192)))
   (let ((message (try! (parse-and-verify-vaa vaa-bytes)))
         (vaa (get vaa message)))
 
@@ -482,7 +482,7 @@
 ;;   u256        fee        New fee to emit message (in uSTX)
 ;;
 ;; @param vaa-payload: VAA `payload` as raw bytes
-(define-public (parse-and-verify-set-message-fee-payload (vaa-payload (buff 8192)))
+(define-read-only (parse-and-verify-set-message-fee-payload (vaa-payload (buff 8192)))
   (let ((cursor-module (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-buff-32 { bytes: vaa-payload, pos: u0 })
           ERR_SMF_PARSING_MODULE))
         (cursor-action (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-8 (get next cursor-module))
@@ -551,7 +551,7 @@
 ;;       Returns parsed VAA as tuple if successful
 ;;
 ;; @param vaa-bytes: VAA as raw bytes
-(define-public (parse-and-verify-transfer-fees (vaa-bytes (buff 8192)))
+(define-read-only (parse-and-verify-transfer-fees (vaa-bytes (buff 8192)))
   (let ((message (try! (parse-and-verify-vaa vaa-bytes)))
         (vaa (get vaa message)))
 
@@ -577,7 +577,7 @@
 ;;   ???         recipient  Recipient of message fees
 ;;
 ;; @param vaa-payload: VAA `payload` as raw bytes
-(define-public (parse-and-verify-transfer-fees-payload (vaa-payload (buff 8192)))
+(define-read-only (parse-and-verify-transfer-fees-payload (vaa-payload (buff 8192)))
   (let ((cursor-module (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-buff-32 { bytes: vaa-payload, pos: u0 })
           ERR_TXF_PARSING_MODULE))
         (cursor-action (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-8 (get next cursor-module))

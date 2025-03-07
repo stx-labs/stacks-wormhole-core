@@ -26,7 +26,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-transfer-fees-payload success`, 
           recipient,
         );
 
-        const res = simnet.callPublicFn(
+        const res = simnet.callReadOnlyFn(
           WC.CONTRACT_NAME,
           `parse-and-verify-transfer-fees-payload`,
           [Cl.buffer(Uint8Array.from(payload))],
@@ -60,7 +60,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-transfer-fees-payload failure`, 
       recipient,
     );
 
-    const res = simnet.callPublicFn(
+    const res = simnet.callReadOnlyFn(
       WC.CONTRACT_NAME,
       `parse-and-verify-transfer-fees-payload`,
       [Cl.buffer(Uint8Array.from(payload))],
@@ -83,7 +83,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-transfer-fees-payload failure`, 
       module,
     );
 
-    const res = simnet.callPublicFn(
+    const res = simnet.callReadOnlyFn(
       WC.CONTRACT_NAME,
       `parse-and-verify-transfer-fees-payload`,
       [Cl.buffer(Uint8Array.from(payload))],
@@ -100,7 +100,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-transfer-fees-payload failure`, 
       recipient,
     );
 
-    const res = simnet.callPublicFn(
+    const res = simnet.callReadOnlyFn(
       WC.CONTRACT_NAME,
       `parse-and-verify-transfer-fees-payload`,
       [Cl.buffer(Uint8Array.from(payload))],
@@ -117,7 +117,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-transfer-fees-payload failure`, 
       recipient,
     );
 
-    const res = simnet.callPublicFn(
+    const res = simnet.callReadOnlyFn(
       WC.CONTRACT_NAME,
       `parse-and-verify-transfer-fees-payload`,
       [Cl.buffer(Uint8Array.from(payload))],
@@ -139,7 +139,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-transfer-fees-payload failure`, 
 
     expect(actualPayloadLen).toBeGreaterThan(validPayloadLen);
 
-    const res = simnet.callPublicFn(
+    const res = simnet.callReadOnlyFn(
       WC.CONTRACT_NAME,
       `parse-and-verify-transfer-fees-payload`,
       [Cl.buffer(Uint8Array.from(payload))],
