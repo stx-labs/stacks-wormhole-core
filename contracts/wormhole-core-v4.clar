@@ -7,7 +7,6 @@
 
 ;; Implements trait specified in wormhole-core-trait contract
 (impl-trait .wormhole-traits-v2.core-trait)
-(impl-trait .wormhole-traits-v2.emitter-trait)
 (impl-trait .wormhole-traits-v2.governance-trait)
 
 ;;;; Constants
@@ -189,6 +188,8 @@
 (define-constant DEPLOYMENT_STATE_DEPRECATED  u2) ;; This deployment has been upgraded and is no longer active
 ;; The state of this particular deployment of the core contract
 (define-data-var deployment-state uint DEPLOYMENT_STATE_UNITIALIZED)
+;; If we have recieved a ContractUpgrad VAA, this is the contract we are upgrading to
+(define-data-var successor-contract (optional principal) none)
 
 ;; ----- DATA VARS BELOW THIS LINE MUST BE EXPORTED IN `export-state`! -----
 
@@ -228,6 +229,10 @@
     ;; This is not the initial deployment, and `initialized` should be set when importing data
     (ok false)))
 
+;; @desc Get successor contract
+(define-read-only (get-successor-contract)
+  (var-get successor-contract))
+
 ;; @desc Get current state of this contract deployment
 (define-read-only (get-deployment-state)
   (var-get deployment-state))
@@ -246,17 +251,27 @@
 ;;       THIS DOES NOT EXPORT STATE FROM `wormhole-core-state` CONTRACT!
 ;;
 ;; Steps to update `wormhole-core` contract:
-;;   1. Make some changes to `wormhole-core`
-;;   2. Governance contract publishes VAA with address of updated `wormhole-core` contract
+;;   1. Make some changes to `wormhole-core`, update old conract address in `import-state`, and deploy new contract
+;;   2. Governance contract publishes VAA with address of updated `wormhole-core` contract. The VAA handler will record this
 ;;   3. Have new contract call this contract's `export-state` to initialize it's own state
+;;   4. When the successor contract calls `export-state`, this contract will set the state contract's owner to the sucessor contract and then deactivate
 ;;
 ;; TODO: This contract currently lacks a mechanism to import data.
 ;;       If this contract ever needs to be updated, that will need to be added
-(define-read-only (export-state) {
-    guardian-set-initialized: (var-get guardian-set-initialized),
-    active-guardian-set-id: (var-get active-guardian-set-id),
-    previous-guardian-set: (var-get previous-guardian-set),
-    post-message-fee: (var-get post-message-fee)})
+(define-public (export-state)
+  (let ((state {
+          guardian-set-initialized: (var-get guardian-set-initialized),
+          active-guardian-set-id: (var-get active-guardian-set-id),
+          previous-guardian-set: (var-get previous-guardian-set),
+          post-message-fee: (var-get post-message-fee)}))
+    (if (is-eq (some contract-caller) (get-successor-contract))
+      ;; The successor contract is importing data, deactivate this one
+      (begin
+        (var-set deployment-state DEPLOYMENT_STATE_DEPRECATED)
+        (try! (set-state-contract-owner contract-caller))
+        (ok state))
+      ;; Some other contract is calling, don't take action
+      (ok state))))
 
 ;; @desc Parse a Verified Action Approval (VAA)
 ;; 
@@ -425,6 +440,9 @@
 ;; @param payload: Raw data to send, specific to the contract sending the message
 ;; @param nonce: 32-bit nonce set by emitter
 ;; @param consistency-level-opt: Optional, use custom level instead of default
+;;
+;; TODO: If we add a proxy contract in front of wormhole-core,
+;; we will need to capture `contract-caller` there and pass it into this function
 (define-public (post-message (payload (buff 8192)) (nonce uint) (consistency-level-opt (optional uint)))
   (let ((emitter contract-caller)
         (consistency-level (default-to DEFAULT_CONSISTENCY_LEVEL consistency-level-opt))
@@ -466,10 +484,10 @@
     ;; Check we are not re-processing an old message
     (try! (contract-call? .wormhole-core-state-v1 consume-governance-vaa (get vaa-body-hash message)))
 
-    ;; Commit state
+    ;; --- Commit State ---
     (var-set post-message-fee fee)
 
-    ;; TODO: Emit event
+    ;; TODO: Emit event?
     (ok fee)))
 
 ;; @desc Parse and validate VAA for updating `post-message` fee
@@ -534,7 +552,7 @@
     (asserts! (is-eq (get value cursor-chain) (buff-to-uint-be EXPECTED_CHAIN_ID))
       ERR_SMF_CHECK_CHAIN)
 
-    ;; -- Checks Passed, Return Parsed Payload ---
+    ;; --- Checks Passed, Return Parsed Payload ---
     (ok {
       module: module,
       action: action,
@@ -557,10 +575,10 @@
     ;; Check we are not re-processing an old message
     (try! (contract-call? .wormhole-core-state-v1 consume-governance-vaa (get vaa-body-hash message)))
 
-    ;; Execute action
+    ;; --- Execute Action ---
     (try! (as-contract (stx-transfer? amount tx-sender recipient)))
 
-    ;; TODO: Emit event
+    ;; TODO: Emit event?
     (ok {
       recipient: recipient,
       amount: amount
@@ -655,10 +673,13 @@
     ;; Check we are not re-processing an old message
     (try! (contract-call? .wormhole-core-state-v1 consume-governance-vaa (get vaa-body-hash message)))
 
-    ;; Execute action
-    ;; TODO
+    ;; --- Commit State ---
+    ;; Save address and keep this contract active for now.
+    ;; When successor contract calls this contract's `export-state` function, this contract will transfer state ownership and then deactivate
+    ;; This verifies new contract actually exists before this one becomes unusable
+    (var-set successor-contract (some contract))
 
-    ;; TODO: Emit event
+    ;; TODO: Emit event?
     (ok contract)))
 
 ;; @desc Parse and validate VAA for updating `wormhole-core` contract
@@ -687,7 +708,7 @@
 ;;   [32]byte    module     Should be "Core"
 ;;   u8          action     Should be `1` for this message type
 ;;   u16         chain      Chain this action is intended for
-;;   ???         recipient  Recipient of message fees
+;;   ???         contract   New wormhole-core contract
 ;;
 ;; @param vaa-payload: VAA `payload` as raw bytes
 (define-read-only (parse-and-verify-contract-upgrade-payload (vaa-payload (buff 8192)))

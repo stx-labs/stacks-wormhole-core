@@ -1,4 +1,8 @@
-;; VAA parsing needed by some third party contracts like Pyth
+;; TODO: Split into multiple files so traits can be updated independently
+
+;; These are the functions required by third-party contracts using the Wormhold protocol
+;; If we implement a proxy contract in front of wormhole-core (to allow for easy updates),
+;; we will need to use this trait to proxy these functions
 (define-trait core-trait
   (
     ;; Parse and Verify cryptographic validity of a VAA
@@ -18,13 +22,6 @@
       },
       vaa-body-hash: (buff 32)
     } uint))
-  )
-)
-
-;; Required functions to send messages to Wormhole
-;; This is what most third-party contracts will use
-(define-trait emitter-trait
-  (
     ;; Emit message for Guardians to observe
     (post-message ((buff 8192) uint (optional uint)) (response {
       emitter: principal,
@@ -37,6 +34,8 @@
 )
 
 ;; Interface for handling VAAs from governance contract
+;; We may not need to use this trait for abstraction or proxying,
+;; but it's still useful to define the governance interface
 (define-trait governance-trait
   (
     ;; Handle governance action #1: ContractUpgrade
