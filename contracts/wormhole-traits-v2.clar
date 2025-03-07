@@ -39,13 +39,31 @@
 ;; Interface for handling VAAs from governance contract
 (define-trait governance-trait
   (
-    ;; TODO: Handle governance message: ContractUpgrade
-    ;; Handle governance message: GuardianSetUpgrade
-    ;;(guardian-set-upgrade ((buff 2048)) ((list 19 (buff 64))))
+    ;; Handle governance action #1: ContractUpgrade
     (contract-upgrade ((buff 8192)) (response principal uint))
-    ;; Handle governance message: SetMessageFee
+    ;; Handle governance action #2: GuardianSetUpgrade 
+    (guardian-set-upgrade ((buff 2048) (list 19 (buff 64))) (response {
+      vaa: {
+        version: uint,
+        guardian-set-id: uint,
+        signatures-len: uint ,
+        signatures: (list 19 { guardian-id: uint, signature: (buff 65) }),
+        timestamp: uint,
+        nonce: uint,
+        emitter-chain: uint,
+        emitter-address: (buff 32),
+        sequence: uint,
+        consistency-level: uint,
+        payload: (buff 8192),
+      },
+      result: {
+        guardians-eth-addresses: (list 19 (buff 64)),
+        guardians-public-keys: (list 19 (buff 64))
+      }
+    } uint))
+    ;; Handle governance action #3: SetMessageFee
     (set-message-fee ((buff 8192)) (response uint uint))
-    ;; Handle governance message: TransferFees
+    ;; Handle governance action #4: TransferFees
     (transfer-fees ((buff 8192)) (response {
       recipient: principal,
       amount: uint
