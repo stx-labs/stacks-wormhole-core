@@ -678,8 +678,8 @@ export namespace wormhole {
   ) {
     const result = simnet.callPublicFn(
       contractName,
-      `initialize-state`,
-      [],
+      `initialize`,
+      [Cl.none()],
       txSenderAddress,
     );
     return result;

@@ -219,19 +219,16 @@
 
 ;;;; Public functions
 
-;; @desc Initialize the state contract
-;;       Only needs to be called once, when the state contract is first deployed
-;;       State contract must be initialized before calling any other functions in this contract
+;; @desc Initialize this contract and maybe other Wormhole contracts
+;;       Must be called before any other public functions (not necessary for read-only)
 ;;
-;; Returns
-;;  - (ok true):  State was initialized
-;;  - (err ...):  Already initialized or permissions error
-(define-public (initialize-state)
-  (begin
-    (try! (set-state-contract-owner (get-contract-principal)))
-    ;; This is the initial deployment of `wormhole-core`
-    (var-set deployment-state DEPLOYMENT_STATE_ACTIVE)
-    (ok true)))
+;; @param previous-contract: If this is not the first deployment of wormhole-core, the currently active contract is required
+(define-public (initialize (previous-contract (optional <previous-export-trait>)))
+  (if (is-some previous-contract)
+    ;; Trransfer state from previous contract
+    (initialize-from-previous-contract (unwrap-panic previous-contract))
+    ;; This is the first deployment, initialize all Wormhole state
+    (initialize-wormhole)))
 
 ;; @desc Get successor contract
 (define-read-only (get-successor-contract)
@@ -271,37 +268,27 @@
 ;;   6. New contract's `import-state` calls old contract's `export-state`, which does the following:
 ;;     a. Transfer ownership of `wormhole-state-core` contract
 ;;     b. Sets it's internal state as "deactivated"
-;;     c. Returns old contract's exportable state variables
+;;     c. Transfer all STX owned by this contract to new contract
+;;     d. Returns old contract's exportable state variables
 ;;   7. New contract's `import-state` then does the following:
 ;;     a. Initializes it's state variables to those returned by `export-state`
 ;;     b. Sets it's internal state to "active"
 ;;
 ;; NOTE: In future versions of this contract, `export-state` may require newer version of `export-trait` than `import-state`
 (define-public (export-state)
-  (begin
-    ;; Can only call if "active", to prevent being called multiple times
-    (try! (check-active-deployment))
+  (let ((active (try! (check-active-deployment)))
+        (contract-principal (get-contract-principal))
+        (stx-balance (stx-get-balance contract-principal)))
+    ;; Only the contract set by the ContractUpgrade VAA is allowed to call this function
     (asserts! (is-eq (some contract-caller) (get-successor-contract)) ERR_UPG_UNAUTHORIZED)
+    ;; Transfer ownership of state contract
     (try! (set-state-contract-owner contract-caller))
+    ;; If we have an STX balance, transfer to new contract
+    (if (> stx-balance u0)
+      (try! (stx-transfer? stx-balance contract-principal contract-caller))
+      true)
     (var-set deployment-state DEPLOYMENT_STATE_DEPRECATED)
     (ok (get-exported-vars))))
-
-;; @desc Call previous contract's `export-state` to initialize this contract
-;;
-;; NOTE: This uses the previous contract's version of `export-trait`
-(define-public (import-state (previous-contract <previous-export-trait>))
-  (begin
-    ;; Only allow importing state once
-    (asserts! (is-eq (get-deployment-state) DEPLOYMENT_STATE_UNITIALIZED) ERR_DEPLOYMENT_STATE_ALREADY_INITIALIZED)
-    (let ((previous-state (try! (contract-call? previous-contract export-state))))
-      ;; Import state from previous contract
-      (var-set guardian-set-initialized (get guardian-set-initialized previous-state))
-      (var-set active-guardian-set-id (get active-guardian-set-id previous-state))
-      (var-set previous-guardian-set (get previous-guardian-set previous-state))
-      (var-set post-message-fee (get post-message-fee previous-state))
-      ;; Activate this contract
-      (var-set deployment-state DEPLOYMENT_STATE_ACTIVE)
-      (ok true))))
 
 ;; @desc Parse a Verified Action Approval (VAA)
 ;; 
@@ -976,3 +963,33 @@
 ;; Get this contract's principla
 (define-private (get-contract-principal)
   (as-contract tx-sender))
+
+;; @desc Initialize all Wormhole contracts (this one and the state contract)
+;;       Only needs to be called once, when Wormhole contracts are first deployed
+;;
+;; Returns
+;;  - (ok true):  State was initialized
+;;  - (err ...):  Already initialized or permissions error
+(define-private (initialize-wormhole)
+  (begin
+    (try! (set-state-contract-owner (get-contract-principal)))
+    ;; This is the initial deployment of `wormhole-core`
+    (var-set deployment-state DEPLOYMENT_STATE_ACTIVE)
+    (ok true)))
+
+;; @desc Call previous contract's `export-state` to initialize this contract
+;;
+;; NOTE: This uses the previous contract's version of `export-trait`
+(define-private (initialize-from-previous-contract (previous-contract <previous-export-trait>))
+  (begin
+    ;; Only allow importing state once
+    (asserts! (is-eq (get-deployment-state) DEPLOYMENT_STATE_UNITIALIZED) ERR_DEPLOYMENT_STATE_ALREADY_INITIALIZED)
+    (let ((previous-state (try! (contract-call? previous-contract export-state))))
+      ;; Import state from previous contract
+      (var-set guardian-set-initialized (get guardian-set-initialized previous-state))
+      (var-set active-guardian-set-id (get active-guardian-set-id previous-state))
+      (var-set previous-guardian-set (get previous-guardian-set previous-state))
+      (var-set post-message-fee (get post-message-fee previous-state))
+      ;; Activate this contract
+      (var-set deployment-state DEPLOYMENT_STATE_ACTIVE)
+      (ok true))))
