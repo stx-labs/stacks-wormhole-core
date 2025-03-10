@@ -10,6 +10,10 @@
 (impl-trait .wormhole-traits-v2.governance-trait)
 (impl-trait .wormhole-traits-v2.export-trait)
 
+;; Export trait used previous contract that we are importing from
+;; May not match the version of `export-trait` this contract implements
+(use-trait previous-export-trait .wormhole-traits-v2.export-trait)
+
 ;;;; Constants
 
 ;; VAA version not supported
@@ -145,6 +149,8 @@
 (define-constant ERR_UPG_CHECK_CHAIN (err u1711))
 ;; Contract Upgrade: Unauthorized successor contract
 (define-constant ERR_UPG_UNAUTHORIZED (err u1712))
+;; Contract Upgrade: Tried to initialize new contract more than once
+(define-constant ERR_UPG_ALREADY_INITIALIZED (err u1713))
 
 ;; Wormhole Governance: Message not from authorized chain/emitter
 (define-constant ERR_GOV_CHECK_EMITTER (err u1801))
@@ -258,27 +264,49 @@
   previous-guardian-set: (var-get previous-guardian-set),
   post-message-fee: (var-get post-message-fee)})
 
-;; @desc Call `get-exported-vars` and deactivate this contract
+;; @desc Deactivate this contract and return its (transferrable) state
 ;;       Can only be called by successor contract
 ;;
 ;; Steps to update `wormhole-core` contract:
-;;   1. Make some changes to `wormhole-core`, update old conract address in `import-state`, and deploy new contract
-;;   2. Governance contract publishes VAA with address of updated `wormhole-core` contract. The VAA handler will record this
-;;   3. Have new contract call this contract's `export-state` to initialize it's own state
-;;   4. When the successor contract calls `export-state`, this contract will set the state contract's owner to the sucessor contract and then deactivate
+;;   1. Make some changes to `wormhole-core` and deploy new contract
+;;   2. Governance contract publishes VAA with address of updated `wormhole-core` contract
+;;   3. Someone (anyone) calls `contract-upgrade` with the VAA
+;;   4. `contract-upgrade` will validate the VAA and record the address of the new contract
+;;   5. Someone (anyone) calls new contract's `import-state` to initialize it
+;;   6. New contract's `import-state` calls old contract's `export-state`, which does the following:
+;;     a. Transfer ownership of `wormhole-state-core` contract
+;;     b. Sets it's internal state as "deactivated"
+;;     c. Returns old contract's exportable state variables
+;;   7. New contract's `import-state` then does the following:
+;;     a. Initializes it's state variables to those returned by `export-state`
+;;     b. Sets it's internal state to "active"
 ;;
 ;; NOTE: In future versions of this contract, `export-state` may require newer version of `export-trait` than `import-state`
 (define-public (export-state)
   (begin
+    ;; Can only call if "active", to prevent being called multiple times
+    (try! (check-active-deployment))
     (asserts! (is-eq (some contract-caller) (get-successor-contract)) ERR_UPG_UNAUTHORIZED)
+    (try! (set-state-contract-owner contract-caller))
     (var-set deployment-state DEPLOYMENT_STATE_DEPRECATED)
     (ok (get-exported-vars))))
 
 ;; @desc Call previous contract's `export-state` to initialize this contract
 ;;
 ;; NOTE: This requires using the previous contract's version of `export-trait`
-;;(define-public (import-state)
-;;)
+(define-public (import-state (previous-contract <previous-export-trait>))
+  (begin
+    ;; Only allow importing state once
+    (asserts! (is-eq (get-deployment-state) DEPLOYMENT_STATE_UNITIALIZED) ERR_UPG_ALREADY_INITIALIZED)
+    (let ((previous-state (try! (contract-call? previous-contract export-state))))
+      ;; Import state from previous contract
+      (var-set guardian-set-initialized (get guardian-set-initialized previous-state))
+      (var-set active-guardian-set-id (get active-guardian-set-id previous-state))
+      (var-set previous-guardian-set (get previous-guardian-set previous-state))
+      (var-set post-message-fee (get post-message-fee previous-state))
+      ;; Activate this contract
+      (var-set deployment-state DEPLOYMENT_STATE_ACTIVE)
+      (ok true))))
 
 ;; @desc Parse a Verified Action Approval (VAA)
 ;; 
