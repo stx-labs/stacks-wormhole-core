@@ -268,6 +268,9 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
             [Cl.buffer(Uint8Array.from(vaa))],
             sender,
           );
+          // NOTE: It's possible that FastCheck reuses parameters and this call fails with ERR_STATE_VAA_REPLAYED
+          //       This is fine and does not indicate a problem
+          // TODO: Detect this in the test and adjust `expect()` accordingly
           expect(res.result).toBeOk(
             Cl.tuple({
               amount: Cl.uint(amount),

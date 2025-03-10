@@ -8,6 +8,7 @@
 ;; Implements trait specified in wormhole-core-trait contract
 (impl-trait .wormhole-traits-v2.core-trait)
 (impl-trait .wormhole-traits-v2.governance-trait)
+(impl-trait .wormhole-traits-v2.state-transfer-trait)
 
 ;;;; Constants
 
@@ -142,6 +143,8 @@
 (define-constant ERR_UPG_CHECK_ACTION (err u1710))
 ;; Contract Upgrade: `chain` does not match this blockchain
 (define-constant ERR_UPG_CHECK_CHAIN (err u1711))
+;; Contract Upgrade: Unauthorized successor contract
+(define-constant ERR_UPG_UNAUTHORIZED (err u1712))
 
 ;; Wormhole Governance: Message not from authorized chain/emitter
 (define-constant ERR_GOV_CHECK_EMITTER (err u1801))
@@ -250,28 +253,28 @@
 ;; @desc Export state stored in *this* contract.
 ;;       THIS DOES NOT EXPORT STATE FROM `wormhole-core-state` CONTRACT!
 ;;
+;; NOTE: In future versions of this contract, `export-state` may require newer version of `export-trait` than `import-state`
+(define-read-only (export-state) {
+  guardian-set-initialized: (var-get guardian-set-initialized),
+  active-guardian-set-id: (var-get active-guardian-set-id),
+  previous-guardian-set: (var-get previous-guardian-set),
+  post-message-fee: (var-get post-message-fee)})
+
+;; @desc Call `export-state` and deactivate this contract
+;;       Can only be called by successor contract
+;;
 ;; Steps to update `wormhole-core` contract:
 ;;   1. Make some changes to `wormhole-core`, update old conract address in `import-state`, and deploy new contract
 ;;   2. Governance contract publishes VAA with address of updated `wormhole-core` contract. The VAA handler will record this
 ;;   3. Have new contract call this contract's `export-state` to initialize it's own state
 ;;   4. When the successor contract calls `export-state`, this contract will set the state contract's owner to the sucessor contract and then deactivate
 ;;
-;; TODO: This contract currently lacks a mechanism to import data.
-;;       If this contract ever needs to be updated, that will need to be added
-(define-public (export-state)
-  (let ((state {
-          guardian-set-initialized: (var-get guardian-set-initialized),
-          active-guardian-set-id: (var-get active-guardian-set-id),
-          previous-guardian-set: (var-get previous-guardian-set),
-          post-message-fee: (var-get post-message-fee)}))
-    (if (is-eq (some contract-caller) (get-successor-contract))
-      ;; The successor contract is importing data, deactivate this one
-      (begin
-        (var-set deployment-state DEPLOYMENT_STATE_DEPRECATED)
-        (try! (set-state-contract-owner contract-caller))
-        (ok state))
-      ;; Some other contract is calling, don't take action
-      (ok state))))
+;; NOTE: In future versions of this contract, `export-state` may require newer version of `export-trait` than `import-state`
+(define-public (transfer-state)
+  (begin
+    (asserts! (is-eq (some contract-caller) (get-successor-contract)) ERR_UPG_UNAUTHORIZED)
+    (var-set deployment-state DEPLOYMENT_STATE_DEPRECATED)
+    (ok (export-state))))
 
 ;; @desc Parse a Verified Action Approval (VAA)
 ;; 
