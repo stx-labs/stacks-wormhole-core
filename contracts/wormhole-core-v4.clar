@@ -410,7 +410,8 @@
 ;; the addresses embedded in the VAA. `secp256k1-verify` returns a compressed 
 ;; public key, and uncompressing the key in clarity would be inefficient and expensive. 
 (define-public (guardian-set-upgrade (guardian-set-vaa (buff 2048)) (uncompressed-public-keys (list 19 (buff 64))))
-  (let ((message (if (var-get guardian-set-initialized)
+  (let ((active (try! (check-active-deployment)))
+        (message (if (var-get guardian-set-initialized)
           (try! (parse-and-verify-vaa guardian-set-vaa))
           (try! (parse-vaa guardian-set-vaa))))
         (vaa (get vaa message))
@@ -462,10 +463,6 @@
         guardians: guardians
       })))
 
-;; Get this contrac's principla
-(define-read-only (get-contract-principal)
-  (as-contract tx-sender))
-
 ;; @desc Post message for Guardians to observe and package in to VAA
 ;; @param payload: Raw data to send, specific to the contract sending the message
 ;; @param nonce: 32-bit nonce set by emitter
@@ -474,7 +471,8 @@
 ;; TODO: If we add a proxy contract in front of wormhole-core,
 ;; we will need to capture `contract-caller` there and pass it into this function
 (define-public (post-message (payload (buff 8192)) (nonce uint) (consistency-level-opt (optional uint)))
-  (let ((emitter contract-caller)
+  (let ((active (try! (check-active-deployment)))
+        (emitter contract-caller)
         (consistency-level (default-to DEFAULT_CONSISTENCY_LEVEL consistency-level-opt))
         (fee (var-get post-message-fee)))
     ;; `consistency-level` must fit into `u8` type
@@ -506,7 +504,8 @@
 ;;
 ;; @param vaa-bytes: VAA as raw bytes
 (define-public (set-message-fee (vaa-bytes (buff 8192)))
-  (let ((message (try! (parse-and-verify-set-message-fee vaa-bytes)))
+  (let ((active (try! (check-active-deployment)))
+        (message (try! (parse-and-verify-set-message-fee vaa-bytes)))
         (vaa (get vaa message))
         (fee (get fee (get payload vaa))))
 
@@ -595,7 +594,8 @@
 ;;
 ;; @param vaa-bytes: VAA as raw bytes
 (define-public (transfer-fees (vaa-bytes (buff 8192)))
-  (let ((message (try! (parse-and-verify-transfer-fees vaa-bytes)))
+  (let ((active (try! (check-active-deployment)))
+        (message (try! (parse-and-verify-transfer-fees vaa-bytes)))
         (vaa (get vaa message))
         (payload (get payload vaa))
         (amount (get amount payload))
@@ -694,7 +694,8 @@
 ;;
 ;; @param vaa-bytes: VAA as raw bytes
 (define-public (contract-upgrade (vaa-bytes (buff 8192)))
-  (let ((message (try! (parse-and-verify-contract-upgrade vaa-bytes)))
+  (let ((active (try! (check-active-deployment)))
+        (message (try! (parse-and-verify-contract-upgrade vaa-bytes)))
         (vaa (get vaa message))
         (payload (get payload vaa))
         (contract (get contract payload)))
@@ -971,3 +972,7 @@
 (define-private (set-state-contract-owner (core-contract principal))
   (contract-call? .wormhole-core-state-v1 set-active-wormhole-core-contract core-contract)
 )
+
+;; Get this contract's principla
+(define-private (get-contract-principal)
+  (as-contract tx-sender))
