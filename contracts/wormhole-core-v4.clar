@@ -8,7 +8,7 @@
 ;; Implements trait specified in wormhole-core-trait contract
 (impl-trait .wormhole-traits-v2.core-trait)
 (impl-trait .wormhole-traits-v2.governance-trait)
-(impl-trait .wormhole-traits-v2.state-transfer-trait)
+(impl-trait .wormhole-traits-v2.export-trait)
 
 ;;;; Constants
 
@@ -194,7 +194,7 @@
 ;; If we have recieved a ContractUpgrad VAA, this is the contract we are upgrading to
 (define-data-var successor-contract (optional principal) none)
 
-;; ----- DATA VARS BELOW THIS LINE MUST BE EXPORTED IN `export-state`! -----
+;; ----- DATA VARS BELOW THIS LINE MUST BE EXPORTED IN `get-exported-vars`! -----
 
 ;; Guardian Set Update uncompressed public keys invalid
 (define-data-var guardian-set-initialized bool false)
@@ -250,17 +250,15 @@
     (asserts! (is-active-deployment) ERR_DEPLOYMENT_STATE_NOT_ACTIVE)
     (ok true)))
 
-;; @desc Export state stored in *this* contract.
+;; @desc Get state stored in *this* contract that can be exported during contract upgrade.
 ;;       THIS DOES NOT EXPORT STATE FROM `wormhole-core-state` CONTRACT!
-;;
-;; NOTE: In future versions of this contract, `export-state` may require newer version of `export-trait` than `import-state`
-(define-read-only (export-state) {
+(define-read-only (get-exported-vars) {
   guardian-set-initialized: (var-get guardian-set-initialized),
   active-guardian-set-id: (var-get active-guardian-set-id),
   previous-guardian-set: (var-get previous-guardian-set),
   post-message-fee: (var-get post-message-fee)})
 
-;; @desc Call `export-state` and deactivate this contract
+;; @desc Call `get-exported-vars` and deactivate this contract
 ;;       Can only be called by successor contract
 ;;
 ;; Steps to update `wormhole-core` contract:
@@ -270,11 +268,17 @@
 ;;   4. When the successor contract calls `export-state`, this contract will set the state contract's owner to the sucessor contract and then deactivate
 ;;
 ;; NOTE: In future versions of this contract, `export-state` may require newer version of `export-trait` than `import-state`
-(define-public (transfer-state)
+(define-public (export-state)
   (begin
     (asserts! (is-eq (some contract-caller) (get-successor-contract)) ERR_UPG_UNAUTHORIZED)
     (var-set deployment-state DEPLOYMENT_STATE_DEPRECATED)
-    (ok (export-state))))
+    (ok (get-exported-vars))))
+
+;; @desc Call previous contract's `export-state` to initialize this contract
+;;
+;; NOTE: This requires using the previous contract's version of `export-trait`
+;;(define-public (import-state)
+;;)
 
 ;; @desc Parse a Verified Action Approval (VAA)
 ;; 

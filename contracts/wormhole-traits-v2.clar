@@ -72,11 +72,11 @@
 
 ;; This is for transferring the state of `wormhole-core` during updates
 ;; This does not cover `wormhold-core-state`, which is not upgradeable
-(define-trait state-transfer-trait
+(define-trait export-trait
   (
     ;; Returns current state of `wormhole-core` and deactivates contract
     ;; Fails if caller is not successor contract
-    (transfer-state () (response {
+    (export-state () (response {
       guardian-set-initialized: bool,
       active-guardian-set-id: uint,
       previous-guardian-set: {
