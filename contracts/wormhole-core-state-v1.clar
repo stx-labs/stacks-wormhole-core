@@ -16,8 +16,10 @@
 (define-constant ERR_STATE_UNINITIALIZED (err u10001))
 ;; Caller is not active core contract
 (define-constant ERR_STATE_UNAUTHORIZED (err u10002))
+;; Value not allowed
+(define-constant ERR_STATE_INVALID_VALUE (err u10003))
 ;; VAA has already been used
-(define-constant ERR_STATE_VAA_REPLAYED (err u10003))
+(define-constant ERR_STATE_VAA_REPLAYED (err u10004))
 
 ;;;; Data vars
 
@@ -53,19 +55,16 @@
 ;;
 ;; Returns:
 ;;   - (ok true):  If active core contract was changed
-;;   - (ok false): If new core contract was the same as current active core contract
-;;   - (err ...):  If caller does not have permission to set active core contract
+;;   - (err ...):  Active core contract was not changed
 (define-public (set-active-wormhole-core-contract (core-contract principal))
-  (let ((check (check-caller)))
+  (let ((current-core-contract (var-get active-wormhole-core-contract))
+        (new-core-contract (some core-contract)))
     ;; Assert that current active contract is uninitialized or matches caller
-    (asserts! (or (is-eq check (ok true)) (is-eq check ERR_STATE_UNINITIALIZED)) check)
-    (if (is-eq (var-get active-wormhole-core-contract) (some core-contract))
-      ;; New contract is same as current active contract
-      (ok false)
-      ;; New contract different from current active contract
-      (begin
-        (var-set active-wormhole-core-contract (some core-contract))
-        (ok true)))))
+    (asserts! (or (is-none current-core-contract) (is-eq (some contract-caller) current-core-contract)) ERR_STATE_UNAUTHORIZED)
+    ;; Assert that new contract is different from current contract
+    (asserts! (not (is-eq new-core-contract current-core-contract)) ERR_STATE_INVALID_VALUE)
+    (var-set active-wormhole-core-contract new-core-contract)
+    (ok true)))
 
 ;; @desc Get next sequence # for emitter and mark it as used
 ;;       On success, returns `(ok sequence)` and increments emitter's sequence

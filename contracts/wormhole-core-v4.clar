@@ -149,14 +149,14 @@
 (define-constant ERR_UPG_CHECK_CHAIN (err u1711))
 ;; Contract Upgrade: Unauthorized successor contract
 (define-constant ERR_UPG_UNAUTHORIZED (err u1712))
-;; Contract Upgrade: Tried to initialize new contract more than once
-(define-constant ERR_UPG_ALREADY_INITIALIZED (err u1713))
 
 ;; Wormhole Governance: Message not from authorized chain/emitter
 (define-constant ERR_GOV_CHECK_EMITTER (err u1801))
 
 ;; Deployment State: This deployment is not the active core contract
-(define-constant ERR_DEPLOYMENT_STATE_NOT_ACTIVE (err u1702))
+(define-constant ERR_DEPLOYMENT_STATE_NOT_ACTIVE (err u1901))
+;; Deployment State: Tried to initialize new contract more than once
+(define-constant ERR_DEPLOYMENT_STATE_ALREADY_INITIALIZED (err u1902))
 
 ;; Wormhole Governance: emitting chain
 (define-constant GOV_EMITTING_CHAIN u1)
@@ -221,22 +221,17 @@
 
 ;; @desc Initialize the state contract
 ;;       Only needs to be called once, when the state contract is first deployed
-;;       It is safe to call repeatedly but will have no effect
 ;;       State contract must be initialized before calling any other functions in this contract
 ;;
 ;; Returns
 ;;  - (ok true):  State was initialized
-;;  - (ok false): State was already initialized
-;;  - (err ...):  Permissions or other error
-(define-public (initialize-state-contract)
-  ;; The only time this function will ever return `(ok true)` is on the first call from any version of `wormhole-core`
-  (if (try! (set-state-contract-owner (get-contract-principal)))
-    ;; This is the initial deployment of `wormhole-core` and the first time ever calling this
-    (begin
-      (var-set deployment-state DEPLOYMENT_STATE_ACTIVE)
-      (ok true))
-    ;; This is not the initial deployment, and `initialized` should be set when importing data
-    (ok false)))
+;;  - (err ...):  Already initialized or permissions error
+(define-public (initialize-state)
+  (begin
+    (try! (set-state-contract-owner (get-contract-principal)))
+    ;; This is the initial deployment of `wormhole-core`
+    (var-set deployment-state DEPLOYMENT_STATE_ACTIVE)
+    (ok true)))
 
 ;; @desc Get successor contract
 (define-read-only (get-successor-contract)
@@ -264,7 +259,7 @@
   previous-guardian-set: (var-get previous-guardian-set),
   post-message-fee: (var-get post-message-fee)})
 
-;; @desc Deactivate this contract and return its (transferrable) state
+;; @desc Deactivate this contract, transfer state contract ownership, and return this contract's state
 ;;       Can only be called by successor contract
 ;;
 ;; Steps to update `wormhole-core` contract:
@@ -293,11 +288,11 @@
 
 ;; @desc Call previous contract's `export-state` to initialize this contract
 ;;
-;; NOTE: This requires using the previous contract's version of `export-trait`
+;; NOTE: This uses the previous contract's version of `export-trait`
 (define-public (import-state (previous-contract <previous-export-trait>))
   (begin
     ;; Only allow importing state once
-    (asserts! (is-eq (get-deployment-state) DEPLOYMENT_STATE_UNITIALIZED) ERR_UPG_ALREADY_INITIALIZED)
+    (asserts! (is-eq (get-deployment-state) DEPLOYMENT_STATE_UNITIALIZED) ERR_DEPLOYMENT_STATE_ALREADY_INITIALIZED)
     (let ((previous-state (try! (contract-call? previous-contract export-state))))
       ;; Import state from previous contract
       (var-set guardian-set-initialized (get guardian-set-initialized previous-state))

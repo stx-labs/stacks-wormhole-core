@@ -39,5 +39,5 @@ export class WormholeCore {
 export class WormholeCoreState {
   static readonly CONTRACT_NAME = "wormhole-core-state-v1";
   // Must match what is in `$(CONTRACT_NAME}.clar`
-  static readonly ERR_STATE_VAA_REPLAYED = 10003;
+  static readonly ERR_STATE_VAA_REPLAYED = 10004;
 }
