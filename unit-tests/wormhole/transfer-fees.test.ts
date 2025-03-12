@@ -126,6 +126,23 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-transfer-fees-payload failure`, 
     expect(res.result).toBeErr(Cl.uint(WC.ERR_TXF_CHECK_CHAIN));
   });
 
+  it("should fail if `recipient` address does not match this network", () => {
+    const payload = wormhole.serializeTransferFeesVaaPayloadToBuffer(
+      WC.ACTION_TRANSFER_FEES,
+      WC.EXPECTED_CHAIN_ID,
+      100,
+      "SPE6SKFFBSW9ASG6SNPG31T4NA1QEY3GJ96TK6TF",
+    );
+
+    const res = simnet.callReadOnlyFn(
+      WC.CONTRACT_NAME,
+      `parse-and-verify-transfer-fees-payload`,
+      [Cl.buffer(Uint8Array.from(payload))],
+      sender,
+    );
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_TXF_CHECK_RECIPIENT_ADDRESS));
+  });
+
   it.skip("should fail if payload is larger than expected", () => {
     let payload = wormhole.serializeTransferFeesVaaPayloadToBuffer(
       WC.ACTION_TRANSFER_FEES,
