@@ -455,6 +455,7 @@ export namespace wormhole {
     "hex",
   );
 
+  export const validContractUpgradeModule = coreModule;
   export const validGuardianRotationModule = coreModule;
   export const validSetMessageFeeModule = coreModule;
   export const validTransferFeesModule = coreModule;
@@ -488,6 +489,40 @@ export namespace wormhole {
     for (let guardian of keyChain) {
       components.push(guardian.ethereumAddress);
     }
+
+    return Buffer.concat(components.map((x) => Uint8Array.from(x)));
+  };
+
+  // Serialize payload for a ContractUpgrade VAA
+  //
+  // Wire format reminder:
+  // ===========================
+  // [32]byte    module     (Module, should be "Core")
+  // u8          action     (Action type, `4` for TransferFees)
+  // u16         chain      (Blockchain ID which this message is intended for)
+  // principal   contract   (Successor contract)
+  //
+  // See also: https://github.com/wormhole-foundation/wormhole/blob/main/whitepapers/0004_message_publishing.md
+  export const serializeContractUpgradeVaaPayloadToBuffer = (
+    action: number,
+    chain: number,
+    contract: string,
+    module = validSetMessageFeeModule,
+  ) => {
+    const components = [];
+    components.push(module);
+
+    let v = Buffer.alloc(1);
+    v.writeUint8(action, 0);
+    components.push(v);
+
+    v = Buffer.alloc(2);
+    v.writeUInt16BE(chain, 0);
+    components.push(v);
+
+    // Encode `contract` as Stacks wire format
+    v = Buffer.from(Cl.serialize(Cl.principal(contract)));
+    components.push(v);
 
     return Buffer.concat(components.map((x) => Uint8Array.from(x)));
   };

@@ -130,6 +130,8 @@
 (define-constant ERR_TXF_CHECK_ACTION (err u1610))
 ;; Transfer Fees: `chain` does not match this blockchain
 (define-constant ERR_TXF_CHECK_CHAIN (err u1611))
+;; Transfer Fees: Recipient address is valid on this network
+(define-constant ERR_TXF_CHECK_RECIPIENT_ADDRESS (err u1612))
 
 ;; Contract Upgrade: error parsing `module`
 (define-constant ERR_UPG_PARSING_MODULE (err u1701))
@@ -147,8 +149,10 @@
 (define-constant ERR_UPG_CHECK_ACTION (err u1710))
 ;; Contract Upgrade: `chain` does not match this blockchain
 (define-constant ERR_UPG_CHECK_CHAIN (err u1711))
+;; Contract Upgrade: Contract address is valid on this network
+(define-constant ERR_UPG_CHECK_CONTRACT_ADDRESS (err u1712))
 ;; Contract Upgrade: Unauthorized successor contract
-(define-constant ERR_UPG_UNAUTHORIZED (err u1712))
+(define-constant ERR_UPG_UNAUTHORIZED (err u1713))
 
 ;; Wormhole Governance: Message not from authorized chain/emitter
 (define-constant ERR_GOV_CHECK_EMITTER (err u1801))
@@ -666,6 +670,9 @@
     ;; Ensure that this message is addressed to this chain
     (asserts! (is-eq (get value cursor-chain) (buff-to-uint-be EXPECTED_CHAIN_ID))
       ERR_TXF_CHECK_CHAIN)
+    ;; Check recipient address is valid on this network
+    (asserts! (is-standard recipient)
+      ERR_TXF_CHECK_RECIPIENT_ADDRESS)
 
     ;; -- Checks Passed, Return Parsed Payload ---
     (ok {
@@ -756,6 +763,9 @@
     ;; Ensure that this message is addressed to this chain
     (asserts! (is-eq (get value cursor-chain) (buff-to-uint-be EXPECTED_CHAIN_ID))
       ERR_UPG_CHECK_CHAIN)
+    ;; Check contract address is valid on this network
+    (asserts! (is-standard contract)
+      ERR_UPG_CHECK_CONTRACT_ADDRESS)
 
     ;; -- Checks Passed, Return Parsed Payload ---
     (ok {

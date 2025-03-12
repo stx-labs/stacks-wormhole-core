@@ -14,6 +14,7 @@ export class WormholeCore {
   // Must match what is in `$(CONTRACT_NAME}.clar`
   static readonly EXPECTED_CHAIN_ID = 0xc377; // Value for testnet/devnet/simnet
   static readonly DEFAULT_CONSISTENCY_LEVEL = 0;
+  static readonly ACTION_CONTRACT_UPGRADE = 1;
   static readonly ACTION_SET_MESSAGE_FEE = 3;
   static readonly ACTION_TRANSFER_FEES = 4;
 
@@ -31,6 +32,18 @@ export class WormholeCore {
   static readonly ERR_TXF_CHECK_MODULE = 1609;
   static readonly ERR_TXF_CHECK_ACTION = 1610;
   static readonly ERR_TXF_CHECK_CHAIN = 1611;
+  static readonly ERR_TXF_CHECK_RECIPIENT_ADDRESS = 1612;
+
+  static readonly ERR_UPG_PARSING_MODULE = 1701;
+  static readonly ERR_UPG_PARSING_ACTION = 1702;
+  static readonly ERR_UPG_PARSING_CHAIN = 1703;
+  static readonly ERR_UPG_PARSING_CONTRACT = 1706;
+  static readonly ERR_UPG_CHECK_OVERLAY = 1707;
+  static readonly ERR_UPG_CHECK_MODULE = 1709;
+  static readonly ERR_UPG_CHECK_ACTION = 1710;
+  static readonly ERR_UPG_CHECK_CHAIN = 1711;
+  static readonly ERR_UPG_CHECK_CONTRACT_ADDRESS = 1712;
+  static readonly ERR_UPG_UNAUTHORIZED = 1713;
 
   static readonly ERR_GOV_CHECK_EMITTER = 1801;
 }
