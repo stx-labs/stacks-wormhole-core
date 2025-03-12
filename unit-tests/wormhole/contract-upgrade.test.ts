@@ -1,6 +1,6 @@
 import { Cl } from "@stacks/transactions";
 import { expect, describe, beforeEach } from "vitest";
-import { it, fc } from "@fast-check/vitest";
+import { it } from "@fast-check/vitest";
 import { wormhole } from "./helpers";
 import { hexToBytes } from "@noble/hashes/utils";
 import { WormholeCore as WC } from "./constants";
@@ -112,6 +112,22 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload failure
     expect(res.result).toBeErr(Cl.uint(WC.ERR_UPG_CHECK_CONTRACT_ADDRESS));
   });
 
+  it("should fail if `contract` address is a standard principal", () => {
+    const payload = wormhole.serializeContractUpgradeVaaPayloadToBuffer(
+      WC.ACTION_CONTRACT_UPGRADE,
+      WC.EXPECTED_CHAIN_ID,
+      "ST1EYXDYXB4DD7WJC1QS7GZC35NT5CG35QSCZ08Q2",
+    );
+
+    const res = simnet.callReadOnlyFn(
+      WC.CONTRACT_NAME,
+      `parse-and-verify-contract-upgrade-payload`,
+      [Cl.buffer(Uint8Array.from(payload))],
+      sender,
+    );
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_UPG_CHECK_CONTRACT_ADDRESS));
+  });
+
   it.skip("should fail if payload is larger than expected", () => {
     let payload = wormhole.serializeContractUpgradeVaaPayloadToBuffer(
       WC.ACTION_CONTRACT_UPGRADE,
@@ -132,8 +148,6 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload failure
     );
     expect(res.result).toBeErr(Cl.uint(WC.ERR_UPG_CHECK_OVERLAY));
   });
-
-  // TODO: Payload too small
 });
 
 describe.skip(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {

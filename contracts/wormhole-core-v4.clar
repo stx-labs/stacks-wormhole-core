@@ -130,7 +130,7 @@
 (define-constant ERR_TXF_CHECK_ACTION (err u1610))
 ;; Transfer Fees: `chain` does not match this blockchain
 (define-constant ERR_TXF_CHECK_CHAIN (err u1611))
-;; Transfer Fees: Recipient address is valid on this network
+;; Transfer Fees: `recipient` is not a valid address on this network
 (define-constant ERR_TXF_CHECK_RECIPIENT_ADDRESS (err u1612))
 
 ;; Contract Upgrade: error parsing `module`
@@ -149,7 +149,7 @@
 (define-constant ERR_UPG_CHECK_ACTION (err u1710))
 ;; Contract Upgrade: `chain` does not match this blockchain
 (define-constant ERR_UPG_CHECK_CHAIN (err u1711))
-;; Contract Upgrade: Contract address is valid on this network
+;; Contract Upgrade: `contract` is not valid contract address on this network
 (define-constant ERR_UPG_CHECK_CONTRACT_ADDRESS (err u1712))
 ;; Contract Upgrade: Unauthorized successor contract
 (define-constant ERR_UPG_UNAUTHORIZED (err u1713))
@@ -748,7 +748,9 @@
         (action (get value cursor-action))
         (chain (get value cursor-chain))
         (contract (unwrap! (from-consensus-buff? principal contract-slice)
-          ERR_UPG_PARSING_CONTRACT)))
+          ERR_UPG_PARSING_CONTRACT))
+        (contract-parts (unwrap! (principal-destruct? contract)
+          ERR_UPG_CHECK_CONTRACT_ADDRESS)))
 
     ;; --- Validate Message Data ---
     ;; Check no extra bytes in buffer
@@ -763,8 +765,8 @@
     ;; Ensure that this message is addressed to this chain
     (asserts! (is-eq (get value cursor-chain) (buff-to-uint-be EXPECTED_CHAIN_ID))
       ERR_UPG_CHECK_CHAIN)
-    ;; Check contract address is valid on this network
-    (asserts! (is-standard contract)
+    ;; Check we have a contract principal and not a standard principal
+    (asserts! (is-some (get name contract-parts))
       ERR_UPG_CHECK_CONTRACT_ADDRESS)
 
     ;; -- Checks Passed, Return Parsed Payload ---
