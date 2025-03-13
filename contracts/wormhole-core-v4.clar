@@ -268,12 +268,13 @@
 ;;   2. Governance contract publishes VAA with address of updated `wormhole-core` contract
 ;;   3. Someone (anyone) calls `contract-upgrade` with the VAA
 ;;   4. `contract-upgrade` will validate the VAA and record the address of the new contract
-;;   5. Someone (anyone) calls new contract's `import-state` to initialize it
+;;   5. Someone (anyone) calls new contract's `import-state` with the old contract's address to initialize it
 ;;   6. New contract's `import-state` calls old contract's `export-state`, which does the following:
-;;     a. Transfer ownership of `wormhole-state-core` contract
-;;     b. Sets it's internal state as "deactivated"
-;;     c. Transfer all STX owned by this contract to new contract
-;;     d. Returns old contract's exportable state variables
+;;     a. Checks that `contract-caller` is the one set by the ContractUpgrade VAA
+;;     b. Transfer ownership of `wormhole-state-core` contract
+;;     c. Sets it's internal state as "deprecated"
+;;     d. Transfer all STX owned by this contract to new contract
+;;     e. Returns old contract's exportable state variables
 ;;   7. New contract's `import-state` then does the following:
 ;;     a. Initializes it's state variables to those returned by `export-state`
 ;;     b. Sets it's internal state to "active"
@@ -287,7 +288,7 @@
     ;; Only the contract set by the ContractUpgrade VAA is allowed to call this function
     (asserts! (is-eq contract-caller new-contract) ERR_UPG_UNAUTHORIZED)
     ;; Transfer ownership of state contract
-    (try! (set-state-contract-owner contract-caller))
+    (try! (set-state-contract-owner new-contract))
     ;; If we have an STX balance, transfer to new contract
     (if (> stx-balance u0)
       (try! (as-contract (stx-transfer? stx-balance tx-sender new-contract)))
