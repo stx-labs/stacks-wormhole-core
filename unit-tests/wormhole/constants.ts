@@ -18,6 +18,10 @@ export class WormholeCore {
   static readonly ACTION_SET_MESSAGE_FEE = 3;
   static readonly ACTION_TRANSFER_FEES = 4;
 
+  static readonly DEPLOYMENT_STATE_UNITIALIZED = 0;
+  static readonly DEPLOYMENT_STATE_ACTIVE = 1;
+  static readonly DEPLOYMENT_STATE_DEPRECATED = 2;
+
   static readonly ERR_POST_OVERFLOW_CONSISTENCY_LEVEL = 1401;
   static readonly ERR_POST_OVERFLOW_NONCE = 1402;
 

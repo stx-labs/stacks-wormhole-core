@@ -57,7 +57,7 @@
 ;;   - (ok true):  If active core contract was changed
 ;;   - (err ...):  Active core contract was not changed
 (define-public (set-active-wormhole-core-contract (core-contract principal))
-  (let ((current-core-contract (var-get active-wormhole-core-contract))
+  (let ((current-core-contract (get-active-wormhole-core-contract))
         (new-core-contract (some core-contract)))
     ;; Assert that current active contract is uninitialized or matches caller
     (asserts! (or (is-none current-core-contract) (is-eq (some contract-caller) current-core-contract)) ERR_STATE_UNAUTHORIZED)
@@ -120,7 +120,7 @@
 ;; @desc Check that the calling contract is the currently active `wormhole-core` contract
 ;;       This must be called in any function that modifies state
 (define-read-only (check-caller)
-  (let ((allowed-caller (unwrap! (var-get active-wormhole-core-contract) ERR_STATE_UNINITIALIZED)))
+  (let ((allowed-caller (unwrap! (get-active-wormhole-core-contract) ERR_STATE_UNINITIALIZED)))
     (asserts! (is-eq contract-caller allowed-caller) ERR_STATE_UNAUTHORIZED)
     (ok true)))
 
@@ -136,3 +136,6 @@
 ;; @param set-id: Guardian set ID
 (define-read-only (guardian-sets-get (set-id uint))
   (map-get? guardian-sets set-id))
+
+(define-read-only (get-active-wormhole-core-contract)
+  (var-get active-wormhole-core-contract))

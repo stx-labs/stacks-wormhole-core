@@ -156,6 +156,7 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
   const sender = accounts.get("wallet_1")!;
   const contractPrinciple = `${deployer}.${WC.CONTRACT_NAME}`;
   const keychain = wormhole.generateGuardianSetKeychain(19);
+  const postMessageFee = 1_000_000_000_000n;
 
   const successorContract = {
     deployer: deployer,
@@ -207,16 +208,15 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
     );
 
     // Setup message fee
-    const fee = 1_000_000_000_000n;
     res = wormhole.setMessageFee(
       keychain,
       1,
-      fee,
+      postMessageFee,
       WC.EXPECTED_CHAIN_ID,
       WC.CONTRACT_NAME,
       deployer,
     );
-    expect(res.result).toBeOk(Cl.uint(fee));
+    expect(res.result).toBeOk(Cl.uint(postMessageFee));
 
     // Post message to fund contract
     const nonce = Cl.uint(0);
@@ -245,7 +245,7 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
       successorContract.principal(),
     )!;
 
-    expect(contractBalance).toEqual(fee);
+    expect(contractBalance).toEqual(postMessageFee);
     expect(successorContractBalance).toBeUndefined;
   });
 
@@ -276,13 +276,62 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
     const vaa = wormhole.serializeVaaToBuffer(header, body);
     res = simnet.callPublicFn(
       WC.CONTRACT_NAME,
-      `contract-upgrade`,
+      "contract-upgrade",
       [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );
     expect(res.result).toBeOk(Cl.principal(successorContract.principal()));
 
-    // TODO: Continue upgrade
+    // Finish upgrade by initializing new contract
+    res = simnet.callPublicFn(
+      successorContract.name,
+      "initialize",
+      [Cl.some(Cl.principal(`${deployer}.${WC.CONTRACT_NAME}`))],
+      sender,
+    );
+    expect(res.result).toBeOk(Cl.bool(true));
+
+    // Check STX balance was transferred
+    const stxBalances = simnet.getAssetsMap().get("STX")!;
+    const contractBalance = stxBalances.get(contractPrinciple)!;
+    const successorContractBalance = stxBalances.get(
+      successorContract.principal(),
+    )!;
+
+    expect(contractBalance).toEqual(0n);
+    expect(successorContractBalance).toEqual(postMessageFee);
+
+    // Check old contract deployment is not active
+    res = simnet.callReadOnlyFn(
+      WC.CONTRACT_NAME,
+      "is-active-deployment",
+      [],
+      sender,
+    );
+    expect(res.result).toEqual(Cl.bool(false));
+
+    // Check new contract deployment is active
+    res = simnet.callReadOnlyFn(
+      successorContract.name,
+      "is-active-deployment",
+      [],
+      sender,
+    );
+    expect(res.result).toEqual(Cl.bool(true));
+
+    // Check state owner changed
+    res = simnet.callReadOnlyFn(
+      "wormhole-core-state-v1",
+      "get-active-wormhole-core-contract",
+      [],
+      sender,
+    );
+    expect(res.result).toEqual(
+      Cl.some(Cl.principal(successorContract.principal())),
+    );
+
+    // TODO: Check we cannot use old contract
+    // TODO: Check we can use new contract
   });
 
   it("should fail if `emitter.chain` is invalid", () => {
@@ -306,7 +355,7 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
     const vaa = wormhole.serializeVaaToBuffer(header, body);
     const res = simnet.callPublicFn(
       WC.CONTRACT_NAME,
-      `contract-upgrade`,
+      "contract-upgrade",
       [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );
@@ -336,7 +385,7 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
     const vaa = wormhole.serializeVaaToBuffer(header, body);
     const res = simnet.callPublicFn(
       WC.CONTRACT_NAME,
-      `contract-upgrade`,
+      "contract-upgrade",
       [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );

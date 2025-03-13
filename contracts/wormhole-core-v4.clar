@@ -282,14 +282,15 @@
 (define-public (export-state)
   (let ((active (try! (check-active-deployment)))
         (contract-principal (get-contract-principal))
-        (stx-balance (stx-get-balance contract-principal)))
+        (stx-balance (stx-get-balance contract-principal))
+        (new-contract (unwrap! (get-successor-contract) ERR_UPG_UNAUTHORIZED)))
     ;; Only the contract set by the ContractUpgrade VAA is allowed to call this function
-    (asserts! (is-eq (some contract-caller) (get-successor-contract)) ERR_UPG_UNAUTHORIZED)
+    (asserts! (is-eq contract-caller new-contract) ERR_UPG_UNAUTHORIZED)
     ;; Transfer ownership of state contract
     (try! (set-state-contract-owner contract-caller))
     ;; If we have an STX balance, transfer to new contract
     (if (> stx-balance u0)
-      (try! (stx-transfer? stx-balance contract-principal contract-caller))
+      (try! (as-contract (stx-transfer? stx-balance tx-sender new-contract)))
       true)
     (var-set deployment-state DEPLOYMENT_STATE_DEPRECATED)
     (ok (get-exported-vars))))
