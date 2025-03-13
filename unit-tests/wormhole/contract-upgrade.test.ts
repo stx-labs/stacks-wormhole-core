@@ -343,7 +343,9 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
 
     // Check we can use new contract: Post a message and check sequence number
     const nonce = Cl.uint(0);
-    const message = Cl.buffer(new Uint8Array(1024));
+    const message = Cl.buffer(
+      Uint8Array.from(Buffer.from("48656C6C6F20576F726C6421", "hex")), // "Hello World!" in ASCII
+    );
     res = simnet.callPublicFn(
       successorContract.name,
       "post-message",

@@ -8,6 +8,7 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
   const accounts = simnet.getAccounts();
   const deployer = accounts.get("deployer")!;
   const sender = accounts.get("wallet_1")!;
+  const emitter = Cl.principal(sender);
 
   beforeEach(async () => {
     let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
@@ -15,7 +16,6 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
   });
 
   it("should emit message and increment `sequence`", () => {
-    const emitter = Cl.principal(sender);
     const payload = Cl.buffer(new Uint8Array(1024));
     const numMessages = 10;
 
@@ -42,7 +42,6 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
   });
 
   it("should allow for custom consistency level", () => {
-    const emitter = Cl.principal(sender);
     const payload = Cl.buffer(new Uint8Array(1024));
     const nonce = Cl.uint(111);
 
@@ -73,7 +72,6 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
   });
 
   it("should default to 0 if `consistency-level` not specified", () => {
-    const emitter = Cl.principal(sender);
     const payload = Cl.buffer(new Uint8Array(1024));
     const nonce = Cl.uint(111);
 
@@ -96,7 +94,6 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
   });
 
   it("should allow any 32-bit nonce", () => {
-    const emitter = Cl.principal(sender);
     const payload = Cl.buffer(new Uint8Array(1024));
     const consistencyLevel = Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL);
 
@@ -127,7 +124,6 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
   });
 
   it("should allow `nonce` reuse", () => {
-    const emitter = Cl.principal(sender);
     const payload = Cl.buffer(new Uint8Array(1024));
     const numMessages = 10;
     const nonce = Cl.uint(1);
@@ -164,7 +160,7 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
     );
     expect(res.result).toBeOk(
       Cl.tuple({
-        emitter: Cl.principal(sender),
+        emitter,
         nonce,
         sequence: Cl.uint(0),
         "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),
@@ -209,7 +205,6 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
   });
 
   it("should allow payload size of 8192 bytes", () => {
-    const emitter = Cl.principal(sender);
     const nonce = Cl.uint(5);
 
     // Create payload with random data
