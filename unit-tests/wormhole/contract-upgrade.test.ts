@@ -330,8 +330,44 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
       Cl.some(Cl.principal(successorContract.principal())),
     );
 
-    // TODO: Check we cannot use old contract
-    // TODO: Check we can use new contract
+    // Check we can use new contract: Set message fee to 0
+    const fee = 0n;
+    res = wormhole.setMessageFee(
+      keychain,
+      1,
+      fee,
+      WC.EXPECTED_CHAIN_ID,
+      successorContract.name,
+      sender,
+    );
+
+    // Check we can use new contract: Post a message and check sequence number
+    const nonce = Cl.uint(0);
+    const message = Cl.buffer(new Uint8Array(1024));
+    res = simnet.callPublicFn(
+      successorContract.name,
+      "post-message",
+      [message, nonce, Cl.none()],
+      sender,
+    );
+    expect(res.result).toBeOk(
+      Cl.tuple({
+        emitter: Cl.principal(sender),
+        nonce,
+        sequence: Cl.uint(1), // This is the second call to `post-message` by this sender
+        "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),
+        payload: message,
+      }),
+    );
+
+    // Check we can NOT use old contract: Posting message should fail
+    res = simnet.callPublicFn(
+      WC.CONTRACT_NAME,
+      "post-message",
+      [message, nonce, Cl.none()],
+      sender,
+    );
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_DEPLOYMENT_STATE_NOT_ACTIVE));
   });
 
   it("should fail if `emitter.chain` is invalid", () => {

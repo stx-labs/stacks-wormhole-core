@@ -50,6 +50,9 @@ export class WormholeCore {
   static readonly ERR_UPG_UNAUTHORIZED = 1713;
 
   static readonly ERR_GOV_CHECK_EMITTER = 1801;
+
+  static readonly ERR_DEPLOYMENT_STATE_NOT_ACTIVE = 1901;
+  static readonly ERR_DEPLOYMENT_STATE_ALREADY_INITIALIZED = 1902;
 }
 
 // Constants from `wormhole-core-state` Clarity contract
