@@ -20,8 +20,18 @@ path = 'contracts/wormhole-core-v4.clar'
 clarity_version = 3
 epoch = 3.0
 
-[contracts.wormhole-traits-v2]
-path = 'contracts/wormhole-traits-v2.clar'
+[contracts.wormhole-trait-core-v2]
+path = 'contracts/wormhole-trait-core-v2.clar'
+clarity_version = 3
+epoch = 3.0
+
+[contracts.wormhole-trait-governance-v1]
+path = 'contracts/wormhole-trait-governance-v1.clar'
+clarity_version = 3
+epoch = 3.0
+
+[contracts.wormhole-trait-export-v1]
+path = 'contracts/wormhole-trait-export-v1.clar'
 clarity_version = 3
 epoch = 3.0
 
