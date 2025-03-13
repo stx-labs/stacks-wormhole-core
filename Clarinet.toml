@@ -40,6 +40,16 @@ path = 'contracts/wormhole-core-state-v1.clar'
 clarity_version = 3
 epoch = 3.0
 
+[contracts.wormhole-trait-core-v2-proxy]
+path = 'contracts/wormhole-trait-core-v2-proxy.clar'
+clarity_version = 3
+epoch = 3.0
+
+[contracts.wormhole-trait-core-v2-trait-checker]
+path = 'contracts/wormhole-trait-core-v2-trait-checker.clar'
+clarity_version = 3
+epoch = 3.0
+
 [repl.analysis]
 passes = ["check_checker"]
 check_checker = { trusted_sender = false, trusted_caller = false, callee_filter = false }
