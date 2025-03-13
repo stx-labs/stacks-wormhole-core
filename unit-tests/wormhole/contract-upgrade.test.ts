@@ -150,17 +150,139 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload failure
   });
 });
 
-describe.skip(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
+describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
   const accounts = simnet.getAccounts();
   const deployer = accounts.get("deployer")!;
   const sender = accounts.get("wallet_1")!;
-  const contract =
-    "ST18JNZYRFDM14H9C8XETYJ29HMRGJDHZCQSB4X74.wormhole-core-v9000";
+  const contractPrinciple = `${deployer}.${WC.CONTRACT_NAME}`;
   const keychain = wormhole.generateGuardianSetKeychain(19);
 
+  const successorContract = {
+    deployer: deployer,
+    name: "wormhole-core-successor",
+    async code() {
+      const fs = require("fs/promises");
+      return await fs.readFile(`contracts/${WC.CONTRACT_NAME}.clar`, "utf8");
+    },
+    principal() {
+      return `${this.deployer}.wormhole-core-successor`;
+    },
+  };
+
+  // Before starting the test suite, we have to...
+  // - Initialize state contract
+  // - Set the guardian set
+  // - Set message fee rate
+  // - Post a message to fund contract
   beforeEach(async () => {
+    // Initialize state contract
     let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
     expect(res.result).toBeOk(Cl.bool(true));
+
+    // Setup guardians
+    let [result, vaaHeader, vaaBody] = wormhole.applyGuardianSetUpdate(
+      keychain,
+      1,
+      deployer,
+      WC.CONTRACT_NAME,
+    );
+    let [serializeVaaToClarityValue, _] = wormhole.serializeVaaToClarityValue(
+      vaaHeader as wormhole.VaaHeader,
+      vaaBody as wormhole.VaaBody,
+      keychain,
+    );
+
+    expect(result).toBeOk(
+      Cl.tuple({
+        result: Cl.tuple({
+          "guardians-eth-addresses": Cl.list(
+            keychain.map((g) => Cl.buffer(g.ethereumAddress)),
+          ),
+          "guardians-public-keys": Cl.list(
+            keychain.map((g) => Cl.buffer(g.uncompressedPublicKey)),
+          ),
+        }),
+        vaa: serializeVaaToClarityValue,
+      }),
+    );
+
+    // Setup message fee
+    const fee = 1_000_000_000_000n;
+    res = wormhole.setMessageFee(
+      keychain,
+      1,
+      fee,
+      WC.EXPECTED_CHAIN_ID,
+      WC.CONTRACT_NAME,
+      deployer,
+    );
+    expect(res.result).toBeOk(Cl.uint(fee));
+
+    // Post message to fund contract
+    const nonce = Cl.uint(0);
+    const consistencyLevel = Cl.uint(0);
+    const payload = Cl.buffer(new Uint8Array(1024));
+    res = simnet.callPublicFn(
+      WC.CONTRACT_NAME,
+      `post-message`,
+      [payload, nonce, Cl.some(consistencyLevel)],
+      sender,
+    );
+    expect(res.result).toBeOk(
+      Cl.tuple({
+        emitter: Cl.principal(sender),
+        nonce,
+        sequence: Cl.uint(0),
+        "consistency-level": consistencyLevel,
+        payload,
+      }),
+    );
+
+    // Check contract balance
+    const stxBalances = simnet.getAssetsMap().get("STX")!;
+    const contractBalance = stxBalances.get(contractPrinciple)!;
+    const successorContractBalance = stxBalances.get(
+      successorContract.principal(),
+    )!;
+
+    expect(contractBalance).toEqual(fee);
+    expect(successorContractBalance).toBeUndefined;
+  });
+
+  it("should upgrade to new contract and disable old contract", async () => {
+    // Publish successor contract
+    let res = simnet.deployContract(
+      successorContract.name,
+      await successorContract.code(),
+      null,
+      deployer,
+    );
+    expect(res.result).toBeBool(true);
+
+    // Construct and send ContractUpgrade VAA
+    const payload = wormhole.serializeContractUpgradeVaaPayloadToBuffer(
+      WC.ACTION_CONTRACT_UPGRADE,
+      WC.EXPECTED_CHAIN_ID,
+      successorContract.principal(),
+    );
+    const body = wormhole.buildValidVaaBodySpecs({
+      payload: Uint8Array.from(payload),
+      emitter: wormhole.GovernanceUpdateEmitter,
+    });
+    const header = wormhole.buildValidVaaHeader(keychain, body, {
+      version: 1,
+      guardianSetId: 1,
+    });
+    const vaa = wormhole.serializeVaaToBuffer(header, body);
+    res = simnet.callPublicFn(
+      WC.CONTRACT_NAME,
+      `contract-upgrade`,
+      [Cl.buffer(Uint8Array.from(vaa))],
+      sender,
+    );
+    expect(res.result).toBeOk(Cl.principal(successorContract.principal()));
+
+    // TODO: Continue upgrade
   });
 
   it("should fail if `emitter.chain` is invalid", () => {
@@ -171,7 +293,7 @@ describe.skip(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
     const payload = wormhole.serializeContractUpgradeVaaPayloadToBuffer(
       WC.ACTION_TRANSFER_FEES,
       WC.EXPECTED_CHAIN_ID,
-      contract,
+      successorContract.principal(),
     );
     const body = wormhole.buildValidVaaBodySpecs({
       payload: Uint8Array.from(payload),
@@ -201,7 +323,7 @@ describe.skip(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
     const payload = wormhole.serializeContractUpgradeVaaPayloadToBuffer(
       WC.ACTION_TRANSFER_FEES,
       WC.EXPECTED_CHAIN_ID,
-      contract,
+      successorContract.principal(),
     );
     const body = wormhole.buildValidVaaBodySpecs({
       payload: Uint8Array.from(payload),
@@ -214,7 +336,7 @@ describe.skip(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
     const vaa = wormhole.serializeVaaToBuffer(header, body);
     const res = simnet.callPublicFn(
       WC.CONTRACT_NAME,
-      `transfer-fees`,
+      `contract-upgrade`,
       [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );
