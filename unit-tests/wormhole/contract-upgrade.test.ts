@@ -321,7 +321,7 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
 
     // Check state owner changed
     res = simnet.callReadOnlyFn(
-      "wormhole-core-state-v1",
+      "wormhole-core-state",
       "get-active-wormhole-core-contract",
       [],
       sender,

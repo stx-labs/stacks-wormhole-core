@@ -379,7 +379,7 @@
       )
       ;; Ensure that the guardian-set-id is the active one or unexpired previous one
       (asserts! (try! (is-valid-guardian-set guardian-set-id)) ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY)
-    (let ((active-guardians (unwrap! (contract-call? .wormhole-core-state-v1 guardian-sets-get guardian-set-id) ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY))
+    (let ((active-guardians (unwrap! (contract-call? .wormhole-core-state guardian-sets-get guardian-set-id) ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY))
           (signatures-from-active-guardians (fold batch-check-active-public-keys (get recovered-public-keys message)
             {
                 active-guardians: active-guardians,
@@ -429,9 +429,9 @@
     (asserts! (>= (len result) u1) ERR_EMPTY_GUARDIAN_SET)
     ;; Skip this check to minimize state growth
     ;; We already check that `setId` is incrementing, and that is sufficient to prevent replay
-    ;;(try! (contract-call? .wormhole-core-state-v1 consume-governance-vaa (get vaa-body-hash message)))
+    ;;(try! (contract-call? .wormhole-core-state consume-governance-vaa (get vaa-body-hash message)))
     ;; Update storage
-    (try! (contract-call? .wormhole-core-state-v1 guardian-sets-set set-id result))
+    (try! (contract-call? .wormhole-core-state guardian-sets-set set-id result))
     (try! (set-new-guardian-set-id set-id))
     (var-set guardian-set-initialized true)
     ;; Emit Event
@@ -450,7 +450,7 @@
 
 (define-read-only (get-active-guardian-set) 
   (let ((set-id (var-get active-guardian-set-id))
-        (guardians (unwrap-panic (contract-call? .wormhole-core-state-v1 guardian-sets-get set-id))))
+        (guardians (unwrap-panic (contract-call? .wormhole-core-state guardian-sets-get set-id))))
       (ok {
         set-id: set-id,
         guardians: guardians
@@ -478,7 +478,7 @@
       true
     )
     
-    (let ((sequence-unchecked (try! (contract-call? .wormhole-core-state-v1 consume-emitter-sequence emitter)))
+    (let ((sequence-unchecked (try! (contract-call? .wormhole-core-state consume-emitter-sequence emitter)))
           ;; `sequence` must fit into `u64` type, otherwise saturate
           (sequence (if (<= sequence-unchecked MAX_VALUE_U64) sequence-unchecked MAX_VALUE_U64))
           (message {
@@ -504,7 +504,7 @@
 
     ;; --- Message has been validated, check if we can apply update ---
     ;; Check we are not re-processing an old message
-    (try! (contract-call? .wormhole-core-state-v1 consume-governance-vaa (get vaa-body-hash message)))
+    (try! (contract-call? .wormhole-core-state consume-governance-vaa (get vaa-body-hash message)))
 
     ;; --- Commit State ---
     (var-set post-message-fee fee)
@@ -596,7 +596,7 @@
 
     ;; --- Message has been validated, check if we can apply update ---
     ;; Check we are not re-processing an old message
-    (try! (contract-call? .wormhole-core-state-v1 consume-governance-vaa (get vaa-body-hash message)))
+    (try! (contract-call? .wormhole-core-state consume-governance-vaa (get vaa-body-hash message)))
 
     ;; --- Execute Action ---
     (try! (as-contract (stx-transfer? amount tx-sender recipient)))
@@ -698,7 +698,7 @@
 
     ;; --- Message has been validated, check if we can apply update ---
     ;; Check we are not re-processing an old message
-    (try! (contract-call? .wormhole-core-state-v1 consume-governance-vaa (get vaa-body-hash message)))
+    (try! (contract-call? .wormhole-core-state consume-governance-vaa (get vaa-body-hash message)))
 
     ;; --- Commit State ---
     ;; Save address and keep this contract active for now.
@@ -971,7 +971,7 @@
 
 ;; @desc Set which `wormhole-core` contract is allowed to use the state contract
 (define-private (set-state-contract-owner (core-contract principal))
-  (contract-call? .wormhole-core-state-v1 set-active-wormhole-core-contract core-contract)
+  (contract-call? .wormhole-core-state set-active-wormhole-core-contract core-contract)
 )
 
 ;; Get this contract's principla

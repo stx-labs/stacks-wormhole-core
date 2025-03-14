@@ -35,8 +35,8 @@ path = 'contracts/wormhole-trait-export-v1.clar'
 clarity_version = 3
 epoch = 3.0
 
-[contracts.wormhole-core-state-v1]
-path = 'contracts/wormhole-core-state-v1.clar'
+[contracts.wormhole-core-state]
+path = 'contracts/wormhole-core-state.clar'
 clarity_version = 3
 epoch = 3.0
 

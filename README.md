@@ -75,9 +75,9 @@ If the core contract set has already been deployed and there is state to preserv
 
 1. In general, you should only be updating `wormhole-core`
     1. Do not re-deploy trait or other contracts unless they have changed (and update version number if they have)
-    2. **Never** re-deploy `wormhole-core-state-v1`. This contract is not upgradeable. If you need additional state:
-        1. Use the key/value storage provided in `wormhole-core-state-v1`
-        2. Deploy a new permanent state contract, eg. `wormhole-core-state-v2`
+    2. **Never** re-deploy `wormhole-core-state`. This contract is not upgradeable. If you need additional state:
+        1. Use the key/value storage provided in `wormhole-core-state`
+        2. Deploy a new permanent state contract, eg. `wormhole-core-state-2`
 2. **If deploying from a different address than the initial deployment, hard-code the full principals of contracts from previous deployments into `contract-call?` functions**
 
 #### Deployment

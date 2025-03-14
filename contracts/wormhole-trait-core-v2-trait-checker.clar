@@ -66,6 +66,6 @@
     (contract-call? core-contract post-message payload nonce consistency-level-opt)))
 
 (define-read-only (check-active-wormhole-core-contract (expected-core-contract <core-trait>))
-  (let ((active-core-contract (unwrap! (contract-call? .wormhole-core-state-v1 get-active-wormhole-core-contract) ERR_TRAIT_CHECK_NO_ACTIVE_CONTRACT)))
+  (let ((active-core-contract (unwrap! (contract-call? .wormhole-core-state get-active-wormhole-core-contract) ERR_TRAIT_CHECK_NO_ACTIVE_CONTRACT)))
     (asserts! (is-eq (contract-of expected-core-contract) active-core-contract) ERR_TRAIT_CHECK_CONTRACT_MISMATCH)
     (ok expected-core-contract)))

@@ -1,14 +1,17 @@
-;; Title: wormhole-core-state
-;; Version: v1
+;; Title: wormhole-core-state-01
+;; Version: final
 ;; Check for latest version: https://github.com/hirosystems/stacks-wormhole-core#latest-version
 ;; Report an issue: https://github.com/hirosystems/stacks-wormhole-core/issues
 
 ;; Store the state for `wormhole-core`
-;; `wormhole-core` in intended to be upgradeable, but this contract is not.
-;; This contract is *specifically* meant for state that can grow unbounded.
-;; State with a finite size can be stored in `wormhole-core`,
-;; and we can use an import/export function to move that state when we get a ContractUpgrade VAA
-;; This contract should contain as little logic as possible, because it is not upgradeable
+;;
+;; THIS CONTRACT IS NOT UPGRADEABLE, so it should contain as little logic as possible
+;;
+;; This contract is *specifically* meant for state that can grow unbounded, and eventually too big to export
+;; State with a finite size is stored in `wormhole-core`, and transfered via import/export functions during an update
+;;
+;; This contract does not have a version in it's name because there cannot be different versions of it
+;; If you need additional state in the future, use `kv-store` or deploy a `wormhole-core-state-2` contract
 
 ;;;; Constants
 
