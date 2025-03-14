@@ -1,7 +1,7 @@
 ;; title: wormhole-trait-core-v2-trait-checker
 ;; version: v2
-;; summary: Checks contract proxied is valid `core` trait
-;; description: This is the backend for` wormhole-trait-core-v2-proxy`
+;; summary: Checks that `core` trait passed is valid and is active core contract
+;; description:
 ;;
 ;; =============================
 ;; Trait Checker Summary

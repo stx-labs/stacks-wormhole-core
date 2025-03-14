@@ -52,4 +52,40 @@ The scope of this contract is outlined [here](https://wormhole.com/docs/learn/in
 - Verifying VAAs against current Guardian set
 - Updating Guardian set
 - Formatting and emmitting event messages for the Watcher to use to create VAAs
+- Collecting fees for emitting messages
+- Upgrading core contract from VAA
+
+## Deployment
+
+This process will be different for the initial deployment, and slightly different for each update, depending on what has changed
+
+### Initial Deployment
+
+If there is no existing Wormhole state (in either the core or state contract) that needs to be preserved, follow this procedure:
+
+1. Deploy **all** contracts in `./contracts`
+2. Call `wormhole-core-v4::initialize` with argument `(none)`
+3. Relayer must pass GuardianSetUpgrade VAA to `guardian-set-upgrade` to set the initial Guardian Set
+
+### Future Updates
+
+If the core contract set has already been deployed and there is state to preserve, follow this procedure:
+
+#### Preparation
+
+1. In general, you should only be updating `wormhole-core`
+    1. Do not re-deploy trait or other contracts unless they have changed (and update version number if they have)
+    2. **Never** re-deploy `wormhole-core-state-v1`. This contract is not upgradeable. If you need additional state:
+        1. Use the key/value storage provided in `wormhole-core-state-v1`
+        2. Deploy a new permanent state contract, eg. `wormhole-core-state-v2`
+2. **If deploying from a different address than the initial deployment, hard-code the full principals of contracts from previous deployments into `contract-call?` functions**
+
+#### Deployment
+
+1. Deploy new core contract and any additional contracts needed
+2. Governance contract will issue a ContractUpgrade VAA containing principal of newly deployed core contract
+3. Replayer must pass ContractUpgrade VAA to `contract-upgrade` in existing core contract
+4. Call `wormhole-core-v4::initialize` in new contract with argument `(some <previous-contract>)`
+
+
 
