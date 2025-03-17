@@ -219,7 +219,7 @@
 
 ;; WARNING: It's not a good idea to store maps in this contract!
 ;; There is no limit to how big they can get and this can make import/export during a ContractUpgrade operation impossible
-;; Please use a separate state contract like `wormhold-core-state` for maps!
+;; Please use a separate state contract like `wormhole-core-state` for maps!
 
 ;;;; Public functions
 
