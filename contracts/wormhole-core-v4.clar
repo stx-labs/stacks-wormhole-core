@@ -271,13 +271,14 @@
 ;;   5. Someone (anyone) calls new contract's `import-state` with the old contract's address to initialize it
 ;;   6. New contract's `import-state` calls old contract's `export-state`, which does the following:
 ;;     a. Checks that `contract-caller` is the one set by the ContractUpgrade VAA
-;;     b. Transfer ownership of `wormhole-state-core` contract
+;;     b. Initialize ownership transfer of `wormhole-state-core` contract
 ;;     c. Sets it's internal state as "deprecated"
 ;;     d. Transfer all STX owned by this contract to new contract
 ;;     e. Returns old contract's exportable state variables
 ;;   7. New contract's `import-state` then does the following:
-;;     a. Initializes it's state variables to those returned by `export-state`
-;;     b. Sets it's internal state to "active"
+;;     a. Finalize ownership transfer of `wormhole-state-core` contract
+;;     b. Initializes it's state variables to those returned by `export-state`
+;;     c. Sets it's internal state to "active"
 ;;
 ;; NOTE: In future versions of this contract, `export-state` may require newer version of `export-trait` than `import-state`
 (define-public (export-state)
@@ -288,13 +289,21 @@
     ;; Only the contract set by the ContractUpgrade VAA is allowed to call this function
     (asserts! (is-eq contract-caller new-contract) ERR_UPG_UNAUTHORIZED)
     ;; Transfer ownership of state contract
-    (try! (set-state-contract-owner new-contract))
+    (try! (contract-call? .wormhole-core-state start-ownership-transfer new-contract))
     ;; If we have an STX balance, transfer to new contract
     (if (> stx-balance u0)
       (try! (as-contract (stx-transfer? stx-balance tx-sender new-contract)))
       true)
     (var-set deployment-state DEPLOYMENT_STATE_DEPRECATED)
     (ok (get-exported-vars))))
+
+;; @desc If something goes wrong during the contract upgrade process, try calling this to cancel
+(define-public (cancel-contract-upgrade)
+  (let ((cancelled-transfer (try! (contract-call? .wormhole-core-state cancel-ownership-transfer))))
+    ;; Re-activate and cancel upgrade
+    (var-set deployment-state DEPLOYMENT_STATE_ACTIVE)
+    (var-set successor-contract none)
+    (ok cancelled-transfer)))
 
 ;; @desc Parse a Verified Action Approval (VAA)
 ;; 
@@ -969,11 +978,6 @@
   )
 )
 
-;; @desc Set which `wormhole-core` contract is allowed to use the state contract
-(define-private (set-state-contract-owner (core-contract principal))
-  (contract-call? .wormhole-core-state set-active-wormhole-core-contract core-contract)
-)
-
 ;; Get this contract's principla
 (define-private (get-contract-principal)
   (as-contract tx-sender))
@@ -986,7 +990,7 @@
 ;;  - (err ...):  Already initialized or permissions error
 (define-private (initialize-wormhole)
   (begin
-    (try! (set-state-contract-owner (get-contract-principal)))
+    (try! (contract-call? .wormhole-core-state initialize (get-contract-principal)))
     ;; This is the initial deployment of `wormhole-core`
     (var-set deployment-state DEPLOYMENT_STATE_ACTIVE)
     (ok true)))
@@ -999,6 +1003,8 @@
     ;; Only allow importing state once
     (asserts! (is-eq (get-deployment-state) DEPLOYMENT_STATE_UNITIALIZED) ERR_DEPLOYMENT_STATE_ALREADY_INITIALIZED)
     (let ((previous-state (try! (contract-call? previous-contract export-state))))
+      ;; Finalize ownership transfer of state contract
+      (try! (contract-call? .wormhole-core-state finalize-ownership-transfer))
       ;; Import state from previous contract
       (var-set guardian-set-initialized (get guardian-set-initialized previous-state))
       (var-set active-guardian-set-id (get active-guardian-set-id previous-state))

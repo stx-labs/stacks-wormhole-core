@@ -19,15 +19,25 @@
 (define-constant ERR_STATE_UNINITIALIZED (err u10001))
 ;; Caller is not active core contract
 (define-constant ERR_STATE_UNAUTHORIZED (err u10002))
+;; Attempted to initialize already initialized contract
+(define-constant ERR_STATE_ALREADY_INITIALIZED (err u10003))
 ;; Value not allowed
-(define-constant ERR_STATE_INVALID_VALUE (err u10003))
+(define-constant ERR_STATE_INVALID_VALUE (err u10004))
 ;; VAA has already been used
-(define-constant ERR_STATE_VAA_REPLAYED (err u10004))
+(define-constant ERR_STATE_VAA_REPLAYED (err u10005))
+;; No state transfer in progress
+(define-constant ERR_STATE_XFER_NOT_IN_PROGRESS (err u10006))
 
 ;;;; Data vars
 
-;; The currently active `wormhole-core` contract. This is the only contract allowed to modify the state in this contract
-(define-data-var active-wormhole-core-contract (optional principal) none)
+;; Only the owner of this contract can make changes to it's state
+;; This defines what the currently active `wormhole-core` contract is
+;; Should never be `none` once contract is initialized
+(define-data-var owner (optional principal) none)
+
+;; New owner we are transferring this contract to during `wormhole-core` update
+;; Should always be `none` except during upgrade process
+(define-data-var transferring-to (optional principal) none)
 
 ;;;; Data maps
 
@@ -54,19 +64,54 @@
 
 ;; ALL PUBLIC FUNCTIONS WHICH MODIFY STATE MUST CALL `check-caller`
 
-;; @desc Set which `wormhole-core` contract which is allowed to modify state in this contract
+;; @desc Initialize newly deployed contract with owner (active core contract)
 ;;
 ;; Returns:
-;;   - (ok true):  If active core contract was changed
-;;   - (err ...):  Active core contract was not changed
-(define-public (set-active-wormhole-core-contract (core-contract principal))
-  (let ((current-core-contract (get-active-wormhole-core-contract))
-        (new-core-contract (some core-contract)))
-    ;; Assert that current active contract is uninitialized or matches caller
-    (asserts! (or (is-none current-core-contract) (is-eq (some contract-caller) current-core-contract)) ERR_STATE_UNAUTHORIZED)
-    ;; Assert that new contract is different from current contract
-    (asserts! (not (is-eq new-core-contract current-core-contract)) ERR_STATE_INVALID_VALUE)
-    (var-set active-wormhole-core-contract new-core-contract)
+;;   - (ok true):  If state contract initialized
+;;   - (err ...):  If already initialized or invalid argument
+(define-public (initialize (core-contract principal))
+  (let ((contract-parts (unwrap! (principal-destruct? core-contract) ERR_STATE_INVALID_VALUE)))
+    ;; Can't call this function more than once
+    (asserts! (is-none (get-owner)) ERR_STATE_ALREADY_INITIALIZED)
+    ;; Check we have a contract principal and not a standard principal
+    (asserts! (is-some (get name contract-parts)) ERR_STATE_INVALID_VALUE)
+    ;; Checks passed! Contract is initialized
+    (var-set owner (some core-contract))
+    (ok true)))
+
+;; @desc: Start ownership transfer: Set successor contract which will be allowed to claim ownership of this contract
+;;        If successor fails to claim ownership, the transfer can be cancelled
+;;        The 2-step process prevents transferring ownership to a broken deployment and permenantly losing access to the state contract
+(define-public (start-ownership-transfer (new-owner principal))
+  (let ((current-owner (try! (check-caller-is-owner)))
+        (new-owner-parts (unwrap! (principal-destruct? new-owner) ERR_STATE_INVALID_VALUE)))
+    ;; Can't transfer to current owner
+    (asserts! (not (is-eq new-owner current-owner)) ERR_STATE_INVALID_VALUE)
+    ;; Check we have a contract principal and not a standard principal
+    (asserts! (is-some (get name new-owner-parts)) ERR_STATE_INVALID_VALUE)
+    ;; Checks passed! Ownership transfer in progress
+    (var-set transferring-to (some new-owner))
+    (ok true)))
+
+;; @desc Cancel ownership tranfer
+;;       Returns principal of contract to which ownership was being transferred
+(define-public (cancel-ownership-transfer)
+  (let ((cancelled-transfer (unwrap! (var-get transferring-to) ERR_STATE_XFER_NOT_IN_PROGRESS)))
+    (try! (check-caller-is-owner))
+    ;; Checks passed! Ownership transfer cancelled
+    (var-set transferring-to none)
+    (ok cancelled-transfer)))
+
+;; @desc: Finalize ownership transfer: Set successor contract as owner
+;;        Called by the contract we are transferring ownership to, NOT the current owner
+;;        This is the only public function that does NOT call `check-caller-is-owner`
+(define-public (finalize-ownership-transfer)
+  (let ((new-owner (unwrap! (var-get transferring-to) ERR_STATE_XFER_NOT_IN_PROGRESS)))
+    ;; Check that the contract caller is who we are transferring to
+    (asserts! (is-eq contract-caller new-owner) ERR_STATE_UNAUTHORIZED)
+    ;; Checks passed! Ownership transfer complete
+    (var-set owner (some new-owner))
+    (var-set transferring-to none)
     (ok true)))
 
 ;; @desc Get next sequence # for emitter and mark it as used
@@ -74,7 +119,7 @@
 ;;       On failure, returns (err ...)` does not increment sequence
 (define-public (consume-emitter-sequence (emitter principal))
   (begin
-    (try! (check-caller))
+    (try! (check-caller-is-owner))
     (let ((sequence (default-to u0 (get-emitter-sequence emitter))))
       (map-set emitter-sequence emitter (+ sequence u1))
       (ok sequence))))
@@ -86,7 +131,7 @@
 ;; @param hash: Governance VAA hash, computed by `(keccak256 (keccak256 vaa-body))`
 (define-public (consume-governance-vaa (hash (buff 32)))
   (begin
-    (try! (check-caller))
+    (try! (check-caller-is-owner))
     (asserts! (map-insert consumed-governance-vaa-hashes hash true) ERR_STATE_VAA_REPLAYED)
     (ok true)))
 
@@ -95,7 +140,7 @@
 ;;       If no error, returns `(ok bool)` with the result of `map-insert`
 (define-public (kv-store-insert (key (string-ascii 32)) (value (buff 4096)))
   (begin
-    (try! (check-caller))
+    (try! (check-caller-is-owner))
     (ok (map-insert kv-store key value))))
 
 ;; @desc Set raw buffer in key/value store using `map-set` (overwrites existing entries)
@@ -103,7 +148,7 @@
 ;;       If no error, returns `(ok bool)` with the result of `map-set`
 (define-public (kv-store-set (key (string-ascii 32)) (value (buff 4096)))
   (begin
-    (try! (check-caller))
+    (try! (check-caller-is-owner))
     (ok (map-set kv-store key value))))
 
 ;; @desc Set guardian set
@@ -113,19 +158,19 @@
 ;; @param guardian-set: List of 19 Guardian pubkeys
 (define-public (guardian-sets-set (set-id uint) (guardian-set (list 19 { compressed-public-key: (buff 33), uncompressed-public-key: (buff 64) })))
   (begin
-    (try! (check-caller))
+    (try! (check-caller-is-owner))
     (ok (map-set guardian-sets set-id guardian-set))))
 
 ;;;; Read-only functions
 
 ;; These functions do not modify state and can be called by anyone
 
-;; @desc Check that the calling contract is the currently active `wormhole-core` contract
+;; @desc Check that the calling contract is the owner (currently active `wormhole-core` contract)
 ;;       This must be called in any function that modifies state
-(define-read-only (check-caller)
-  (let ((allowed-caller (unwrap! (get-active-wormhole-core-contract) ERR_STATE_UNINITIALIZED)))
-    (asserts! (is-eq contract-caller allowed-caller) ERR_STATE_UNAUTHORIZED)
-    (ok true)))
+(define-read-only (check-caller-is-owner)
+  (let ((current-owner (unwrap! (get-owner) ERR_STATE_UNINITIALIZED)))
+    (asserts! (is-eq contract-caller current-owner) ERR_STATE_UNAUTHORIZED)
+    (ok current-owner)))
 
 (define-read-only (get-emitter-sequence (emitter principal))
   (map-get? emitter-sequence emitter))
@@ -140,5 +185,10 @@
 (define-read-only (guardian-sets-get (set-id uint))
   (map-get? guardian-sets set-id))
 
+;; @desc Returns contract owner, which is allowed to modify state
+(define-read-only (get-owner)
+  (var-get owner))
+
+;; @desc Returns currently active wormhole-core contract (defined by `owner`)
 (define-read-only (get-active-wormhole-core-contract)
-  (var-get active-wormhole-core-contract))
+  (get-owner))
