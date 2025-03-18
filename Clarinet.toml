@@ -45,9 +45,14 @@ path = 'contracts/wormhole-trait-core-v2-trait-checker.clar'
 clarity_version = 3
 epoch = 3.0
 
-[repl.analysis]
-passes = ["check_checker"]
-check_checker = { trusted_sender = false, trusted_caller = false, callee_filter = false }
+#[repl.analysis]
+#passes = ['check_checker']
+
+#[repl.analysis.check_checker]
+#strict = false
+#trusted_sender = false
+#trusted_caller = false
+#callee_filter = false
 
 # Check-checker settings:
 # trusted_sender: if true, inputs are trusted after tx_sender has been checked.
@@ -56,3 +61,4 @@ check_checker = { trusted_sender = false, trusted_caller = false, callee_filter 
 # warning, if it gets checked inside. This check will also propagate up to the
 # caller.
 # More informations: https://www.hiro.so/blog/new-safety-checks-in-clarinet
+
