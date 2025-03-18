@@ -36,9 +36,11 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-transfer-fees-payload success`, 
           Cl.tuple({
             module: Cl.buffer(Uint8Array.from(wormhole.coreModule)),
             action: Cl.uint(action),
-            amount: Cl.uint(fcAmount),
-            recipient: Cl.principal(recipient),
             chain: Cl.uint(chain),
+            payload: Cl.tuple({
+              amount: Cl.uint(fcAmount),
+              recipient: Cl.principal(recipient),
+            })
           }),
         );
       }),
@@ -66,7 +68,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-transfer-fees-payload failure`, 
       [Cl.buffer(Uint8Array.from(payload))],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(WC.ERR_TXF_CHECK_FEE));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_TXF_CHECK_AMOUNT));
   });
 
   it("should fail if `module` is not 'core'", () => {
@@ -89,7 +91,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-transfer-fees-payload failure`, 
       [Cl.buffer(Uint8Array.from(payload))],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(WC.ERR_TXF_CHECK_MODULE));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_CHECK_MODULE));
   });
 
   it("should fail if `action` does not correspond to Wormhole TransferFee message", () => {
@@ -106,7 +108,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-transfer-fees-payload failure`, 
       [Cl.buffer(Uint8Array.from(payload))],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(WC.ERR_TXF_CHECK_ACTION));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_CHECK_ACTION));
   });
 
   it("should fail if `chain` does not match this chain's ID", () => {
@@ -123,7 +125,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-transfer-fees-payload failure`, 
       [Cl.buffer(Uint8Array.from(payload))],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(WC.ERR_TXF_CHECK_CHAIN));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_CHECK_CHAIN));
   });
 
   it("should fail if `recipient` address does not match this network", () => {

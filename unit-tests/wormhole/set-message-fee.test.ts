@@ -34,8 +34,10 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-set-message-fee-payload success`
           Cl.tuple({
             module: Cl.buffer(Uint8Array.from(wormhole.coreModule)),
             action: Cl.uint(action),
-            fee: Cl.uint(fcFee),
             chain: Cl.uint(chain),
+            payload: Cl.tuple({
+              fee: Cl.uint(fcFee),
+            })
           }),
         );
       }),
@@ -83,7 +85,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-set-message-fee-payload failure`
       [Cl.buffer(Uint8Array.from(payload))],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(WC.ERR_SMF_CHECK_MODULE));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_CHECK_MODULE));
   });
 
   it("should fail if `action` does not correspond to Wormhole SetMessageFee message", () => {
@@ -99,7 +101,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-set-message-fee-payload failure`
       [Cl.buffer(Uint8Array.from(payload))],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(WC.ERR_SMF_CHECK_ACTION));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_CHECK_ACTION));
   });
 
   it("should fail if `chain` does not match this chain's ID", () => {
@@ -115,7 +117,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-set-message-fee-payload failure`
       [Cl.buffer(Uint8Array.from(payload))],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(WC.ERR_SMF_CHECK_CHAIN));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_CHECK_CHAIN));
   });
 
   it("should fail if payload is larger than expected", () => {

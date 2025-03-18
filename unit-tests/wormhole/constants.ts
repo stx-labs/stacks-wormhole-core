@@ -25,31 +25,31 @@ export class WormholeCore {
   static readonly ERR_POST_OVERFLOW_CONSISTENCY_LEVEL = 1401;
   static readonly ERR_POST_OVERFLOW_NONCE = 1402;
 
-  static readonly ERR_SMF_CHECK_OVERLAY = 1507;
-  static readonly ERR_SMF_CHECK_FEE = 1508;
-  static readonly ERR_SMF_CHECK_MODULE = 1509;
-  static readonly ERR_SMF_CHECK_ACTION = 1510;
-  static readonly ERR_SMF_CHECK_CHAIN = 1511;
+  static readonly ERR_GOV_PARSING_MODULE = 1501;
+  static readonly ERR_GOV_PARSING_ACTION = 1502;
+  static readonly ERR_GOV_PARSING_CHAIN = 1503;
+  static readonly ERR_GOV_PARSING_PAYLOAD = 1504;
+  static readonly ERR_GOV_CHECK_MODULE = 1505;
+  static readonly ERR_GOV_CHECK_ACTION = 1506;
+  static readonly ERR_GOV_CHECK_CHAIN = 1507;
+  static readonly ERR_GOV_CHECK_EMITTER = 1508;
 
-  static readonly ERR_TXF_CHECK_OVERLAY = 1607;
-  static readonly ERR_TXF_CHECK_FEE = 1608;
-  static readonly ERR_TXF_CHECK_MODULE = 1609;
-  static readonly ERR_TXF_CHECK_ACTION = 1610;
-  static readonly ERR_TXF_CHECK_CHAIN = 1611;
-  static readonly ERR_TXF_CHECK_RECIPIENT_ADDRESS = 1612;
+  static readonly ERR_SMF_PARSING_FEE_1 = 1601;
+  static readonly ERR_SMF_PARSING_FEE_2 = 1602;
+  static readonly ERR_SMF_CHECK_OVERLAY = 1603;
+  static readonly ERR_SMF_CHECK_FEE = 1604;
 
-  static readonly ERR_UPG_PARSING_MODULE = 1701;
-  static readonly ERR_UPG_PARSING_ACTION = 1702;
-  static readonly ERR_UPG_PARSING_CHAIN = 1703;
-  static readonly ERR_UPG_PARSING_CONTRACT = 1706;
-  static readonly ERR_UPG_CHECK_OVERLAY = 1707;
-  static readonly ERR_UPG_CHECK_MODULE = 1709;
-  static readonly ERR_UPG_CHECK_ACTION = 1710;
-  static readonly ERR_UPG_CHECK_CHAIN = 1711;
-  static readonly ERR_UPG_CHECK_CONTRACT_ADDRESS = 1712;
-  static readonly ERR_UPG_UNAUTHORIZED = 1713;
+  static readonly ERR_TXF_PARSING_AMOUNT_1 = 1701;
+  static readonly ERR_TXF_PARSING_AMOUNT_2 = 1702;
+  static readonly ERR_TXF_PARSING_RECIPIENT = 1703;
+  static readonly ERR_TXF_CHECK_OVERLAY = 1704;
+  static readonly ERR_TXF_CHECK_AMOUNT = 1705;
+  static readonly ERR_TXF_CHECK_RECIPIENT_ADDRESS = 1706;
 
-  static readonly ERR_GOV_CHECK_EMITTER = 1801;
+  static readonly ERR_UPG_PARSING_CONTRACT = 1801;
+  static readonly ERR_UPG_CHECK_OVERLAY = 1802;
+  static readonly ERR_UPG_CHECK_CONTRACT_ADDRESS = 1803;
+  static readonly ERR_UPG_UNAUTHORIZED = 1804;
 
   static readonly ERR_DEPLOYMENT_STATE_NOT_ACTIVE = 1901;
   static readonly ERR_DEPLOYMENT_STATE_ALREADY_INITIALIZED = 1902;

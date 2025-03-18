@@ -3,6 +3,11 @@
 ;; Check for latest version: https://github.com/hirosystems/stacks-wormhole-core#latest-version
 ;; Report an issue: https://github.com/hirosystems/stacks-wormhole-core/issues
 
+;; Contract Principals
+;; WARNING: THESE MAY NEED TO BE CHANGED WHEN UPDATING THE CORE CONTRACT!
+
+(define-constant PRINCIPAL_STATE_CONTRACT .wormhole-core-state)
+
 ;;;; Traits
 
 ;; Implements trait specified in wormhole-core-trait contract
@@ -87,75 +92,53 @@
 ;; Post Message: Sequence is too large
 (define-constant ERR_POST_OVERFLOW_SEQUENCE (err u1403))
 
-;; Set Message Fee: error parsing `module`
-(define-constant ERR_SMF_PARSING_MODULE (err u1501))
-;; Set Message Fee: error parsing `action`
-(define-constant ERR_SMF_PARSING_ACTION (err u1502))
-;; Set Message Fee: error parsing `chain`
-(define-constant ERR_SMF_PARSING_CHAIN (err u1503))
-;; Set Message Fee: error parsing first 128 bits of `fee`
-(define-constant ERR_SMF_PARSING_FEE_1 (err u1504))
-;; Set Message Fee: error parsing second 128 bits of `fee`
-(define-constant ERR_SMF_PARSING_FEE_2 (err u1505))
-;; Set Message Fee: overlay present in vaa bytes
-(define-constant ERR_SMF_CHECK_OVERLAY (err u1507))
-;; Set Message Fee: `fee` value too high
-(define-constant ERR_SMF_CHECK_FEE (err u1508))
-;; Set Message Fee: `module` is not expected value
-(define-constant ERR_SMF_CHECK_MODULE (err u1509))
-;; Set Message Fee: `action` is not expected value for this message type
-(define-constant ERR_SMF_CHECK_ACTION (err u1510))
-;; Set Message Fee: `chain` does not match this blockchain
-(define-constant ERR_SMF_CHECK_CHAIN (err u1511))
-
-;; Transfer Fees: error parsing `module`
-(define-constant ERR_TXF_PARSING_MODULE (err u1601))
-;; Transfer Fees: error parsing `action`
-(define-constant ERR_TXF_PARSING_ACTION (err u1602))
-;; Transfer Fees: error parsing `chain`
-(define-constant ERR_TXF_PARSING_CHAIN (err u1603))
-;; Transfer Fees: error parsing first 128 bits of `fee`
-(define-constant ERR_TXF_PARSING_AMOUNT_1 (err u1604))
-;; Transfer Fees: error parsing second 128 bits of `fee`
-(define-constant ERR_TXF_PARSING_AMOUNT_2 (err u1605))
-;; Transfer Fees: error parsing `recipient`
-(define-constant ERR_TXF_PARSING_RECIPIENT (err u1606))
-;; Transfer Fees: overlay present in vaa bytes
-(define-constant ERR_TXF_CHECK_OVERLAY (err u1607))
-;; Transfer Fees: `amount` value too high
-(define-constant ERR_TXF_CHECK_AMOUNT (err u1608))
-;; Transfer Fees: `module` is not expected value
-(define-constant ERR_TXF_CHECK_MODULE (err u1609))
-;; Transfer Fees: `action` is not expected value for this message type
-(define-constant ERR_TXF_CHECK_ACTION (err u1610))
-;; Transfer Fees: `chain` does not match this blockchain
-(define-constant ERR_TXF_CHECK_CHAIN (err u1611))
-;; Transfer Fees: `recipient` is not a valid address on this network
-(define-constant ERR_TXF_CHECK_RECIPIENT_ADDRESS (err u1612))
-
-;; Contract Upgrade: error parsing `module`
-(define-constant ERR_UPG_PARSING_MODULE (err u1701))
-;; Contract Upgrade: error parsing `action`
-(define-constant ERR_UPG_PARSING_ACTION (err u1702))
-;; Contract Upgrade: error parsing `chain`
-(define-constant ERR_UPG_PARSING_CHAIN (err u1703))
-;; Contract Upgrade: error parsing `contract`
-(define-constant ERR_UPG_PARSING_CONTRACT (err u1706))
-;; Contract Upgrade: overlay present in vaa bytes
-(define-constant ERR_UPG_CHECK_OVERLAY (err u1707))
-;; Contract Upgrade: `module` is not expected value
-(define-constant ERR_UPG_CHECK_MODULE (err u1709))
-;; Contract Upgrade: `action` is not expected value for this message type
-(define-constant ERR_UPG_CHECK_ACTION (err u1710))
-;; Contract Upgrade: `chain` does not match this blockchain
-(define-constant ERR_UPG_CHECK_CHAIN (err u1711))
-;; Contract Upgrade: `contract` is not valid contract address on this network
-(define-constant ERR_UPG_CHECK_CONTRACT_ADDRESS (err u1712))
-;; Contract Upgrade: Unauthorized successor contract
-(define-constant ERR_UPG_UNAUTHORIZED (err u1713))
-
+;; Wormhole Governance: error parsing `module`
+(define-constant ERR_GOV_PARSING_MODULE (err u1501))
+;; Wormhole Governance: error parsing `action`
+(define-constant ERR_GOV_PARSING_ACTION (err u1502))
+;; Wormhole Governance: error parsing `chain`
+(define-constant ERR_GOV_PARSING_CHAIN (err u1503))
+;; Wormhole Governance: error parsing governance VAA payload
+(define-constant ERR_GOV_PARSING_PAYLOAD (err u1504))
+;; Wormhole Governance: `module` is not expected value
+(define-constant ERR_GOV_CHECK_MODULE (err u1505))
+;; Wormhole Governance: `action` is not expected value for this message type
+(define-constant ERR_GOV_CHECK_ACTION (err u1506))
+;; Wormhole Governance: `chain` does not match this blockchain
+(define-constant ERR_GOV_CHECK_CHAIN (err u1507))
 ;; Wormhole Governance: Message not from authorized chain/emitter
-(define-constant ERR_GOV_CHECK_EMITTER (err u1801))
+(define-constant ERR_GOV_CHECK_EMITTER (err u1508))
+
+;; Set Message Fee: error parsing first 128 bits of `fee`
+(define-constant ERR_SMF_PARSING_FEE_1 (err u1601))
+;; Set Message Fee: error parsing second 128 bits of `fee`
+(define-constant ERR_SMF_PARSING_FEE_2 (err u1602))
+;; Set Message Fee: overlay present in vaa bytes
+(define-constant ERR_SMF_CHECK_OVERLAY (err u1603))
+;; Set Message Fee: `fee` value too high
+(define-constant ERR_SMF_CHECK_FEE (err u1604))
+
+;; Transfer Fees: error parsing first 128 bits of `fee`
+(define-constant ERR_TXF_PARSING_AMOUNT_1 (err u1701))
+;; Transfer Fees: error parsing second 128 bits of `fee`
+(define-constant ERR_TXF_PARSING_AMOUNT_2 (err u1702))
+;; Transfer Fees: error parsing `recipient`
+(define-constant ERR_TXF_PARSING_RECIPIENT (err u1703))
+;; Transfer Fees: overlay present in vaa bytes
+(define-constant ERR_TXF_CHECK_OVERLAY (err u1704))
+;; Transfer Fees: `amount` value too high
+(define-constant ERR_TXF_CHECK_AMOUNT (err u1705))
+;; Transfer Fees: `recipient` is not a valid address on this network
+(define-constant ERR_TXF_CHECK_RECIPIENT_ADDRESS (err u1706))
+
+;; Contract Upgrade: error parsing `contract`
+(define-constant ERR_UPG_PARSING_CONTRACT (err u1801))
+;; Contract Upgrade: overlay present in vaa bytes
+(define-constant ERR_UPG_CHECK_OVERLAY (err u1802))
+;; Contract Upgrade: `contract` is not valid contract address on this network
+(define-constant ERR_UPG_CHECK_CONTRACT_ADDRESS (err u1803))
+;; Contract Upgrade: Unauthorized successor contract
+(define-constant ERR_UPG_UNAUTHORIZED (err u1804))
 
 ;; Deployment State: This deployment is not the active core contract
 (define-constant ERR_DEPLOYMENT_STATE_NOT_ACTIVE (err u1901))
@@ -457,7 +440,7 @@
       }
     })))
 
-(define-read-only (get-active-guardian-set) 
+(define-read-only (get-active-guardian-set)
   (let ((set-id (var-get active-guardian-set-id))
         (guardians (unwrap-panic (contract-call? .wormhole-core-state guardian-sets-get set-id))))
       (ok {
@@ -509,7 +492,8 @@
   (let ((active (try! (check-active-deployment)))
         (message (try! (parse-and-verify-set-message-fee vaa-bytes)))
         (vaa (get vaa message))
-        (fee (get fee (get payload vaa))))
+        (gov-payload (get payload (get payload vaa)))
+        (fee (get fee gov-payload)))
 
     ;; --- Message has been validated, check if we can apply update ---
     ;; Check we are not re-processing an old message
@@ -540,56 +524,75 @@
       vaa-body-hash: (get vaa-body-hash message)
     })))
 
-;; @desc Parse and validate VAA payload for `set-message-fee`
+;; @desc Parse and validate the header of a VAA containing a governance payload
 ;;       Returns parsed payload as tuple if successful
 ;;
-;; Expected message format for VAA `payload`:
+;; Expected message format for VAA governance payload header:
 ;;   [32]byte    module     Should be "Core"
 ;;   u8          action     Should be `3` for this message type
 ;;   u16         chain      Chain this action is intended for
-;;   u256        fee        New fee to emit message (in uSTX)
 ;;
 ;; @param vaa-payload: VAA `payload` as raw bytes
-(define-read-only (parse-and-verify-set-message-fee-payload (vaa-payload (buff 8192)))
+(define-read-only (parse-and-verify-governance-payload-header (gov-action uint) (vaa-payload (buff 8192)))
   (let ((cursor-module (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-buff-32 { bytes: vaa-payload, pos: u0 })
-          ERR_SMF_PARSING_MODULE))
+          ERR_GOV_PARSING_MODULE))
         (cursor-action (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-8 (get next cursor-module))
-          ERR_SMF_PARSING_ACTION))
+          ERR_GOV_PARSING_ACTION))
         (cursor-chain (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-16 (get next cursor-action))
-          ERR_SMF_PARSING_CHAIN))
-        (cursor-fee-first-128-bits (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-128 (get next cursor-chain))
-          ERR_SMF_PARSING_FEE_1))
-        (cursor-fee-second-128-bits (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-128 (get next cursor-fee-first-128-bits))
-          ERR_SMF_PARSING_FEE_2))
+          ERR_GOV_PARSING_CHAIN))
+        (cursor-payload (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-buff-8192-max (get next cursor-chain) none)
+          ERR_GOV_PARSING_PAYLOAD))
         (module (get value cursor-module))
         (action (get value cursor-action))
-        (chain (get value cursor-chain))
-        (fee (get value cursor-fee-second-128-bits)))
+        (chain (get value cursor-chain)))
 
-    ;; --- Validate Message Data ---
-    ;; Check no extra bytes in buffer
-    (asserts! (is-eq (get pos (get next cursor-fee-second-128-bits)) (len vaa-payload))
-      ERR_SMF_CHECK_OVERLAY)
-    ;; Check fee fits into `u128`, because that's the max value clarity can represent
-    (asserts! (is-eq (get value cursor-fee-first-128-bits) u0)
-      ERR_SMF_CHECK_FEE)
     ;; Ensure that this message was emitted from authorized module
     (asserts! (is-eq module CORE_STRING_MODULE)
-      ERR_SMF_CHECK_MODULE)
-    ;; Ensure that this message is matching the adequate action
-    (asserts! (is-eq action GOV_ACTION_SET_MESSAGE_FEE)
-      ERR_SMF_CHECK_ACTION)
+      ERR_GOV_CHECK_MODULE)
+    ;; Ensure that this message is matching the expected action
+    (asserts! (is-eq action gov-action)
+      ERR_GOV_CHECK_ACTION)
     ;; Ensure that this message is addressed to this chain
-    (asserts! (is-eq (get value cursor-chain) (buff-to-uint-be EXPECTED_CHAIN_ID))
-      ERR_SMF_CHECK_CHAIN)
+    (asserts! (is-eq chain (buff-to-uint-be EXPECTED_CHAIN_ID))
+      ERR_GOV_CHECK_CHAIN)
 
     ;; --- Checks Passed, Return Parsed Payload ---
     (ok {
       module: module,
       action: action,
       chain: chain,
-      fee: fee,
+      payload: (get value cursor-payload),
     })))
+
+;; @desc Parse and validate VAA payload for `set-message-fee`
+;;       Returns parsed payload as tuple if successful
+;;
+;; Expected message format for SetMessageFee payload:
+;;   [54]byte    header     Governance payload header
+;;   u256        fee        New fee to emit message (in uSTX)
+;;
+;; @param vaa-payload: VAA `payload` as raw bytes
+(define-read-only (parse-and-verify-set-message-fee-payload (vaa-payload (buff 8192)))
+  (let ((gov-payload (try! (parse-and-verify-governance-payload-header GOV_ACTION_SET_MESSAGE_FEE vaa-payload)))
+        (cursor-fee-first-128-bits (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-128 { bytes: (get payload gov-payload), pos: u0 })
+          ERR_SMF_PARSING_FEE_1))
+        (cursor-fee-second-128-bits (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-128 (get next cursor-fee-first-128-bits))
+          ERR_SMF_PARSING_FEE_2)))
+
+    ;; --- Validate Message Data ---
+    ;; Check no extra bytes in buffer
+    (asserts! (is-eq (get pos (get next cursor-fee-second-128-bits)) (len (get payload gov-payload)))
+      ERR_SMF_CHECK_OVERLAY)
+    ;; Check fee fits into `u128`, because that's the max value clarity can represent
+    (asserts! (is-eq (get value cursor-fee-first-128-bits) u0)
+      ERR_SMF_CHECK_FEE)
+
+    ;; --- Checks Passed, Return Parsed Payload ---
+    (ok (merge gov-payload {
+      payload: {
+        fee: (get value cursor-fee-second-128-bits)
+      }
+    }))))
 
 ;; @desc Transfer message fees accumulated from `post-message` using VAA
 ;;       Returns `ok({amount, recipient})` if successful
@@ -599,9 +602,9 @@
   (let ((active (try! (check-active-deployment)))
         (message (try! (parse-and-verify-transfer-fees vaa-bytes)))
         (vaa (get vaa message))
-        (payload (get payload vaa))
-        (amount (get amount payload))
-        (recipient (get recipient payload)))
+        (gov-payload (get payload (get payload vaa)))
+        (amount (get amount gov-payload))
+        (recipient (get recipient gov-payload)))
 
     ;; --- Message has been validated, check if we can apply update ---
     ;; Check we are not re-processing an old message
@@ -638,30 +641,18 @@
 ;; @desc Parse and validate VAA payload for `transfer-fees`
 ;;       Returns parsed payload as tuple if successful
 ;;
-;; Expected message format for VAA `payload`:
-;;   [32]byte    module     Should be "Core"
-;;   u8          action     Should be `4` for this message type
-;;   u16         chain      Chain this action is intended for
-;;   u256        amount     Amount to send from collected message fees
+;; Expected message format for TransferFees payload:
+;;   [54]byte    header     Governance payload header
 ;;   ???         recipient  Recipient of message fees
 ;;
 ;; @param vaa-payload: VAA `payload` as raw bytes
 (define-read-only (parse-and-verify-transfer-fees-payload (vaa-payload (buff 8192)))
-  (let ((cursor-module (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-buff-32 { bytes: vaa-payload, pos: u0 })
-          ERR_TXF_PARSING_MODULE))
-        (cursor-action (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-8 (get next cursor-module))
-          ERR_TXF_PARSING_ACTION))
-        (cursor-chain (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-16 (get next cursor-action))
-          ERR_TXF_PARSING_CHAIN))
-        (cursor-amount-first-128-bits (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-128 (get next cursor-chain))
+  (let ((gov-payload (try! (parse-and-verify-governance-payload-header GOV_ACTION_TRANSFER_FEES vaa-payload)))
+        (cursor-amount-first-128-bits (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-128 { bytes: (get payload gov-payload), pos: u0 })
           ERR_TXF_PARSING_AMOUNT_1))
         (cursor-amount-second-128-bits (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-128 (get next cursor-amount-first-128-bits))
           ERR_TXF_PARSING_AMOUNT_2))
         (recipient-slice (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 slice (get next cursor-amount-second-128-bits) none))
-        (module (get value cursor-module))
-        (action (get value cursor-action))
-        (chain (get value cursor-chain))
-        (amount (get value cursor-amount-second-128-bits))
         (recipient (unwrap! (from-consensus-buff? principal recipient-slice)
           ERR_TXF_PARSING_RECIPIENT)))
 
@@ -672,27 +663,17 @@
     ;; Check amount fits into `u128`, because that's the max value clarity can represent
     (asserts! (is-eq (get value cursor-amount-first-128-bits) u0)
       ERR_TXF_CHECK_AMOUNT)
-    ;; Ensure that this message was emitted from authorized module
-    (asserts! (is-eq module CORE_STRING_MODULE)
-      ERR_TXF_CHECK_MODULE)
-    ;; Ensure that this message is matching the adequate action
-    (asserts! (is-eq action GOV_ACTION_TRANSFER_FEES)
-      ERR_TXF_CHECK_ACTION)
-    ;; Ensure that this message is addressed to this chain
-    (asserts! (is-eq (get value cursor-chain) (buff-to-uint-be EXPECTED_CHAIN_ID))
-      ERR_TXF_CHECK_CHAIN)
     ;; Check recipient address is valid on this network
     (asserts! (is-standard recipient)
       ERR_TXF_CHECK_RECIPIENT_ADDRESS)
 
-    ;; -- Checks Passed, Return Parsed Payload ---
-    (ok {
-      module: module,
-      action: action,
-      chain: chain,
-      amount: amount,
-      recipient: recipient,
-    })))
+    ;; --- Checks Passed, Return Parsed Payload ---
+    (ok (merge gov-payload {
+      payload: {
+        amount: (get value cursor-amount-second-128-bits),
+        recipient: recipient,
+      }
+    }))))
 
 ;; @desc Upgrade wormhole-core contract to new deployment
 ;;       Returns `ok(contract)` if successful
@@ -702,8 +683,8 @@
   (let ((active (try! (check-active-deployment)))
         (message (try! (parse-and-verify-contract-upgrade vaa-bytes)))
         (vaa (get vaa message))
-        (payload (get payload vaa))
-        (contract (get contract payload)))
+        (gov-payload (get payload (get payload vaa)))
+        (contract (get contract gov-payload)))
 
     ;; --- Message has been validated, check if we can apply update ---
     ;; Check we are not re-processing an old message
@@ -740,24 +721,14 @@
 ;; @desc Parse and validate VAA payload for `contract-upgrade`
 ;;       Returns parsed payload as tuple if successful
 ;;
-;; Expected message format for VAA `payload`:
-;;   [32]byte    module     Should be "Core"
-;;   u8          action     Should be `1` for this message type
-;;   u16         chain      Chain this action is intended for
+;; Expected message format for ContractUpgrade VAA payload:
+;;   [54]byte    header     Governance payload header
 ;;   ???         contract   New wormhole-core contract
 ;;
 ;; @param vaa-payload: VAA `payload` as raw bytes
 (define-read-only (parse-and-verify-contract-upgrade-payload (vaa-payload (buff 8192)))
-  (let ((cursor-module (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-buff-32 { bytes: vaa-payload, pos: u0 })
-          ERR_UPG_PARSING_MODULE))
-        (cursor-action (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-8 (get next cursor-module))
-          ERR_UPG_PARSING_ACTION))
-        (cursor-chain (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-16 (get next cursor-action))
-          ERR_UPG_PARSING_CHAIN))
-        (contract-slice (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 slice (get next cursor-chain) none))
-        (module (get value cursor-module))
-        (action (get value cursor-action))
-        (chain (get value cursor-chain))
+  (let ((gov-payload (try! (parse-and-verify-governance-payload-header GOV_ACTION_CONTRACT_UPGRADE vaa-payload)))
+        (contract-slice (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 slice { bytes: (get payload gov-payload), pos: u0 } none))
         (contract (unwrap! (from-consensus-buff? principal contract-slice)
           ERR_UPG_PARSING_CONTRACT))
         (contract-parts (unwrap! (principal-destruct? contract)
@@ -767,26 +738,16 @@
     ;; Check no extra bytes in buffer
     ;;(asserts! (is-eq (get pos (get next cursor-amount-second-128-bits)) (len vaa-payload))
     ;;  ERR_TXF_CHECK_OVERLAY)
-    ;; Ensure that this message was emitted from authorized module
-    (asserts! (is-eq module CORE_STRING_MODULE)
-      ERR_UPG_CHECK_MODULE)
-    ;; Ensure that this message is matching the adequate action
-    (asserts! (is-eq action GOV_ACTION_CONTRACT_UPGRADE)
-      ERR_UPG_CHECK_ACTION)
-    ;; Ensure that this message is addressed to this chain
-    (asserts! (is-eq (get value cursor-chain) (buff-to-uint-be EXPECTED_CHAIN_ID))
-      ERR_UPG_CHECK_CHAIN)
     ;; Check we have a contract principal and not a standard principal
     (asserts! (is-some (get name contract-parts))
       ERR_UPG_CHECK_CONTRACT_ADDRESS)
 
-    ;; -- Checks Passed, Return Parsed Payload ---
-    (ok {
-      module: module,
-      action: action,
-      chain: chain,
-      contract: contract,
-    })))
+    ;; --- Checks Passed, Return Parsed Payload ---
+    (ok (merge gov-payload {
+      payload: {
+        contract: contract,
+      }
+    }))))
 
 ;;;; Private functions
 
@@ -978,7 +939,7 @@
   )
 )
 
-;; Get this contract's principla
+;; Get this contract's principal
 (define-private (get-contract-principal)
   (as-contract tx-sender))
 

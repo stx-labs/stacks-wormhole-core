@@ -30,8 +30,10 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload success
       Cl.tuple({
         module: Cl.buffer(Uint8Array.from(wormhole.coreModule)),
         action: Cl.uint(action),
-        contract: Cl.principal(contract),
         chain: Cl.uint(chain),
+        payload: Cl.tuple({
+          contract: Cl.principal(contract),
+        })
       }),
     );
   });
@@ -61,7 +63,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload failure
       [Cl.buffer(Uint8Array.from(payload))],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(WC.ERR_UPG_CHECK_MODULE));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_CHECK_MODULE));
   });
 
   it("should fail if `action` does not correspond to Wormhole ContractUpgrade message", () => {
@@ -77,7 +79,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload failure
       [Cl.buffer(Uint8Array.from(payload))],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(WC.ERR_UPG_CHECK_ACTION));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_CHECK_ACTION));
   });
 
   it("should fail if `chain` does not match this chain's ID", () => {
@@ -93,7 +95,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload failure
       [Cl.buffer(Uint8Array.from(payload))],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(WC.ERR_UPG_CHECK_CHAIN));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_CHECK_CHAIN));
   });
 
   it("should fail if `contract` address does not match this network", () => {
