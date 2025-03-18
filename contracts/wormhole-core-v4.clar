@@ -428,10 +428,16 @@
     (var-set guardian-set-initialized true)
     ;; Emit Event
     (print { 
-      type: "guardians-set", 
-      action: "updated",
-      id: set-id,
-      data: { guardians-eth-addresses: eth-addresses, guardians-public-keys: uncompressed-public-keys }})
+      event: "governance-action", 
+      action: "GuardianSetUpgrade",
+      data: {
+        id: set-id,
+        guardians: {
+          eth-addresses: eth-addresses,
+          public-keys: uncompressed-public-keys,
+        }
+      }
+    })
     (ok {
       vaa: vaa,
       result: { 
@@ -481,7 +487,10 @@
             payload: payload
           }))
       ;; Message has passed checks, and we got a sequence number, so emit to watchers
-      (print message)
+      (print {
+        event: "post-message",
+        data: message
+      })
       (ok message))))
 
 ;; @desc Set message fee for `post-message` using VAA
@@ -502,7 +511,14 @@
     ;; --- Commit State ---
     (var-set post-message-fee fee)
 
-    ;; TODO: Emit event?
+    ;; Emit event
+    (print {
+      event: "governance-action",
+      action: "SetMessageFee",
+      data: {
+        fee: fee
+      }
+    })
     (ok fee)))
 
 ;; @desc Parse and validate VAA for updating `post-message` fee
@@ -520,7 +536,9 @@
 
     ;; Replace payload raw bytes with parsed payload
     (ok {
-      vaa: (merge vaa { payload: (try! (parse-and-verify-set-message-fee-payload (get payload vaa))) }),
+      vaa: (merge vaa {
+        payload: (try! (parse-and-verify-set-message-fee-payload (get payload vaa)))
+      }),
       vaa-body-hash: (get vaa-body-hash message)
     })))
 
@@ -613,7 +631,15 @@
     ;; --- Execute Action ---
     (try! (as-contract (stx-transfer? amount tx-sender recipient)))
 
-    ;; TODO: Emit event?
+    ;; Emit event
+    (print {
+      event: "governance-action",
+      action: "TransferFees",
+      data: {
+        recipient: recipient,
+        amount: amount
+      }
+    })
     (ok {
       recipient: recipient,
       amount: amount
@@ -634,7 +660,9 @@
 
     ;; Replace payload raw bytes with parsed payload
     (ok {
-      vaa: (merge vaa { payload: (try! (parse-and-verify-transfer-fees-payload (get payload vaa))) }),
+      vaa: (merge vaa {
+        payload: (try! (parse-and-verify-transfer-fees-payload (get payload vaa)))
+      }),
       vaa-body-hash: (get vaa-body-hash message)
     })))
 
@@ -696,7 +724,14 @@
     ;; This verifies new contract actually exists before this one becomes unusable
     (var-set successor-contract (some contract))
 
-    ;; TODO: Emit event?
+    ;; Emit event
+    (print {
+      event: "governance-action",
+      action: "ContractUpgrade",
+      data: {
+        contract: contract
+      }
+    })
     (ok contract)))
 
 ;; @desc Parse and validate VAA for updating `wormhole-core` contract
@@ -714,7 +749,9 @@
 
     ;; Replace payload raw bytes with parsed payload
     (ok {
-      vaa: (merge vaa { payload: (try! (parse-and-verify-contract-upgrade-payload (get payload vaa))) }),
+      vaa: (merge vaa {
+        payload: (try! (parse-and-verify-contract-upgrade-payload (get payload vaa)))
+      }),
       vaa-body-hash: (get vaa-body-hash message)
     })))
 
