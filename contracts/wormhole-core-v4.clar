@@ -400,7 +400,7 @@
           (try! (parse-and-verify-vaa guardian-set-vaa))
           (try! (parse-vaa guardian-set-vaa))))
         (vaa (get vaa message))
-        (vaa-body-hash (get vaa-body-hash message))
+        (hash (get vaa-body-hash message))
         (cursor-guardians-data (try! (parse-and-verify-guardians-set (get payload vaa))))
         (set-id (get new-index cursor-guardians-data))
         (eth-addresses (get guardians-eth-addresses cursor-guardians-data))
@@ -421,7 +421,7 @@
     (asserts! (>= (len result) u1) ERR_EMPTY_GUARDIAN_SET)
     ;; Skip this check to minimize state growth
     ;; We already check that `setId` is incrementing, and that is sufficient to prevent replay
-    ;;(try! (contract-call? .wormhole-core-state consume-governance-vaa (get vaa-body-hash message)))
+    ;;(try! (contract-call? .wormhole-core-state consume-governance-vaa hash))
     ;; Update storage
     (try! (contract-call? .wormhole-core-state guardian-sets-set set-id result))
     (try! (set-new-guardian-set-id set-id))
@@ -430,6 +430,7 @@
     (print { 
       event: "governance-action", 
       action: "GuardianSetUpgrade",
+      hash: hash,
       data: {
         id: set-id,
         guardians: {
@@ -501,12 +502,13 @@
   (let ((active (try! (check-active-deployment)))
         (message (try! (parse-and-verify-set-message-fee vaa-bytes)))
         (vaa (get vaa message))
+        (hash (get vaa-body-hash message))
         (gov-payload (get payload (get payload vaa)))
         (fee (get fee gov-payload)))
 
     ;; --- Message has been validated, check if we can apply update ---
     ;; Check we are not re-processing an old message
-    (try! (contract-call? .wormhole-core-state consume-governance-vaa (get vaa-body-hash message)))
+    (try! (contract-call? .wormhole-core-state consume-governance-vaa hash))
 
     ;; --- Commit State ---
     (var-set post-message-fee fee)
@@ -515,6 +517,7 @@
     (print {
       event: "governance-action",
       action: "SetMessageFee",
+      hash: hash,
       data: {
         fee: fee
       }
@@ -620,13 +623,14 @@
   (let ((active (try! (check-active-deployment)))
         (message (try! (parse-and-verify-transfer-fees vaa-bytes)))
         (vaa (get vaa message))
+        (hash (get vaa-body-hash message))
         (gov-payload (get payload (get payload vaa)))
         (amount (get amount gov-payload))
         (recipient (get recipient gov-payload)))
 
     ;; --- Message has been validated, check if we can apply update ---
     ;; Check we are not re-processing an old message
-    (try! (contract-call? .wormhole-core-state consume-governance-vaa (get vaa-body-hash message)))
+    (try! (contract-call? .wormhole-core-state consume-governance-vaa hash))
 
     ;; --- Execute Action ---
     (try! (as-contract (stx-transfer? amount tx-sender recipient)))
@@ -635,6 +639,7 @@
     (print {
       event: "governance-action",
       action: "TransferFees",
+      hash: hash,
       data: {
         recipient: recipient,
         amount: amount
@@ -711,12 +716,13 @@
   (let ((active (try! (check-active-deployment)))
         (message (try! (parse-and-verify-contract-upgrade vaa-bytes)))
         (vaa (get vaa message))
+        (hash (get vaa-body-hash message))
         (gov-payload (get payload (get payload vaa)))
         (contract (get contract gov-payload)))
 
     ;; --- Message has been validated, check if we can apply update ---
     ;; Check we are not re-processing an old message
-    (try! (contract-call? .wormhole-core-state consume-governance-vaa (get vaa-body-hash message)))
+    (try! (contract-call? .wormhole-core-state consume-governance-vaa hash))
 
     ;; --- Commit State ---
     ;; Save address and keep this contract active for now.
@@ -728,6 +734,7 @@
     (print {
       event: "governance-action",
       action: "ContractUpgrade",
+      hash: hash,
       data: {
         contract: contract
       }
