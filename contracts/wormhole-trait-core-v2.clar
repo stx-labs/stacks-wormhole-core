@@ -21,7 +21,17 @@
       vaa-body-hash: (buff 32)
     } uint))
     ;; Emit message for Guardians to observe
+    ;; Provided in this trait in case user wants to implement their own proxy logic
     (post-message ((buff 8192) uint (optional uint)) (response {
+      emitter: principal,
+      nonce: uint,                ;; Must fit into `u32`
+      sequence: uint,             ;; Must fit into `u64`
+      consistency-level: uint,    ;; Must fit into `u8`
+      payload: (buff 8192)
+    } uint))
+    ;; Emit message for Guardians to observe
+    ;; Can only called by *OUR* proxy contract!
+    (post-message-via-proxy ((buff 8192) uint (optional uint) principal) (response {
       emitter: principal,
       nonce: uint,                ;; Must fit into `u32`
       sequence: uint,             ;; Must fit into `u64`

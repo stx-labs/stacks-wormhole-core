@@ -63,7 +63,7 @@
 (define-public (post-message (core-contract <core-trait>) (payload (buff 8192)) (nonce uint) (consistency-level-opt (optional uint)))
   (begin
     (try! (check-active-wormhole-core-contract core-contract))
-    (contract-call? core-contract post-message payload nonce consistency-level-opt)))
+    (contract-call? core-contract post-message-via-proxy payload nonce consistency-level-opt contract-caller)))
 
 (define-read-only (check-active-wormhole-core-contract (expected-core-contract <core-trait>))
   (let ((active-core-contract (unwrap! (contract-call? .wormhole-core-state get-active-wormhole-core-contract) ERR_TRAIT_CHECK_NO_ACTIVE_CONTRACT)))

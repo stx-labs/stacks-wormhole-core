@@ -3,10 +3,18 @@
 ;; Check for latest version: https://github.com/hirosystems/stacks-wormhole-core#latest-version
 ;; Report an issue: https://github.com/hirosystems/stacks-wormhole-core/issues
 
+;; Contracts using the Wormhole protocol can interact directly with this contract, but it
+;; is recommended instead to interact with it via proxy (`wormhole-trait-core-v2-trait-checker`)
+;; Using the proxy allows you to use the latest version of `wormhole-core` without updating your contract code
+
 ;; Contract Principals
 ;; WARNING: THESE MAY NEED TO BE CHANGED WHEN UPDATING THE CORE CONTRACT!
 
-(define-constant PRINCIPAL_STATE_CONTRACT .wormhole-core-state)
+;; TODO: Use constant instead of hard-coding in `contract-call?`
+;;(define-constant PRINCIPAL_STATE_CONTRACT .wormhole-core-state)
+;; The contract that is allowed to act as a proxy and specify `emitter` to `post-message`
+;; This can be a constant because it will not change as long as the contract is active
+(define-constant PRINCIPAL_PROXY_CONTRACT .wormhole-trait-core-v2-trait-checker)
 
 ;;;; Traits
 
@@ -144,6 +152,9 @@
 (define-constant ERR_DEPLOYMENT_STATE_NOT_ACTIVE (err u1901))
 ;; Deployment State: Tried to initialize new contract more than once
 (define-constant ERR_DEPLOYMENT_STATE_ALREADY_INITIALIZED (err u1902))
+
+;; Proxy: Call not from allowed proxy contract
+(define-constant ERR_PROXY_UNAUTHORIZED (err u2001))
 
 ;; Wormhole Governance: emitting chain
 (define-constant GOV_EMITTING_CHAIN u1)
@@ -455,44 +466,25 @@
         guardians: guardians
       })))
 
-;; @desc Post message for Guardians to observe and package in to VAA
+;; @desc Post message for Wormhole Guardians from our proxy contract
+;;       Allows caller to set `emitter`, so ONLY allow calls from trusted proxy contract
+;;
 ;; @param payload: Raw data to send, specific to the contract sending the message
 ;; @param nonce: 32-bit nonce set by emitter
 ;; @param consistency-level-opt: Optional, use custom level instead of default
+;; @param emitter: Principal that proxy captured using `contract-caller`
+(define-public (post-message-via-proxy (payload (buff 8192)) (nonce uint) (consistency-level-opt (optional uint)) (emitter principal))
+  (begin
+    (asserts! (is-eq contract-caller PRINCIPAL_PROXY_CONTRACT) ERR_PROXY_UNAUTHORIZED)
+    (post-message-checked-emitter payload nonce consistency-level-opt emitter)))
+
+;; @desc Post message for Wormhole Guardians
 ;;
-;; TODO: If we add a proxy contract in front of wormhole-core,
-;; we will need to capture `contract-caller` there and pass it into this function
+;; @param payload: Raw data to send, specific to the contract sending the message
+;; @param nonce: 32-bit nonce set by emitter
+;; @param consistency-level-opt: Optional, use custom level instead of default
 (define-public (post-message (payload (buff 8192)) (nonce uint) (consistency-level-opt (optional uint)))
-  (let ((active (try! (check-active-deployment)))
-        (emitter contract-caller)
-        (consistency-level (default-to DEFAULT_CONSISTENCY_LEVEL consistency-level-opt))
-        (fee (var-get post-message-fee)))
-    ;; `consistency-level` must fit into `u8` type
-    (asserts! (<= consistency-level MAX_VALUE_U8) ERR_POST_OVERFLOW_CONSISTENCY_LEVEL)
-    ;; `nonce` must fit into `u32` type
-    (asserts! (<= nonce MAX_VALUE_U32) ERR_POST_OVERFLOW_NONCE)
-    ;; If a fee has been set, collect it
-    (if (> fee u0)
-      (try! (stx-transfer? fee tx-sender (get-contract-principal)))
-      true
-    )
-    
-    (let ((sequence-unchecked (try! (contract-call? .wormhole-core-state consume-emitter-sequence emitter)))
-          ;; `sequence` must fit into `u64` type, otherwise saturate
-          (sequence (if (<= sequence-unchecked MAX_VALUE_U64) sequence-unchecked MAX_VALUE_U64))
-          (message {
-            emitter: emitter,
-            nonce: nonce,
-            sequence: sequence,
-            consistency-level: consistency-level,
-            payload: payload
-          }))
-      ;; Message has passed checks, and we got a sequence number, so emit to watchers
-      (print {
-        event: "post-message",
-        data: message
-      })
-      (ok message))))
+  (post-message-checked-emitter payload nonce consistency-level-opt contract-caller))
 
 ;; @desc Set message fee for `post-message` using VAA
 ;;       Returns `ok(fee)` if successful
@@ -1018,3 +1010,36 @@
       ;; Activate this contract
       (var-set deployment-state DEPLOYMENT_STATE_ACTIVE)
       (ok true))))
+
+;; @desc This function does the work for both `post-message` and `post-message-by-proxy`
+;;       See those functions for further details
+;;       Those functions will set and/or check `emitter`, this one assumes `emiiter` is valid
+(define-private (post-message-checked-emitter (payload (buff 8192)) (nonce uint) (consistency-level-opt (optional uint)) (emitter principal))
+  (let ((active (try! (check-active-deployment)))
+        (consistency-level (default-to DEFAULT_CONSISTENCY_LEVEL consistency-level-opt))
+        (fee (var-get post-message-fee)))
+    ;; `consistency-level` must fit into `u8` type
+    (asserts! (<= consistency-level MAX_VALUE_U8) ERR_POST_OVERFLOW_CONSISTENCY_LEVEL)
+    ;; `nonce` must fit into `u32` type
+    (asserts! (<= nonce MAX_VALUE_U32) ERR_POST_OVERFLOW_NONCE)
+    ;; If a fee has been set, collect it
+    (if (> fee u0)
+      (try! (stx-transfer? fee tx-sender (get-contract-principal)))
+      true
+    )
+    (let ((sequence-unchecked (try! (contract-call? .wormhole-core-state consume-emitter-sequence emitter)))
+          ;; `sequence` must fit into `u64` type, otherwise saturate
+          (sequence (if (<= sequence-unchecked MAX_VALUE_U64) sequence-unchecked MAX_VALUE_U64))
+          (message {
+            emitter: emitter,
+            nonce: nonce,
+            sequence: sequence,
+            consistency-level: consistency-level,
+            payload: payload
+          }))
+      ;; Message has passed checks, and we got a sequence number, so emit to watchers
+      (print {
+        event: "post-message",
+        data: message
+      })
+      (ok message))))
