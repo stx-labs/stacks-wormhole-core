@@ -10,7 +10,7 @@
 ;; This contract is *specifically* meant for state that can grow unbounded, and eventually too big to export
 ;; State with a finite size is stored in `wormhole-core`, and transfered via import/export functions during an update
 ;;
-;; This contract does not have a version in it's name because there cannot be different versions of it
+;; This contract does not have a version in its name because there cannot be different versions of it
 ;; If you need additional state in the future, use `kv-store` or deploy a `wormhole-core-state-2` contract
 
 ;;;; Constants
@@ -30,25 +30,25 @@
 
 ;;;; Data vars
 
-;; Only the owner of this contract can make changes to it's state
+;; Only the owner of this contract can make changes to its state
 ;; This defines what the currently active `wormhole-core` contract is
 ;; Should never be `none` once contract is initialized
 (define-data-var owner (optional principal) none)
 
 ;; New owner we are transferring this contract to during `wormhole-core` update
-;; Should always be `none` except during upgrade process
+;; Should always be `none` except during update process
 (define-data-var transferring-to (optional principal) none)
 
 ;;;; Data maps
 
-;; Keep track of sequence state for message emitters
+;; Map tracking sequence numbers for all contracts which have sent a Wormhole message
 (define-map emitter-sequence
     principal  ;; Contract emitting message
-    uint       ;; Incremented each time emitter emits a message
+    uint       ;; Sequence number of *next* message
 )
-;; Wormhole Governance: Keep track of consumed governance VAAs by hash to prevent replay attacks
+;; Map tracking consumed governance VAA hashes to prevent replay attacks
 (define-map consumed-governance-vaa-hashes (buff 32) bool)
-;; Map tracking guardians set
+;; Map tracking guardian sets
 (define-map guardian-sets uint (list 19 { compressed-public-key: (buff 33), uncompressed-public-key: (buff 64) }))
 
 ;; Since this contract can't be updated, provide a dynamically-typed key/value store,
@@ -62,13 +62,13 @@
 
 ;;;; Public functions
 
-;; ALL PUBLIC FUNCTIONS WHICH MODIFY STATE MUST CALL `check-caller`
+;; ALL PUBLIC FUNCTIONS WHICH MODIFY STATE MUST CALL `check-caller-is-owner`
 
 ;; @desc Initialize newly deployed contract with owner (active core contract)
 ;;
 ;; Returns:
-;;   - (ok true):  If state contract initialized
-;;   - (err ...):  If already initialized or invalid argument
+;;   - (ok true): If state contract initialized
+;;   - (err ...): If already initialized or invalid argument
 (define-public (initialize (core-contract principal))
   (let ((contract-parts (unwrap! (principal-destruct? core-contract) ERR_STATE_INVALID_VALUE)))
     ;; Can't call this function more than once
@@ -81,7 +81,7 @@
 
 ;; @desc: Start ownership transfer: Set successor contract which will be allowed to claim ownership of this contract
 ;;        If successor fails to claim ownership, the transfer can be cancelled
-;;        The 2-step process prevents transferring ownership to a broken deployment and permenantly losing access to the state contract
+;;        The 2-step process prevents transferring ownership to a broken deployment and permanently losing access to the state contract
 (define-public (start-ownership-transfer (new-owner principal))
   (let ((current-owner (try! (check-caller-is-owner)))
         (new-owner-parts (unwrap! (principal-destruct? new-owner) ERR_STATE_INVALID_VALUE)))
@@ -116,7 +116,7 @@
 
 ;; @desc Get next sequence # for emitter and mark it as used
 ;;       On success, returns `(ok sequence)` and increments emitter's sequence
-;;       On failure, returns (err ...)` does not increment sequence
+;;       On failure, returns `(err ...)` does not increment sequence
 (define-public (consume-emitter-sequence (emitter principal))
   (begin
     (try! (check-caller-is-owner))
@@ -126,7 +126,7 @@
 
 ;; @desc Track hashes of processed governance VAAs so we don't replay them
 ;;       Returns `(ok true)` if the VAA is marked as "consumed"
-;;       On failure, returns (err ...)` does not consume the VAA
+;;       On failure, returns `(err ...)` does not consume the VAA
 ;;
 ;; @param hash: Governance VAA hash, computed by `(keccak256 (keccak256 vaa-body))`
 (define-public (consume-governance-vaa (hash (buff 32)))
