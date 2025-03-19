@@ -23,7 +23,7 @@ Stacks is a Bitcoin layer that enables decentralized apps and smart contracts.
 
 The contracts are developed in Clarity and use [clarinet-sdk](https://www.npmjs.com/package/@hirosystems/clarinet-sdk) for its test harnessing.
 
-Git clone and compile **stacks-pyth-relayer**
+Git clone and compile **stacks-wormhole-core**
 
 ```bash
 $ git clone https://github.com/hirosystems/stacks-wormhole-core.git
@@ -34,26 +34,19 @@ $ npm test
 
 ## Status
 
-This repository is a copy of https://github.com/hirosystems/stacks-pyth-bridge/tree/main/contracts/wormhole.
+This repository was forked from the Wormhole contracts in https://github.com/Trust-Machines/stacks-pyth-bridge/tree/clarity-v3/
 
-In the context of the implementation of Pyth, the following features have been implemented:
-
-- Ability to verify a VAA by checking the 19 cryptographic signatures from authorized guardians to ensure authenticity. This process ensures that the data within the VAA has not been tampered with and adheres to the consensus rules of the Wormhole protocol. Once verified, the VAA can be used to execute secure and reliable cross-chain actions.
-- Ability to rotate the set of guardians. This process involves updating the list of guardians (validators) who are responsible for observing events and signing VAAs, ensuring that no single entity or small group can control the network over time.
-
-Ultimately once the repo has been upgraded to a fully fledged version of Wormhole and the contracts are deployed the onchain deployment of Pyth should be updated and pointing to this new deployment (operation performed by Pyth governance).
-
-## Goals
-
-This project aims to implement only the `wormhole-core` contract.
+This project aims to implement only the `wormhole-core` contract, which contains only for message handling and Wormhole governance functions.
 The scope of this contract is outlined [here](https://wormhole.com/docs/learn/infrastructure/core-contracts/), and includes:
 
-- Parsing VAAs
-- Verifying VAAs against current Guardian set
-- Updating Guardian set
-- Formatting and emmitting event messages for the Watcher to use to create VAAs
-- Collecting fees for emitting messages
-- Upgrading core contract from VAA
+- Setting list of 19 Wormhold Guardians that can sign VAAs (Verifiable Action Approval)
+- Parsing and validating VAAs against Guardian's public keys
+- Formatting and emmitting event messages for Guardians to observe and send VAAs to other blockchains
+- Collecting and transferring fees for emitting messages
+- Updating the core contract via governance VAA
+
+Again, this set of contracts is only a messaging/governance layer.
+In order to send/receive messages or tokens to/from other chains, it is necessary to write contracts that manage the specific messages or tokens being transferred.
 
 ## Deployment
 
