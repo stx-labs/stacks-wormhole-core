@@ -172,6 +172,7 @@
     (asserts! (is-eq contract-caller current-owner) ERR_STATE_UNAUTHORIZED)
     (ok current-owner)))
 
+;; @desc Read next sequence number for `emitter`
 (define-read-only (get-emitter-sequence (emitter principal))
   (map-get? emitter-sequence emitter))
 
@@ -184,6 +185,11 @@
 ;; @param set-id: Guardian set ID
 (define-read-only (guardian-sets-get (set-id uint))
   (map-get? guardian-sets set-id))
+
+;; @desc Check if governance message has been used
+;; @param hash: keccak256(keccak256(vaa-body-hash))
+(define-read-only (consumed-governance-vaa-hashes-get (hash (buff 32)))
+  (map-get? consumed-governance-vaa-hashes hash))
 
 ;; @desc Returns contract owner, which is allowed to modify state
 (define-read-only (get-owner)
