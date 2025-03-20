@@ -36,7 +36,9 @@ $ npm test
 
 This repository was forked from the Wormhole contracts in https://github.com/Trust-Machines/stacks-pyth-bridge/tree/clarity-v3/
 
-This project aims to implement only the `wormhole-core` contract, which contains only for message handling and Wormhole governance functions.
+This project aims to implement a `wormhole-core` contract.
+The core contract by itself cannot bridge assets to/from other chains.
+Rather, it implements the Wormhole protocol, managing Wormhole governance and providing message handling functions for other contracts.
 The scope of this contract is outlined [here](https://wormhole.com/docs/learn/infrastructure/core-contracts/), and includes:
 
 - Setting list of 19 Wormhold Guardians that can sign VAAs (Verifiable Action Approval)

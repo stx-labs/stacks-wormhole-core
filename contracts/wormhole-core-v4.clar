@@ -168,7 +168,7 @@
 (define-constant GOV_ACTION_GUARDIAN_SET_UPDATE u2)
 ;; Wormhole Governance: SetMessageFee action
 (define-constant GOV_ACTION_SET_MESSAGE_FEE u3)
-;; Wormhole Governance: SetMessageFee action
+;; Wormhole Governance: TransferFees action
 (define-constant GOV_ACTION_TRANSFER_FEES u4)
 ;; Stacks chain id attributed by Pyth
 (define-constant EXPECTED_CHAIN_ID (if is-in-mainnet 0xea86 0xc377))
@@ -222,9 +222,9 @@
 ;;
 ;; @param previous-contract: If this is not the first deployment of wormhole-core, the currently active contract is required
 (define-public (initialize (previous-contract (optional <previous-export-trait>)))
-  (if (is-some previous-contract)
+  (match previous-contract
     ;; Trransfer state from previous contract
-    (initialize-from-previous-contract (unwrap-panic previous-contract))
+    contract (initialize-from-previous-contract contract)
     ;; This is the first deployment, initialize all Wormhole state
     (initialize-wormhole)))
 
