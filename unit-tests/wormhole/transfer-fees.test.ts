@@ -40,7 +40,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-transfer-fees-payload success`, 
             payload: Cl.tuple({
               amount: Cl.uint(fcAmount),
               recipient: Cl.principal(recipient),
-            })
+            }),
           }),
         );
       }),

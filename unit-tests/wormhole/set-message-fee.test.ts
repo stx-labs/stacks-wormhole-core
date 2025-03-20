@@ -37,7 +37,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-set-message-fee-payload success`
             chain: Cl.uint(chain),
             payload: Cl.tuple({
               fee: Cl.uint(fcFee),
-            })
+            }),
           }),
         );
       }),

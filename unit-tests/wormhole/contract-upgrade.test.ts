@@ -3,7 +3,7 @@ import { expect, describe, beforeEach } from "vitest";
 import { it } from "@fast-check/vitest";
 import { wormhole } from "./helpers";
 import { hexToBytes } from "@noble/hashes/utils";
-import { WormholeCore as WC } from "./constants";
+import { WormholeCore as WC, WormholeCoreProxy as WCP } from "./constants";
 
 describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload success`, () => {
   const accounts = simnet.getAccounts();
@@ -33,7 +33,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload success
         chain: Cl.uint(chain),
         payload: Cl.tuple({
           contract: Cl.principal(contract),
-        })
+        }),
       }),
     );
   });
@@ -161,8 +161,8 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
   const postMessageFee = 1_000_000_000_000n;
 
   const successorContract = {
-    deployer: deployer,
     name: "wormhole-core-successor",
+    deployer,
     async code() {
       const fs = require("fs/promises");
       return await fs.readFile(`contracts/${WC.CONTRACT_NAME}.clar`, "utf8");
@@ -372,6 +372,87 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
       sender,
     );
     expect(res.result).toBeErr(Cl.uint(WC.ERR_DEPLOYMENT_STATE_NOT_ACTIVE));
+  });
+
+  it("should be accessible via proxy before and after update", async () => {
+    // Check proxy before update
+    let expectedSequence = 1;
+    const nonce = Cl.uint(0);
+    const message = Cl.buffer(
+      Uint8Array.from(Buffer.from("48656C6C6F20576F726C6421", "hex")), // "Hello World!" in ASCII
+    );
+    let res = simnet.callPublicFn(
+      WCP.CONTRACT_NAME,
+      "post-message",
+      [Cl.principal(contractPrinciple), message, nonce, Cl.none()],
+      sender,
+    );
+    expect(res.result).toBeOk(
+      Cl.tuple({
+        emitter: Cl.principal(sender),
+        nonce,
+        sequence: Cl.uint(expectedSequence++), // This is the second call to `post-message` by this sender
+        "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),
+        payload: message,
+      }),
+    );
+    // Publish successor contract
+    res = simnet.deployContract(
+      successorContract.name,
+      await successorContract.code(),
+      null,
+      deployer,
+    );
+    expect(res.result).toBeBool(true);
+
+    // Construct and send ContractUpgrade VAA
+    const payload = wormhole.serializeContractUpgradeVaaPayloadToBuffer(
+      WC.ACTION_CONTRACT_UPGRADE,
+      WC.EXPECTED_CHAIN_ID,
+      successorContract.principal(),
+    );
+    const body = wormhole.buildValidVaaBodySpecs({
+      payload: Uint8Array.from(payload),
+      emitter: wormhole.GovernanceUpdateEmitter,
+    });
+    const header = wormhole.buildValidVaaHeader(keychain, body, {
+      version: 1,
+      guardianSetId: 1,
+    });
+    const vaa = wormhole.serializeVaaToBuffer(header, body);
+    res = simnet.callPublicFn(
+      WC.CONTRACT_NAME,
+      "contract-upgrade",
+      [Cl.buffer(Uint8Array.from(vaa))],
+      sender,
+    );
+    expect(res.result).toBeOk(Cl.principal(successorContract.principal()));
+
+    // Finish upgrade by initializing new contract
+    res = simnet.callPublicFn(
+      successorContract.name,
+      "initialize",
+      [Cl.some(Cl.principal(`${deployer}.${WC.CONTRACT_NAME}`))],
+      sender,
+    );
+    expect(res.result).toBeOk(Cl.bool(true));
+
+    // Should be able to make same call as before via proxy
+    res = simnet.callPublicFn(
+      WCP.CONTRACT_NAME,
+      "post-message",
+      [Cl.principal(successorContract.principal()), message, nonce, Cl.none()],
+      sender,
+    );
+    expect(res.result).toBeOk(
+      Cl.tuple({
+        emitter: Cl.principal(sender),
+        nonce,
+        sequence: Cl.uint(expectedSequence++), // This is the second call to `post-message` by this sender
+        "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),
+        payload: message,
+      }),
+    );
   });
 
   it("should fail if `emitter.chain` is invalid", () => {
