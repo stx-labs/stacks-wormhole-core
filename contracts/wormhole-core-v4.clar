@@ -10,8 +10,6 @@
 ;; Contract Principals
 ;; WARNING: THESE MAY NEED TO BE CHANGED WHEN UPDATING THE CORE CONTRACT!
 
-;; TODO: Use constant instead of hard-coding in `contract-call?`
-;;(define-constant PRINCIPAL_STATE_CONTRACT .wormhole-core-state)
 ;; The contract that is allowed to act as a proxy and specify `emitter` to `post-message`
 ;; This can be a constant because it will not change as long as the contract is active
 (define-constant PRINCIPAL_PROXY_CONTRACT .wormhole-trait-core-v2-trait-checker)
