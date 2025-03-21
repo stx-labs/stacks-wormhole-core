@@ -116,46 +116,42 @@ export namespace wormhole {
     // []byte      payload             (VAA message content)
     export const vaaBody = (opts?: VaaBodyBuildOptions) => {
       // Timestamp
-      let timestamp = fc.nat(4294967295);
-      if (opts && opts.timestamp) {
-        timestamp = fc.constant(opts.timestamp);
-      }
+      const timestamp =
+        opts && opts.timestamp
+          ? fc.constant(opts.timestamp)
+          : fc.nat(4294967295);
 
       // Nonce
-      let nonce = fc.nat(4294967295);
-      if (opts && opts.nonce) {
-        nonce = fc.constant(opts.nonce);
-      }
+      const nonce =
+        opts && opts.nonce ? fc.constant(opts.nonce) : fc.nat(4294967295);
 
       // Emitter chain
-      let emitterChain = fc.nat(65535);
-      if (opts && opts.emitterChain) {
-        emitterChain = fc.constant(opts.emitterChain);
-      }
+      const emitterChain =
+        opts && opts.emitterChain
+          ? fc.constant(opts.emitterChain)
+          : fc.nat(65535);
 
       // Emitter address
-      let emitterAddress = fc.uint8Array({ minLength: 32, maxLength: 32 });
-      if (opts && opts.emitterAddress) {
-        emitterAddress = fc.constant(opts.emitterAddress);
-      }
+      const emitterAddress =
+        opts && opts.emitterAddress
+          ? fc.constant(opts.emitterAddress)
+          : fc.uint8Array({ minLength: 32, maxLength: 32 });
 
       // Sequence
-      let sequence = fc.bigUintN(64);
-      if (opts && opts.sequence) {
-        sequence = fc.constant(opts.sequence);
-      }
+      const sequence =
+        opts && opts.sequence ? fc.constant(opts.sequence) : fc.bigInt();
 
       // Consistency level
-      let consistencyLevel = fc.nat(255);
-      if (opts && opts.consistencyLevel) {
-        consistencyLevel = fc.constant(opts.consistencyLevel);
-      }
+      const consistencyLevel =
+        opts && opts.consistencyLevel
+          ? fc.constant(opts.consistencyLevel)
+          : fc.nat(255);
 
       // Payload
-      let payload = fc.uint8Array({ minLength: 20, maxLength: 2048 });
-      if (opts && opts.payload) {
-        payload = fc.constant(opts.payload);
-      }
+      const payload =
+        opts && opts.payload
+          ? fc.constant(opts.payload)
+          : fc.uint8Array({ minLength: 20, maxLength: 2048 });
 
       return fc.tuple(
         timestamp,
@@ -181,27 +177,26 @@ export namespace wormhole {
       numberOfSignatures = 19,
     ) => {
       // Version
-      let version = fc.nat(255);
-      if (opts && opts.version) {
-        version = fc.constant(opts.version);
-      }
+      const version =
+        opts && opts.version ? fc.constant(opts.version) : fc.nat(255);
 
       // Guardian set id
-      let guardianSetId = fc.nat(255);
-      if (opts && opts.guardianSetId) {
-        guardianSetId = fc.constant(opts.guardianSetId);
-      }
+      const guardianSetId =
+        opts && opts.guardianSetId
+          ? fc.constant(opts.guardianSetId)
+          : fc.nat(255);
 
       // Specified signatures
-      let specifiedSignatures = fc.array(
-        fc.uint8Array({ minLength: 66, maxLength: 66 }),
-        { minLength: 0, maxLength: 0 },
-      );
-      let specifiedSignaturesLen = 0;
-      if (opts && opts.signatures) {
-        specifiedSignatures = fc.constant(opts.signatures);
-        specifiedSignaturesLen = opts.signatures.length;
-      }
+      const specifiedSignatures =
+        opts && opts.signatures
+          ? fc.constant(opts.signatures)
+          : fc.array(fc.uint8Array({ minLength: 66, maxLength: 66 }), {
+              minLength: 0,
+              maxLength: 0,
+            });
+
+      const specifiedSignaturesLen =
+        opts && opts.signatures ? opts.signatures.length : 0;
 
       // Generated signatures
       let generatedSignatures = fc.array(
@@ -546,16 +541,15 @@ export namespace wormhole {
     const components = [];
     components.push(module);
 
-    let v = Buffer.alloc(1);
-    v.writeUint8(action, 0);
-    components.push(v);
+    const v1 = Buffer.alloc(1);
+    v1.writeUint8(action, 0);
+    components.push(v1);
 
-    v = Buffer.alloc(2);
-    v.writeUInt16BE(chain, 0);
-    components.push(v);
+    const v2 = Buffer.alloc(2);
+    v2.writeUInt16BE(chain, 0);
+    components.push(v2);
 
-    v = bigintToBuffer(fee, 32);
-    components.push(v);
+    components.push(bigintToBuffer(fee, 32));
 
     return Buffer.concat(components.map((x) => Uint8Array.from(x)));
   };
@@ -581,20 +575,18 @@ export namespace wormhole {
     const components = [];
     components.push(module);
 
-    let v = Buffer.alloc(1);
-    v.writeUint8(action, 0);
-    components.push(v);
+    const v1 = Buffer.alloc(1);
+    v1.writeUint8(action, 0);
+    components.push(v1);
 
-    v = Buffer.alloc(2);
-    v.writeUInt16BE(chain, 0);
-    components.push(v);
+    const v2 = Buffer.alloc(2);
+    v2.writeUInt16BE(chain, 0);
+    components.push(v2);
 
-    v = bigintToBuffer(amount, 32);
-    components.push(v);
+    components.push(bigintToBuffer(amount, 32));
 
     // Encode `recipient` as Stacks wire format
-    v = Buffer.from(Cl.serialize(Cl.principal(recipient)));
-    components.push(v);
+    components.push(Buffer.from(Cl.serialize(Cl.principal(recipient))));
 
     return Buffer.concat(components.map((x) => Uint8Array.from(x)));
   };
