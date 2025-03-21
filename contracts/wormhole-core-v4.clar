@@ -221,7 +221,7 @@
 ;; @param previous-contract: If this is not the first deployment of wormhole-core, the currently active contract is required
 (define-public (initialize (previous-contract (optional <previous-export-trait>)))
   (match previous-contract
-    ;; Trransfer state from previous contract
+    ;; Transfer state from previous contract
     contract (initialize-from-previous-contract contract)
     ;; This is the first deployment, initialize all Wormhole state
     (initialize-wormhole)))
