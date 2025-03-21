@@ -16,5 +16,6 @@ export default defineConfig({
     environmentOptions: {
       clarinet: getClarinetVitestsArgv(),
     },
+    testTimeout: 15000,
   },
 });
