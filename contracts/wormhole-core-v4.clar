@@ -314,7 +314,7 @@
 ;; u8          consistency_level   (What finality level was reached before emitting this message)
 ;; []byte      payload             (VAA message content)
 ;;
-;; @param vaa-bytes: 
+;; @param vaa-bytes: VAA as raw bytes
 (define-read-only (parse-vaa (vaa-bytes (buff 8192)))
   (let ((cursor-version (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-8 { bytes: vaa-bytes, pos: u0 }) 
           ERR_VAA_PARSING_VERSION))
@@ -371,31 +371,29 @@
     })))
 
 ;; @desc Parse and check the validity of a Verified Action Approval (VAA)
-;; @param vaa-bytes: 
+;; @param vaa-bytes: VAA as raw bytes
 (define-read-only (parse-and-verify-vaa (vaa-bytes (buff 8192)))
-    (let (
-        (message (try! (parse-vaa vaa-bytes)))
-        (guardian-set-id (get guardian-set-id (get vaa message)))
-      )
+    (let ((message (try! (parse-vaa vaa-bytes)))
+          (guardian-set-id (get guardian-set-id (get vaa message))))
       ;; Ensure that the guardian-set-id is the active one or unexpired previous one
       (asserts! (try! (is-valid-guardian-set guardian-set-id)) ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY)
-    (let ((active-guardians (unwrap! (contract-call? .wormhole-core-state guardian-sets-get guardian-set-id) ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY))
-          (signatures-from-active-guardians (fold batch-check-active-public-keys (get recovered-public-keys message)
-            {
-                active-guardians: active-guardians,
-                result: (list)
-            })))
-      ;; Ensure that version is supported (v1 only)
-      (asserts! (is-eq (get version (get vaa message)) u1) 
-        ERR_VAA_CHECKS_VERSION_UNSUPPORTED)
-      ;; Ensure that the count of valid signatures is >= 13
-      (asserts! (>= (len (get result signatures-from-active-guardians)) (get-quorum (len active-guardians)))
-        ERR_VAA_CHECKS_THRESHOLD_SIGNATURE)
-      ;; Good to go!
-      (ok {
-        vaa: (get vaa message),
-        vaa-body-hash: (get vaa-body-hash message)
-      }))))
+      (let ((active-guardians (unwrap! (contract-call? .wormhole-core-state guardian-sets-get guardian-set-id) ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY))
+            (signatures-from-active-guardians (fold batch-check-active-public-keys (get recovered-public-keys message)
+              {
+                  active-guardians: active-guardians,
+                  result: (list)
+              })))
+        ;; Ensure that version is supported (v1 only)
+        (asserts! (is-eq (get version (get vaa message)) u1)
+          ERR_VAA_CHECKS_VERSION_UNSUPPORTED)
+        ;; Ensure that the count of valid signatures is >= 13
+        (asserts! (>= (len (get result signatures-from-active-guardians)) (get-quorum (len active-guardians)))
+          ERR_VAA_CHECKS_THRESHOLD_SIGNATURE)
+        ;; Good to go!
+        (ok {
+          vaa: (get vaa message),
+          vaa-body-hash: (get vaa-body-hash message)
+        }))))
 
 ;; @desc Update the active set of guardians 
 ;; @param guardian-set-vaa: VAA embedding the Guardian Set Update information
@@ -665,7 +663,7 @@
 ;;
 ;; Expected message format for TransferFees payload:
 ;;   [54]byte    header     Governance payload header
-;;   ???         recipient  Recipient of message fees
+;;   [151]byte   recipient  Recipient of message fees
 ;;
 ;; @param vaa-payload: VAA `payload` as raw bytes
 (define-read-only (parse-and-verify-transfer-fees-payload (vaa-payload (buff 8192)))
@@ -698,7 +696,7 @@
     }))))
 
 ;; @desc Upgrade wormhole-core contract to new deployment
-;;       Returns `ok(contract)` if successful
+;;       Returns `(ok contract)` if successful
 ;;
 ;; @param vaa-bytes: VAA as raw bytes
 (define-public (contract-upgrade (vaa-bytes (buff 8192)))
@@ -756,7 +754,7 @@
 ;;
 ;; Expected message format for ContractUpgrade VAA payload:
 ;;   [54]byte    header     Governance payload header
-;;   ???         contract   New wormhole-core contract
+;;   [151]byte   recipient  Recipient of message fees
 ;;
 ;; @param vaa-payload: VAA `payload` as raw bytes
 (define-read-only (parse-and-verify-contract-upgrade-payload (vaa-payload (buff 8192)))
