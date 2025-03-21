@@ -354,7 +354,6 @@
               value: (list)
           })))
     (asserts! (is-eq (get pos (get next cursor-payload)) (len vaa-bytes)) ERR_GSU_CHECK_OVERLAY)
-    (print { payload: (get value cursor-payload) })
     (ok { 
         vaa: {
           version: (get value cursor-version), 
