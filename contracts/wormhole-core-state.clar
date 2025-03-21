@@ -156,7 +156,7 @@
 ;;       If no error, returns `(ok bool)` with the result of `map-set`
 ;; @param set-id: Guardian set ID
 ;; @param guardian-set: List of 19 Guardian pubkeys
-(define-public (guardian-sets-set (set-id uint) (guardian-set (list 19 { compressed-public-key: (buff 33), uncompressed-public-key: (buff 64) })))
+(define-public (guardian-sets-set (set-id uint) (guardian-set (list 30 { compressed-public-key: (buff 33), uncompressed-public-key: (buff 64) })))
   (begin
     (try! (check-caller-is-owner))
     (ok (map-set guardian-sets set-id guardian-set))))

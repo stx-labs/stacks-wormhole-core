@@ -790,7 +790,7 @@
     {
       cursor: (+ u1 (get cursor acc)),
       eth-addresses: (get eth-addresses acc),
-      result: (unwrap-panic (as-max-len? (append (get result acc) entry) u19)),
+      result: (unwrap-panic (as-max-len? (append (get result acc) entry) u30)),
     }))
 
 ;; @desc Foldable function admitting an guardian input and their signature as an input, producing a record { recovered-compressed-public-key }
@@ -803,7 +803,7 @@
             error (get value acc))))
     { 
       message-hash: (get message-hash acc), 
-      value: (unwrap-panic (as-max-len? updated-public-keys u19)) 
+      value: (unwrap-panic (as-max-len? updated-public-keys u30))
     }))
 
 ;; @desc Foldable function evaluating signatures from a list of { guardian-id: u8, signature: (buff 65) }, returning a list of recovered public-keys
@@ -856,7 +856,7 @@
   (if (is-none (index-of? (get result acc) (get value cursor-address-bytes)))
     {
       bytes: (get bytes acc),
-      result: (unwrap-panic (as-max-len? (append (get result acc) (get value cursor-address-bytes)) u19))
+      result: (unwrap-panic (as-max-len? (append (get result acc) (get value cursor-address-bytes)) u30))
     }
     acc
   )))
@@ -912,7 +912,7 @@
   (if (is-eq u0 (mod (get cursor acc) GUARDIAN_ETH_ADDRESS_SIZE))
     { 
       cursor: (+ u1 (get cursor acc)), 
-      result: (unwrap-panic (as-max-len? (append (get result acc) (get cursor acc)) u19)),
+      result: (unwrap-panic (as-max-len? (append (get result acc) (get cursor acc)) u30)),
     }
     {
       cursor: (+ u1 (get cursor acc)), 
