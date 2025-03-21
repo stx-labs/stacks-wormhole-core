@@ -41,7 +41,7 @@ The core contract by itself cannot bridge assets to/from other chains.
 Rather, it implements the Wormhole protocol, managing Wormhole governance and providing message handling functions for other contracts.
 The scope of this contract is outlined [here](https://wormhole.com/docs/learn/infrastructure/core-contracts/), and includes:
 
-- Setting list of 19 Wormhold Guardians that can sign VAAs (Verifiable Action Approval)
+- Setting list of up to 30 (currently 19) Wormhole Guardians that can sign VAAs (Verifiable Action Approval)
 - Parsing and validating VAAs against Guardian's public keys
 - Formatting and emmitting event messages for Guardians to observe and send VAAs to other blockchains
 - Collecting and transferring fees for emitting messages
