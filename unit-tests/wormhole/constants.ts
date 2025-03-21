@@ -59,13 +59,15 @@ export class WormholeCore {
 export class WormholeCoreState {
   static readonly CONTRACT_NAME = "wormhole-core-state";
   // Must match what is in `$(CONTRACT_NAME}.clar`
-  static readonly ERR_STATE_VAA_REPLAYED = 10005;
+  static readonly ERR_STATE_UNAUTHORIZED = 10001;
+  static readonly ERR_STATE_INVALID_VALUE = 10002;
+  static readonly ERR_STATE_VAA_REPLAYED = 10003;
+  static readonly ERR_STATE_XFER_NOT_IN_PROGRESS = 10004;
 }
 
 // Constants from `wormhole-core-state` Clarity contract
 export class WormholeCoreProxy {
   static readonly CONTRACT_NAME = "wormhole-trait-core-v2-trait-checker";
   // Must match what is in `$(CONTRACT_NAME}.clar`
-  static readonly ERR_TRAIT_CHECK_NO_ACTIVE_CONTRACT = 20001;
-  static readonly ERR_TRAIT_CHECK_CONTRACT_MISMATCH = 20002;
+  static readonly ERR_TRAIT_CHECK_CONTRACT_MISMATCH = 20001;
 }

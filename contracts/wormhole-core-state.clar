@@ -15,25 +15,21 @@
 
 ;;;; Constants
 
-;; State contract not initialized (no active core contract set)
-(define-constant ERR_STATE_UNINITIALIZED (err u10001))
 ;; Caller is not active core contract
-(define-constant ERR_STATE_UNAUTHORIZED (err u10002))
-;; Attempted to initialize already initialized contract
-(define-constant ERR_STATE_ALREADY_INITIALIZED (err u10003))
+(define-constant ERR_STATE_UNAUTHORIZED (err u10001))
 ;; Value not allowed
-(define-constant ERR_STATE_INVALID_VALUE (err u10004))
+(define-constant ERR_STATE_INVALID_VALUE (err u10002))
 ;; VAA has already been used
-(define-constant ERR_STATE_VAA_REPLAYED (err u10005))
+(define-constant ERR_STATE_VAA_REPLAYED (err u10003))
 ;; No state transfer in progress
-(define-constant ERR_STATE_XFER_NOT_IN_PROGRESS (err u10006))
+(define-constant ERR_STATE_XFER_NOT_IN_PROGRESS (err u10004))
 
 ;;;; Data vars
 
 ;; Only the owner of this contract can make changes to its state
 ;; This defines what the currently active `wormhole-core` contract is
 ;; Should never be `none` once contract is initialized
-(define-data-var owner (optional principal) none)
+(define-data-var owner principal tx-sender)
 
 ;; New owner we are transferring this contract to during `wormhole-core` update
 ;; Should always be `none` except during update process
@@ -63,21 +59,6 @@
 ;;;; Public functions
 
 ;; ALL PUBLIC FUNCTIONS WHICH MODIFY STATE MUST CALL `check-caller-is-owner`
-
-;; @desc Initialize newly deployed contract with owner (active core contract)
-;;
-;; Returns:
-;;   - (ok true): If state contract initialized
-;;   - (err ...): If already initialized or invalid argument
-(define-public (initialize (core-contract principal))
-  (let ((contract-parts (unwrap! (principal-destruct? core-contract) ERR_STATE_INVALID_VALUE)))
-    ;; Can't call this function more than once
-    (asserts! (is-none (get-owner)) ERR_STATE_ALREADY_INITIALIZED)
-    ;; Check we have a contract principal and not a standard principal
-    (asserts! (is-some (get name contract-parts)) ERR_STATE_INVALID_VALUE)
-    ;; Checks passed! Contract is initialized
-    (var-set owner (some core-contract))
-    (ok true)))
 
 ;; @desc: Start ownership transfer: Set successor contract which will be allowed to claim ownership of this contract
 ;;        If successor fails to claim ownership, the transfer can be cancelled
@@ -110,7 +91,7 @@
     ;; Check that the contract caller is who we are transferring to
     (asserts! (is-eq contract-caller new-owner) ERR_STATE_UNAUTHORIZED)
     ;; Checks passed! Ownership transfer complete
-    (var-set owner (some new-owner))
+    (var-set owner new-owner)
     (var-set transferring-to none)
     (ok true)))
 
@@ -168,7 +149,7 @@
 ;; @desc Check that the calling contract is the owner (currently active `wormhole-core` contract)
 ;;       This must be called in any function that modifies state
 (define-read-only (check-caller-is-owner)
-  (let ((current-owner (unwrap! (get-owner) ERR_STATE_UNINITIALIZED)))
+  (let ((current-owner (get-owner)))
     (asserts! (is-eq contract-caller current-owner) ERR_STATE_UNAUTHORIZED)
     (ok current-owner)))
 

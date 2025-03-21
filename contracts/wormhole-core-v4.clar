@@ -154,6 +154,9 @@
 ;; Proxy: Call not from allowed proxy contract
 (define-constant ERR_PROXY_UNAUTHORIZED (err u2001))
 
+;; Initialize: We don't have permission to initialize contract
+(define-constant ERR_INIT_UNAUTHORIZED (err u2101))
+
 ;; Wormhole Governance: emitting chain
 (define-constant GOV_EMITTING_CHAIN u1)
 ;; Wormhole Governance: emitting address
@@ -221,7 +224,7 @@
 ;; @param previous-contract: If this is not the first deployment of wormhole-core, the currently active contract is required
 (define-public (initialize (previous-contract (optional <previous-export-trait>)))
   (match previous-contract
-    ;; Trransfer state from previous contract
+    ;; Transfer state from previous contract
     contract (initialize-from-previous-contract contract)
     ;; This is the first deployment, initialize all Wormhole state
     (initialize-wormhole)))
@@ -966,16 +969,20 @@
 (define-private (get-contract-principal)
   (as-contract tx-sender))
 
-;; @desc Initialize all Wormhole contracts (this one and the state contract)
+;; @desc Initialize all Wormhole for the first time
 ;;       Only needs to be called once, when Wormhole contracts are first deployed
 ;;
 ;; Returns
 ;;  - (ok true):  State was initialized
 ;;  - (err ...):  Already initialized or permissions error
 (define-private (initialize-wormhole)
-  (begin
-    (try! (contract-call? .wormhole-core-state initialize (get-contract-principal)))
-    ;; This is the initial deployment of `wormhole-core`
+  (let ((state-owner (contract-call? .wormhole-core-state get-owner)))
+    ;; Only allow initializing once
+    (asserts! (is-eq (get-deployment-state) DEPLOYMENT_STATE_UNITIALIZED) ERR_DEPLOYMENT_STATE_ALREADY_INITIALIZED)
+    ;; This will only work on the initial deployment where state contract is owned by `tx-sender` (this contract must have same deployer)
+    ;; On subsequent updates, state owner wont match contract principle until after `initialize-from-previous-contract` is called
+    ;; That function also sets `deployment-state`, making a call to this function impossible
+    (asserts! (is-eq state-owner (get-contract-principal)) ERR_INIT_UNAUTHORIZED)
     (var-set deployment-state DEPLOYMENT_STATE_ACTIVE)
     (ok true)))
 

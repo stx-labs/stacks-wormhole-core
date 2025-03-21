@@ -48,10 +48,8 @@
 
 ;;;; constants
 
-;; No active wormhole-core contract found
-(define-constant ERR_TRAIT_CHECK_NO_ACTIVE_CONTRACT (err u20001))
 ;; Trait does not match active contract
-(define-constant ERR_TRAIT_CHECK_CONTRACT_MISMATCH (err u20002))
+(define-constant ERR_TRAIT_CHECK_CONTRACT_MISMATCH (err u20001))
 
 ;;;; public functions
 
@@ -66,6 +64,6 @@
     (contract-call? core-contract post-message-via-proxy payload nonce consistency-level-opt contract-caller)))
 
 (define-read-only (check-active-wormhole-core-contract (expected-core-contract <core-trait>))
-  (let ((active-core-contract (unwrap! (contract-call? .wormhole-core-state get-active-wormhole-core-contract) ERR_TRAIT_CHECK_NO_ACTIVE_CONTRACT)))
+  (let ((active-core-contract (contract-call? .wormhole-core-state get-active-wormhole-core-contract)))
     (asserts! (is-eq (contract-of expected-core-contract) active-core-contract) ERR_TRAIT_CHECK_CONTRACT_MISMATCH)
     (ok expected-core-contract)))
