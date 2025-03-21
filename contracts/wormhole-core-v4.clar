@@ -419,10 +419,8 @@
     (try! (fold is-valid-guardian-entry result (ok true)))
     (asserts! (is-eq (len uncompressed-public-keys) (len eth-addresses)) 
       ERR_GSU_UNCOMPRESSED_PUBLIC_KEYS)
-    ;; Check emitting address
-    (asserts! (is-eq (get emitter-address vaa) GOV_EMITTING_ADDRESS) ERR_GOV_CHECK_EMITTER)
-    ;; Check emitting chain
-    (asserts! (is-eq (get emitter-chain vaa) GOV_EMITTING_CHAIN) ERR_GOV_CHECK_EMITTER)
+    ;; Check emitting address and chain
+    (try! (check-emitter (get emitter-address vaa) (get emitter-chain vaa)))
     ;; ensure guardian set has atleast one member
     (asserts! (>= (len result) u1) ERR_EMPTY_GUARDIAN_SET)
     ;; Skip this check to minimize state growth
@@ -519,10 +517,8 @@
   (let ((message (try! (parse-and-verify-vaa vaa-bytes)))
         (vaa (get vaa message)))
 
-    ;; Check emitting address
-    (asserts! (is-eq (get emitter-address vaa) GOV_EMITTING_ADDRESS) ERR_GOV_CHECK_EMITTER)
-    ;; Check emitting chain
-    (asserts! (is-eq (get emitter-chain vaa) GOV_EMITTING_CHAIN) ERR_GOV_CHECK_EMITTER)
+    ;; Check emitting address and chain
+    (try! (check-emitter (get emitter-address vaa) (get emitter-chain vaa)))
 
     ;; Replace payload raw bytes with parsed payload
     (ok {
@@ -645,10 +641,8 @@
   (let ((message (try! (parse-and-verify-vaa vaa-bytes)))
         (vaa (get vaa message)))
 
-    ;; Check emitting address
-    (asserts! (is-eq (get emitter-address vaa) GOV_EMITTING_ADDRESS) ERR_GOV_CHECK_EMITTER)
-    ;; Check emitting chain
-    (asserts! (is-eq (get emitter-chain vaa) GOV_EMITTING_CHAIN) ERR_GOV_CHECK_EMITTER)
+    ;; Check emitting address and chain
+    (try! (check-emitter (get emitter-address vaa) (get emitter-chain vaa)))
 
     ;; Replace payload raw bytes with parsed payload
     (ok {
@@ -736,10 +730,8 @@
   (let ((message (try! (parse-and-verify-vaa vaa-bytes)))
         (vaa (get vaa message)))
 
-    ;; Check emitting address
-    (asserts! (is-eq (get emitter-address vaa) GOV_EMITTING_ADDRESS) ERR_GOV_CHECK_EMITTER)
-    ;; Check emitting chain
-    (asserts! (is-eq (get emitter-chain vaa) GOV_EMITTING_CHAIN) ERR_GOV_CHECK_EMITTER)
+    ;; Check emitting address and chain
+    (try! (check-emitter (get emitter-address vaa) (get emitter-chain vaa)))
 
     ;; Replace payload raw bytes with parsed payload
     (ok {
@@ -1038,3 +1030,12 @@
         data: message
       })
       (ok message))))
+
+
+(define-private (check-emitter (address (buff 32)) (chain uint))
+  (begin
+    ;; Check emitting address
+    (asserts! (is-eq address GOV_EMITTING_ADDRESS) ERR_GOV_CHECK_EMITTER)
+    ;; Check emitting chain
+    (asserts! (is-eq chain GOV_EMITTING_CHAIN) ERR_GOV_CHECK_EMITTER)
+    (ok true)))
