@@ -54,9 +54,9 @@
 ;; Unable to extract the hash the payload from the VAA
 (define-constant ERR_VAA_HASHING_BODY (err u1012))
 
-;; Number of valid signatures insufficient (min: 13/19)
+;; Number of valid signatures insufficient (min: 2/3 * num_guardians + 1)
 (define-constant ERR_VAA_CHECKS_VERSION_UNSUPPORTED (err u1101))
-;; Number of valid signatures insufficient (min: 13/19)
+;; Number of valid signatures insufficient (min: 2/3 * num_guardians + 1)
 (define-constant ERR_VAA_CHECKS_THRESHOLD_SIGNATURE (err u1102))
 ;; Guardian signature not comprised in guardian set specified
 (define-constant ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY (err u1103))
@@ -325,7 +325,7 @@
         (cursor-signatures-len (unwrap! (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-8 (get next cursor-guardian-set-id)) 
           ERR_VAA_PARSING_SIGNATURES_LEN))
         (cursor-signatures (fold batch-read-signatures
-          (list u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0)
+          (list u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0)
           { 
               next: (get next cursor-signatures-len), 
               value: (list),
@@ -404,7 +404,7 @@
 ;; @param uncompressed-public-keys: uncompressed public keys, used for recomputing
 ;; the addresses embedded in the VAA. `secp256k1-verify` returns a compressed 
 ;; public key, and uncompressing the key in clarity would be inefficient and expensive. 
-(define-public (guardian-set-upgrade (guardian-set-vaa (buff 2048)) (uncompressed-public-keys (list 19 (buff 64))))
+(define-public (guardian-set-upgrade (guardian-set-vaa (buff 2048)) (uncompressed-public-keys (list 30 (buff 64))))
   (let ((active (try! (check-active-deployment)))
         (message (if (var-get guardian-set-initialized)
           (try! (parse-and-verify-vaa guardian-set-vaa))
@@ -791,8 +791,8 @@
       (uncompressed-public-key (buff 64)) 
       (acc { 
         cursor: uint, 
-        eth-addresses: (list 19 (buff 20)), 
-        result: (list 19 { compressed-public-key: (buff 33), uncompressed-public-key: (buff 64)})
+        eth-addresses: (list 30 (buff 20)), 
+        result: (list 30 { compressed-public-key: (buff 33), uncompressed-public-key: (buff 64)})
       }))
   (let ((eth-address (unwrap-panic (element-at? (get eth-addresses acc) (get cursor acc))))
         (compressed-public-key (compress-public-key uncompressed-public-key))
@@ -808,7 +808,7 @@
 ;; @desc Foldable function admitting an guardian input and their signature as an input, producing a record { recovered-compressed-public-key }
 (define-private (batch-recover-public-keys 
       (entry { guardian-id: uint, signature: (buff 65) }) 
-      (acc { message-hash: (buff 32), value: (list 19 { recovered-compressed-public-key: (buff 33), guardian-id: uint }) }))
+      (acc { message-hash: (buff 32), value: (list 30 { recovered-compressed-public-key: (buff 33), guardian-id: uint }) }))
   (let ((recovered-compressed-public-key (secp256k1-recover? (get message-hash acc) (get signature entry)))
         (updated-public-keys (match recovered-compressed-public-key 
             public-key (append (get value acc) { recovered-compressed-public-key: public-key, guardian-id: (get guardian-id entry) } )
@@ -822,15 +822,15 @@
 (define-private (batch-check-active-public-keys 
       (entry { recovered-compressed-public-key: (buff 33), guardian-id: uint }) 
       (acc { 
-        active-guardians: (list 19 { compressed-public-key: (buff 33), uncompressed-public-key: (buff 64) }), 
-        result: (list 19 (buff 33))
+        active-guardians: (list 30 { compressed-public-key: (buff 33), uncompressed-public-key: (buff 64) }),
+        result: (list 30 (buff 33))
       }))
    (let ((compressed-public-key (get compressed-public-key (unwrap-panic (element-at? (get active-guardians acc) (get guardian-id entry))))))
      (if (and 
             (is-eq (get recovered-compressed-public-key entry) compressed-public-key)
             (is-none (index-of? (get result acc) (get recovered-compressed-public-key entry))))
           { 
-            result: (unwrap-panic (as-max-len? (append (get result acc) (get recovered-compressed-public-key entry)) u19)), 
+            result: (unwrap-panic (as-max-len? (append (get result acc) (get recovered-compressed-public-key entry)) u30)),
             active-guardians: (get active-guardians acc)
           }
           acc)))
@@ -838,7 +838,7 @@
 ;; @desc Foldable function parsing a sequence of bytes into a list of { guardian-id: u8, signature: (buff 65) } 
 (define-private (batch-read-signatures 
       (entry uint) 
-      (acc { next: { bytes: (buff 8192), pos: uint }, iter: uint, value: (list 19 { guardian-id: uint, signature: (buff 65) })}))
+      (acc { next: { bytes: (buff 8192), pos: uint }, iter: uint, value: (list 30 { guardian-id: uint, signature: (buff 65) })}))
   (if (is-eq (get iter acc) u0)
     { iter: u0, next: (get next acc), value: (get value acc) }
     (let ((cursor-guardian-id (unwrap-panic (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-uint-8 (get next acc))))
@@ -847,7 +847,7 @@
         iter: (- (get iter acc) u1), 
         next: (get next cursor-signature), 
         value: 
-          (unwrap-panic (as-max-len? (append (get value acc) { guardian-id: (get value cursor-guardian-id), signature: (get value cursor-signature) }) u19))
+          (unwrap-panic (as-max-len? (append (get value acc) { guardian-id: (get value cursor-guardian-id), signature: (get value cursor-signature) }) u30))
       })))
 
 ;; @desc Convert an uncompressed public key (64 bytes) into a compressed public key (33 bytes)
@@ -861,7 +861,7 @@
 (define-private (is-eth-address-matching-public-key (uncompressed-public-key (buff 64)) (eth-address (buff 20)))
   (is-eq (unwrap-panic (slice? (keccak256 uncompressed-public-key) u12 u32)) eth-address))
 
-(define-private (parse-guardian (cue-position uint) (acc { bytes: (buff 8192), result: (list 19 (buff 20))}))
+(define-private (parse-guardian (cue-position uint) (acc { bytes: (buff 8192), result: (list 30 (buff 20))}))
   (let (
     (cursor-address-bytes (unwrap-panic (contract-call? 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2 read-buff-20 { bytes: (get bytes acc), pos: cue-position })))
   )
@@ -920,7 +920,7 @@
 (define-private (get-quorum (guardian-set-size uint))
   (+ (/ (* guardian-set-size u2) u3) u1))
 
-(define-private (is-guardian-cue (byte (buff 1)) (acc { cursor: uint, result: (list 19 uint) }))
+(define-private (is-guardian-cue (byte (buff 1)) (acc { cursor: uint, result: (list 30 uint) }))
   (if (is-eq u0 (mod (get cursor acc) GUARDIAN_ETH_ADDRESS_SIZE))
     { 
       cursor: (+ u1 (get cursor acc)), 

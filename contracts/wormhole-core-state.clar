@@ -49,7 +49,7 @@
 ;; Map tracking consumed governance VAA hashes to prevent replay attacks
 (define-map consumed-governance-vaa-hashes (buff 32) bool)
 ;; Map tracking guardian sets
-(define-map guardian-sets uint (list 19 { compressed-public-key: (buff 33), uncompressed-public-key: (buff 64) }))
+(define-map guardian-sets uint (list 30 { compressed-public-key: (buff 33), uncompressed-public-key: (buff 64) }))
 
 ;; Since this contract can't be updated, provide a dynamically-typed key/value store,
 ;; which can be used if additional state is required by future core contract updates.

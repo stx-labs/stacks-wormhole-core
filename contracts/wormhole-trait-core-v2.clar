@@ -9,7 +9,7 @@
         version: uint,
         guardian-set-id: uint,
         signatures-len: uint ,
-        signatures: (list 19 { guardian-id: uint, signature: (buff 65) }),
+        signatures: (list 30 { guardian-id: uint, signature: (buff 65) }),
         timestamp: uint,
         nonce: uint,
         emitter-chain: uint,
