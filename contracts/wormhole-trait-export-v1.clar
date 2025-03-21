@@ -1,5 +1,5 @@
 ;; This is for transferring the state of `wormhole-core` during updates
-;; This does not cover `wormhole-core-state`, which is not upgradeable
+;; This does not cover `wormhole-core-state`, which cannot be updated
 (define-trait export-trait
   (
     ;; Returns current state of `wormhole-core` and deactivates contract

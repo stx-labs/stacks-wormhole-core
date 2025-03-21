@@ -5,7 +5,7 @@
 
 ;; Store the state for `wormhole-core`
 ;;
-;; THIS CONTRACT IS NOT UPGRADEABLE, so it should contain as little logic as possible
+;; THIS CONTRACT CANNOT BE UPDATED, so it should contain as little logic as possible
 ;;
 ;; This contract is *specifically* meant for state that can grow unbounded, and eventually too big to export
 ;; State with a finite size is stored in `wormhole-core`, and transfered via import/export functions during an update
