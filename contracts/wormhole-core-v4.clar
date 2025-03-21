@@ -4,7 +4,7 @@
 ;; Report an issue: https://github.com/hirosystems/stacks-wormhole-core/issues
 
 ;; Contracts using the Wormhole protocol can interact directly with this contract, but it
-;; is recommended instead to interact with it via proxy (`wormhole-trait-core-v2-trait-checker`)
+;; is recommended instead to interact with it via proxy (`wormhole-core-proxy`)
 ;; Using the proxy allows you to use the latest version of `wormhole-core` without updating your contract code
 
 ;; Contract Principals
@@ -12,7 +12,7 @@
 
 ;; The contract that is allowed to act as a proxy and specify `emitter` to `post-message`
 ;; This can be a constant because it will not change as long as the contract is active
-(define-constant PRINCIPAL_PROXY_CONTRACT .wormhole-trait-core-v2-trait-checker)
+(define-constant PRINCIPAL_PROXY_CONTRACT .wormhole-core-proxy-v2)
 
 ;;;; Traits
 

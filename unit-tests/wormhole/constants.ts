@@ -64,7 +64,7 @@ export class WormholeCoreState {
 
 // Constants from `wormhole-core-state` Clarity contract
 export class WormholeCoreProxy {
-  static readonly CONTRACT_NAME = "wormhole-trait-core-v2-trait-checker";
+  static readonly CONTRACT_NAME = "wormhole-core-proxy-v2";
   // Must match what is in `$(CONTRACT_NAME}.clar`
   static readonly ERR_TRAIT_CHECK_NO_ACTIVE_CONTRACT = 20001;
   static readonly ERR_TRAIT_CHECK_CONTRACT_MISMATCH = 20002;

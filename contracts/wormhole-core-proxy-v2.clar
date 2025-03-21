@@ -1,10 +1,10 @@
-;; title: wormhole-trait-core-v2-trait-checker
+;; title: wormhole-core-prooxy-v2
 ;; version: v2
 ;; summary: Checks that `core` trait passed is valid and is active core contract
 ;; description:
 ;;
 ;; =============================
-;; Trait Checker Summary
+;; Proxy Summary
 ;; =============================
 ;;
 ;; We can't do a proper proxy in Clarity, as dynamic dispatch is limited in order to preserve decidability
@@ -15,7 +15,7 @@
 ;; but allows them to avoid updating and re-deploying their contracts every time `wormhole-core` updates
 ;;
 ;; =============================
-;; Trait Checker Dataflow
+;; Proxy Dataflow
 ;; =============================
 ;;
 ;; -----------------------------
@@ -27,7 +27,7 @@
 ;; -----------------------------
 ;; 2. Third-party contract using Wormhole
 ;; -----------------------------
-;;   The third-party contract must accept the trait as a function argument and pass it through to this contract (`wormhole-trait-core-v2-trait-checker`)
+;;   The third-party contract must accept the trait as a function argument and pass it through to this contract (`wormhole-core-proxy-v2`)
 ;;   It is not necessary to check the trait argument here
 ;;
 ;; -----------------------------

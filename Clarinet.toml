@@ -40,8 +40,8 @@ path = 'contracts/wormhole-core-state.clar'
 clarity_version = 3
 epoch = 3.0
 
-[contracts.wormhole-trait-core-v2-trait-checker]
-path = 'contracts/wormhole-trait-core-v2-trait-checker.clar'
+[contracts.wormhole-core-proxy-v2]
+path = 'contracts/wormhole-core-proxy-v2.clar'
 clarity_version = 3
 epoch = 3.0
 
