@@ -306,7 +306,7 @@
     (ok cancelled-transfer)))
 
 ;; @desc Parse a Verified Action Approval (VAA)
-;; 
+;;
 ;; VAA Header
 ;; byte        version             (VAA Version)
 ;; u32         guardian_set_index  (Indicates which guardian set is signing)
@@ -324,35 +324,35 @@
 ;;
 ;; @param vaa-bytes: VAA as raw bytes
 (define-read-only (parse-vaa (vaa-bytes (buff 8192)))
-  (let ((cursor-version (unwrap! (read-uint-8 { bytes: vaa-bytes, pos: u0 }) 
+  (let ((cursor-version (unwrap! (read-uint-8 { bytes: vaa-bytes, pos: u0 })
           ERR_VAA_PARSING_VERSION))
-        (cursor-guardian-set-id (unwrap! (read-uint-32 (get next cursor-version)) 
+        (cursor-guardian-set-id (unwrap! (read-uint-32 (get next cursor-version))
           ERR_VAA_PARSING_GUARDIAN_SET))
-        (cursor-signatures-len (unwrap! (read-uint-8 (get next cursor-guardian-set-id)) 
+        (cursor-signatures-len (unwrap! (read-uint-8 (get next cursor-guardian-set-id))
           ERR_VAA_PARSING_SIGNATURES_LEN))
         (signatures-len (get value cursor-signatures-len))
         (check-signatures-len (asserts! (<= signatures-len GOV_MAX_GUARDIANS)
           ERR_GOV_MAX_GUARDIANS_EXCEEDED))
         (cursor-signatures (fold batch-read-signatures
           EMPTY_LIST_MAX_GUARDIANS
-          { 
-              next: (get next cursor-signatures-len), 
+          {
+              next: (get next cursor-signatures-len),
               value: (list),
               iter: (get value cursor-signatures-len)
           }))
         (vaa-body-hash (keccak256 (keccak256 (get value (unwrap! (read-buff-8192-max (get next cursor-signatures) none)
           ERR_VAA_HASHING_BODY)))))
-        (cursor-timestamp (unwrap! (read-uint-32 (get next cursor-signatures)) 
+        (cursor-timestamp (unwrap! (read-uint-32 (get next cursor-signatures))
           ERR_VAA_PARSING_TIMESTAMP))
-        (cursor-nonce (unwrap! (read-uint-32 (get next cursor-timestamp)) 
+        (cursor-nonce (unwrap! (read-uint-32 (get next cursor-timestamp))
           ERR_VAA_PARSING_NONCE))
-        (cursor-emitter-chain (unwrap! (read-uint-16 (get next cursor-nonce)) 
+        (cursor-emitter-chain (unwrap! (read-uint-16 (get next cursor-nonce))
           ERR_VAA_PARSING_EMITTER_CHAIN))
-        (cursor-emitter-address (unwrap! (read-buff-32 (get next cursor-emitter-chain)) 
+        (cursor-emitter-address (unwrap! (read-buff-32 (get next cursor-emitter-chain))
           ERR_VAA_PARSING_EMITTER_ADDRESS))
-        (cursor-sequence (unwrap! (read-uint-64 (get next cursor-emitter-address)) 
+        (cursor-sequence (unwrap! (read-uint-64 (get next cursor-emitter-address))
           ERR_VAA_PARSING_SEQUENCE))
-        (cursor-consistency-level (unwrap! (read-uint-8 (get next cursor-sequence)) 
+        (cursor-consistency-level (unwrap! (read-uint-8 (get next cursor-sequence))
           ERR_VAA_PARSING_CONSISTENCY_LEVEL))
         (cursor-payload (unwrap! (read-buff-8192-max (get next cursor-consistency-level) none)
           ERR_VAA_PARSING_PAYLOAD))
@@ -363,9 +363,9 @@
               value: (list)
           })))
     (asserts! (is-eq (get pos (get next cursor-payload)) (len vaa-bytes)) ERR_GSU_CHECK_OVERLAY)
-    (ok { 
+    (ok {
         vaa: {
-          version: (get value cursor-version), 
+          version: (get value cursor-version),
           guardian-set-id: (get value cursor-guardian-set-id),
           signatures-len: signatures-len,
           signatures: (get value cursor-signatures),
@@ -406,11 +406,11 @@
           vaa-body-hash: (get vaa-body-hash message)
         }))))
 
-;; @desc Update the active set of guardians 
+;; @desc Update the active set of guardians
 ;; @param guardian-set-vaa: VAA embedding the Guardian Set Update information
 ;; @param uncompressed-public-keys: uncompressed public keys, used for recomputing
-;; the addresses embedded in the VAA. `secp256k1-verify` returns a compressed 
-;; public key, and uncompressing the key in clarity would be inefficient and expensive. 
+;; the addresses embedded in the VAA. `secp256k1-verify` returns a compressed
+;; public key, and uncompressing the key in clarity would be inefficient and expensive.
 (define-public (guardian-set-upgrade (guardian-set-vaa (buff 2048)) (uncompressed-public-keys (list 30 (buff 64))))
   (let ((active (try! (check-active-deployment)))
         (message (if (var-get guardian-set-initialized)
@@ -421,14 +421,14 @@
         (cursor-guardians-data (try! (parse-and-verify-guardian-set-upgrade (get payload vaa))))
         (set-id (get new-index cursor-guardians-data))
         (eth-addresses (get guardians-eth-addresses cursor-guardians-data))
-        (consolidated-public-keys (fold check-and-consolidate-public-keys 
-          uncompressed-public-keys 
+        (consolidated-public-keys (fold check-and-consolidate-public-keys
+          uncompressed-public-keys
           { cursor: u0, eth-addresses: eth-addresses, result: (list) }))
         (result (get result consolidated-public-keys))
         )
     ;; Ensure that enough uncompressed-public-keys were provided
     (try! (fold is-valid-guardian-entry result (ok true)))
-    (asserts! (is-eq (len uncompressed-public-keys) (len eth-addresses)) 
+    (asserts! (is-eq (len uncompressed-public-keys) (len eth-addresses))
       ERR_GSU_UNCOMPRESSED_PUBLIC_KEYS)
     ;; Check emitting address and chain
     (try! (check-emitter (get emitter-address vaa) (get emitter-chain vaa)))
@@ -442,8 +442,8 @@
     (try! (set-new-guardian-set-id set-id))
     (var-set guardian-set-initialized true)
     ;; Emit Event
-    (print { 
-      event: "governance-action", 
+    (print {
+      event: "governance-action",
       action: "GuardianSetUpgrade",
       hash: hash,
       data: {
@@ -456,9 +456,9 @@
     })
     (ok {
       vaa: vaa,
-      result: { 
-        guardians-eth-addresses: eth-addresses, 
-        guardians-public-keys: uncompressed-public-keys 
+      result: {
+        guardians-eth-addresses: eth-addresses,
+        guardians-public-keys: uncompressed-public-keys
       }
     })))
 
@@ -786,11 +786,11 @@
 ;;;; Private functions
 
 ;; @desc Foldable function admitting an uncompressed 64 bytes public key as an input, producing a record { uncompressed-public-key, compressed-public-key }
-(define-private (check-and-consolidate-public-keys 
-      (uncompressed-public-key (buff 64)) 
-      (acc { 
-        cursor: uint, 
-        eth-addresses: (list 30 (buff 20)), 
+(define-private (check-and-consolidate-public-keys
+      (uncompressed-public-key (buff 64))
+      (acc {
+        cursor: uint,
+        eth-addresses: (list 30 (buff 20)),
         result: (list 30 { compressed-public-key: (buff 33), uncompressed-public-key: (buff 64)})
       }))
   (let ((eth-address (unwrap-panic (element-at? (get eth-addresses acc) (get cursor acc))))
@@ -805,54 +805,54 @@
     }))
 
 ;; @desc Foldable function admitting an guardian input and their signature as an input, producing a record { recovered-compressed-public-key }
-(define-private (batch-recover-public-keys 
-      (entry { guardian-id: uint, signature: (buff 65) }) 
+(define-private (batch-recover-public-keys
+      (entry { guardian-id: uint, signature: (buff 65) })
       (acc { message-hash: (buff 32), value: (list 30 { recovered-compressed-public-key: (buff 33), guardian-id: uint }) }))
   (let ((recovered-compressed-public-key (secp256k1-recover? (get message-hash acc) (get signature entry)))
-        (updated-public-keys (match recovered-compressed-public-key 
+        (updated-public-keys (match recovered-compressed-public-key
             public-key (append (get value acc) { recovered-compressed-public-key: public-key, guardian-id: (get guardian-id entry) } )
             error (get value acc))))
-    { 
-      message-hash: (get message-hash acc), 
+    {
+      message-hash: (get message-hash acc),
       value: (unwrap-panic (as-max-len? updated-public-keys u30))
     }))
 
 ;; @desc Foldable function evaluating signatures from a list of { guardian-id: u8, signature: (buff 65) }, returning a list of recovered public-keys
-(define-private (batch-check-active-public-keys 
-      (entry { recovered-compressed-public-key: (buff 33), guardian-id: uint }) 
-      (acc { 
+(define-private (batch-check-active-public-keys
+      (entry { recovered-compressed-public-key: (buff 33), guardian-id: uint })
+      (acc {
         active-guardians: (list 30 { compressed-public-key: (buff 33), uncompressed-public-key: (buff 64) }),
         result: (list 30 (buff 33))
       }))
    (let ((compressed-public-key (get compressed-public-key (unwrap-panic (element-at? (get active-guardians acc) (get guardian-id entry))))))
-     (if (and 
+     (if (and
             (is-eq (get recovered-compressed-public-key entry) compressed-public-key)
             (is-none (index-of? (get result acc) (get recovered-compressed-public-key entry))))
-          { 
+          {
             result: (unwrap-panic (as-max-len? (append (get result acc) (get recovered-compressed-public-key entry)) u30)),
             active-guardians: (get active-guardians acc)
           }
           acc)))
 
-;; @desc Foldable function parsing a sequence of bytes into a list of { guardian-id: u8, signature: (buff 65) } 
-(define-private (batch-read-signatures 
-      (entry uint) 
+;; @desc Foldable function parsing a sequence of bytes into a list of { guardian-id: u8, signature: (buff 65) }
+(define-private (batch-read-signatures
+      (entry uint)
       (acc { next: { bytes: (buff 8192), pos: uint }, iter: uint, value: (list 30 { guardian-id: uint, signature: (buff 65) })}))
   (if (is-eq (get iter acc) u0)
     { iter: u0, next: (get next acc), value: (get value acc) }
     (let ((cursor-guardian-id (unwrap-panic (read-uint-8 (get next acc))))
           (cursor-signature (unwrap-panic (read-buff-65 (get next cursor-guardian-id)))))
-      { 
-        iter: (- (get iter acc) u1), 
-        next: (get next cursor-signature), 
-        value: 
+      {
+        iter: (- (get iter acc) u1),
+        next: (get next cursor-signature),
+        value:
           (unwrap-panic (as-max-len? (append (get value acc) { guardian-id: (get value cursor-guardian-id), signature: (get value cursor-signature) }) u30))
       })))
 
 ;; @desc Convert an uncompressed public key (64 bytes) into a compressed public key (33 bytes)
 (define-private (compress-public-key (uncompressed-public-key (buff 64)))
-  (if (is-eq 0x uncompressed-public-key) 
-    0x 
+  (if (is-eq 0x uncompressed-public-key)
+    0x
     (let ((x-coordinate (unwrap-panic (slice? uncompressed-public-key u0 u32)))
           (y-coordinate-parity (buff-to-uint-be (unwrap-panic (element-at? uncompressed-public-key u63)))))
       (unwrap-panic (as-max-len? (concat (if (is-eq (mod y-coordinate-parity u2) u0) 0x02 0x03) x-coordinate) u33)))))
@@ -872,18 +872,18 @@
     acc
   )))
 
-;; @desc Parse and verify payload's VAA  
+;; @desc Parse and verify payload's VAA
 (define-private (parse-and-verify-guardian-set-upgrade (bytes (buff 8192)))
-  (let 
-      ((cursor-module (unwrap! (read-buff-32 { bytes: bytes, pos: u0 }) 
+  (let
+      ((cursor-module (unwrap! (read-buff-32 { bytes: bytes, pos: u0 })
           ERR_GSU_PARSING_MODULE))
-      (cursor-action (unwrap! (read-uint-8 (get next cursor-module)) 
+      (cursor-action (unwrap! (read-uint-8 (get next cursor-module))
           ERR_GSU_PARSING_ACTION))
-      (cursor-chain (unwrap! (read-uint-16 (get next cursor-action)) 
+      (cursor-chain (unwrap! (read-uint-16 (get next cursor-action))
           ERR_GSU_PARSING_CHAIN))
-      (cursor-new-index (unwrap! (read-uint-32 (get next cursor-chain)) 
+      (cursor-new-index (unwrap! (read-uint-32 (get next cursor-chain))
           ERR_GSU_PARSING_INDEX))
-      (cursor-guardians-count (unwrap! (read-uint-8 (get next cursor-new-index)) 
+      (cursor-guardians-count (unwrap! (read-uint-8 (get next cursor-new-index))
           ERR_GSU_PARSING_GUARDIAN_LEN))
       (guardians-count (get value cursor-guardians-count))
       (check-guardians-count (asserts! (<= guardians-count GOV_MAX_GUARDIANS)
@@ -896,7 +896,7 @@
     ;; Ensure there are no duplicated addresses
     (asserts! (is-eq (len eth-addresses) guardians-count) ERR_DUPLICATED_GUARDIAN_ADDRESSES)
     ;; Ensure that this message was emitted from authorized module
-    (asserts! (is-eq (get value cursor-module) CORE_STRING_MODULE) 
+    (asserts! (is-eq (get value cursor-module) CORE_STRING_MODULE)
       ERR_GSU_CHECK_MODULE)
     ;; Ensure that this message is matching the adequate action
     (asserts! (is-eq (get value cursor-action) GOV_ACTION_GUARDIAN_SET_UPDATE)
@@ -909,7 +909,7 @@
       ;; Ensure that next index > current index
       (asserts! (> (get value cursor-new-index) (var-get active-guardian-set-id)) ERR_GSU_CHECK_INDEX)
     )
-    
+
     ;; Good to go!
     (ok {
         guardians-eth-addresses: eth-addresses,
@@ -924,17 +924,17 @@
 
 (define-private (is-guardian-cue (byte (buff 1)) (acc { cursor: uint, result: (list 30 uint) }))
   (if (is-eq u0 (mod (get cursor acc) GUARDIAN_ETH_ADDRESS_SIZE))
-    { 
-      cursor: (+ u1 (get cursor acc)), 
+    {
+      cursor: (+ u1 (get cursor acc)),
       result: (unwrap-panic (as-max-len? (append (get result acc) (get cursor acc)) u30)),
     }
     {
-      cursor: (+ u1 (get cursor acc)), 
+      cursor: (+ u1 (get cursor acc)),
       result: (get result acc),
     }))
 
 (define-private (is-valid-guardian-entry (entry { compressed-public-key: (buff 33), uncompressed-public-key: (buff 64)}) (prev-res (response bool uint)))
-  (begin 
+  (begin
     (try! prev-res)
     (let (
       (compressed (get compressed-public-key entry))
@@ -1060,60 +1060,60 @@
 ;; Only include the functions that are used here
 
 (define-private (read-buff-1 (cursor { bytes: (buff 8192), pos: uint }))
-    (ok { 
-        value: (unwrap! (as-max-len? (unwrap! (slice? (get bytes cursor) (get pos cursor) (+ (get pos cursor) u1)) (err u1)) u1) (err u1)), 
+    (ok {
+        value: (unwrap! (as-max-len? (unwrap! (slice? (get bytes cursor) (get pos cursor) (+ (get pos cursor) u1)) (err u1)) u1) (err u1)),
         next: { bytes: (get bytes cursor), pos: (+ (get pos cursor) u1) }
     }))
 
 (define-private (read-buff-2 (cursor { bytes: (buff 8192), pos: uint }))
-    (ok { 
-        value: (unwrap! (as-max-len? (unwrap! (slice? (get bytes cursor) (get pos cursor) (+ (get pos cursor) u2)) (err u1)) u2) (err u1)), 
+    (ok {
+        value: (unwrap! (as-max-len? (unwrap! (slice? (get bytes cursor) (get pos cursor) (+ (get pos cursor) u2)) (err u1)) u2) (err u1)),
         next: { bytes: (get bytes cursor), pos: (+ (get pos cursor) u2) }
     }))
 
 (define-private (read-buff-4 (cursor { bytes: (buff 8192), pos: uint }))
-    (ok { 
-        value: (unwrap! (as-max-len? (unwrap! (slice? (get bytes cursor) (get pos cursor) (+ (get pos cursor) u4)) (err u1)) u4) (err u1)), 
+    (ok {
+        value: (unwrap! (as-max-len? (unwrap! (slice? (get bytes cursor) (get pos cursor) (+ (get pos cursor) u4)) (err u1)) u4) (err u1)),
         next: { bytes: (get bytes cursor), pos: (+ (get pos cursor) u4) }
     }))
 
 (define-private (read-buff-8 (cursor { bytes: (buff 8192), pos: uint }))
-    (ok { 
-        value: (unwrap! (as-max-len? (unwrap! (slice? (get bytes cursor) (get pos cursor) (+ (get pos cursor) u8)) (err u1)) u8) (err u1)), 
+    (ok {
+        value: (unwrap! (as-max-len? (unwrap! (slice? (get bytes cursor) (get pos cursor) (+ (get pos cursor) u8)) (err u1)) u8) (err u1)),
         next: { bytes: (get bytes cursor), pos: (+ (get pos cursor) u8) }
     }))
 
 (define-private (read-buff-16 (cursor { bytes: (buff 8192), pos: uint }))
-    (ok { 
-        value: (unwrap! (as-max-len? (unwrap! (slice? (get bytes cursor) (get pos cursor) (+ (get pos cursor) u16)) (err u1)) u16) (err u1)), 
+    (ok {
+        value: (unwrap! (as-max-len? (unwrap! (slice? (get bytes cursor) (get pos cursor) (+ (get pos cursor) u16)) (err u1)) u16) (err u1)),
         next: { bytes: (get bytes cursor), pos: (+ (get pos cursor) u16) }
     }))
 
 (define-private (read-buff-20 (cursor { bytes: (buff 8192), pos: uint }))
-    (ok { 
-        value: (unwrap! (as-max-len? (unwrap! (slice? (get bytes cursor) (get pos cursor) (+ (get pos cursor) u20)) (err u1)) u20) (err u1)), 
+    (ok {
+        value: (unwrap! (as-max-len? (unwrap! (slice? (get bytes cursor) (get pos cursor) (+ (get pos cursor) u20)) (err u1)) u20) (err u1)),
         next: { bytes: (get bytes cursor), pos: (+ (get pos cursor) u20) }
     }))
 
 (define-private (read-buff-32 (cursor { bytes: (buff 8192), pos: uint }))
-    (ok { 
-        value: (unwrap! (as-max-len? (unwrap! (slice? (get bytes cursor) (get pos cursor) (+ (get pos cursor) u32)) (err u1)) u32) (err u1)), 
+    (ok {
+        value: (unwrap! (as-max-len? (unwrap! (slice? (get bytes cursor) (get pos cursor) (+ (get pos cursor) u32)) (err u1)) u32) (err u1)),
         next: { bytes: (get bytes cursor), pos: (+ (get pos cursor) u32) }
     }))
 
 (define-private (read-buff-65 (cursor { bytes: (buff 8192), pos: uint }))
-    (ok { 
-        value: (unwrap! (as-max-len? (unwrap! (slice? (get bytes cursor) (get pos cursor) (+ (get pos cursor) u65)) (err u1)) u65) (err u1)), 
+    (ok {
+        value: (unwrap! (as-max-len? (unwrap! (slice? (get bytes cursor) (get pos cursor) (+ (get pos cursor) u65)) (err u1)) u65) (err u1)),
         next: { bytes: (get bytes cursor), pos: (+ (get pos cursor) u65) }
     }))
 
 (define-private (read-buff-8192-max (cursor { bytes: (buff 8192), pos: uint }) (size (optional uint)))
     (let ((min (get pos cursor))
-          (max (match size value 
+          (max (match size value
             (+ value (get pos cursor))
             (len (get bytes cursor)))))
-      (ok { 
-          value: (unwrap! (as-max-len? (unwrap! (slice? (get bytes cursor) min max) (err u1)) u8192) (err u1)), 
+      (ok {
+          value: (unwrap! (as-max-len? (unwrap! (slice? (get bytes cursor) min max) (err u1)) u8192) (err u1)),
           next: { bytes: (get bytes cursor), pos: max }
       })))
 
@@ -1138,9 +1138,9 @@
         (ok (merge cursor-bytes { value: (buff-to-uint-be (get value cursor-bytes)) }))))
 
 (define-private (slice (cursor { bytes: (buff 8192), pos: uint }) (size (optional uint)))
-    (match (slice? (get bytes cursor) 
-                   (get pos cursor) 
-                   (match size value 
-                   (+ (get pos cursor) value)    
+    (match (slice? (get bytes cursor)
+                   (get pos cursor)
+                   (match size value
+                   (+ (get pos cursor) value)
                       (len (get bytes cursor))))
         bytes bytes 0x))

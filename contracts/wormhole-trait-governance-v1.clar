@@ -5,7 +5,7 @@
   (
     ;; Handle governance action #1: ContractUpgrade
     (contract-upgrade ((buff 8192)) (response principal uint))
-    ;; Handle governance action #2: GuardianSetUpgrade 
+    ;; Handle governance action #2: GuardianSetUpgrade
     (guardian-set-upgrade ((buff 2048) (list 30 (buff 64))) (response {
       vaa: {
         version: uint,
