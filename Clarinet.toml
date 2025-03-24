@@ -1,6 +1,6 @@
 
 [project]
-name = "stacks-wormhole-bridge"
+name = "stacks-wormhole-core"
 description = ""
 authors = []
 telemetry = false
@@ -15,19 +15,44 @@ contract_id = 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-ecc-v1'
 [[project.requirements]]
 contract_id = 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-merkle-tree-keccak160-v1'
 
-[contracts.wormhole-core-v1]
-path = 'contracts/wormhole-core-v1.clar'
-clarity_version = 2
-epoch = 2.4
+[contracts.wormhole-core-v4]
+path = 'contracts/wormhole-core-v4.clar'
+clarity_version = 3
+epoch = 3.0
 
-[contracts.wormhole-traits-v1]
-path = 'contracts/wormhole-traits-v1.clar'
-clarity_version = 2
-epoch = 2.4
+[contracts.wormhole-trait-core-v2]
+path = 'contracts/wormhole-trait-core-v2.clar'
+clarity_version = 3
+epoch = 3.0
 
-[repl.analysis]
-passes = ["check_checker"]
-check_checker = { trusted_sender = false, trusted_caller = false, callee_filter = false }
+[contracts.wormhole-trait-governance-v1]
+path = 'contracts/wormhole-trait-governance-v1.clar'
+clarity_version = 3
+epoch = 3.0
+
+[contracts.wormhole-trait-export-v1]
+path = 'contracts/wormhole-trait-export-v1.clar'
+clarity_version = 3
+epoch = 3.0
+
+[contracts.wormhole-core-state]
+path = 'contracts/wormhole-core-state.clar'
+clarity_version = 3
+epoch = 3.0
+
+[contracts.wormhole-core-proxy-v2]
+path = 'contracts/wormhole-core-proxy-v2.clar'
+clarity_version = 3
+epoch = 3.0
+
+#[repl.analysis]
+#passes = ['check_checker']
+
+#[repl.analysis.check_checker]
+#strict = false
+#trusted_sender = false
+#trusted_caller = false
+#callee_filter = false
 
 # Check-checker settings:
 # trusted_sender: if true, inputs are trusted after tx_sender has been checked.
@@ -36,3 +61,4 @@ check_checker = { trusted_sender = false, trusted_caller = false, callee_filter 
 # warning, if it gets checked inside. This check will also propagate up to the
 # caller.
 # More informations: https://www.hiro.so/blog/new-safety-checks-in-clarinet
+

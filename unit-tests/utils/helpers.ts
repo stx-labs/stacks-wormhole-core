@@ -1,19 +1,15 @@
-export function bigintToBuffer(bigintValue: bigint, byteLength: number) {
-  if (bigintValue >= 0n) {
-    // Convert BigInt to hexadecimal string
-    let hexString = bigintValue.toString(16);
-    // Calculate padding
-    const padding = byteLength * 2 - hexString.length;
-    // Add leading zeros for padding
-    for (let i = 0; i < padding; i++) {
-      hexString = "0" + hexString;
-    }
-    // Create Buffer from padded hexadecimal string
-    return Buffer.from(hexString, "hex");
-  } else {
-    // Handle negative BigInt
-    const twosComplement = (BigInt(1) << BigInt(byteLength * 8)) + bigintValue;
-    return bigintToBuffer(twosComplement, byteLength);
+import { toBigIntBE, toBufferBE } from "bigint-buffer";
+
+export function bigintToBuffer(
+  value: bigint | number | string,
+  byteLength: number,
+): Buffer {
+  switch (typeof value) {
+    case "number":
+    case "string":
+      return toBufferBE(BigInt(value), byteLength);
+    case "bigint":
+      return toBufferBE(value, byteLength);
   }
 }
 
@@ -23,7 +19,6 @@ export function bufferToHexString(bytes: Uint8Array) {
   }).join("");
 }
 
-export function bufferToBigint(bytes: Uint8Array) {
-  const hexString = bufferToHexString(bytes);
-  return BigInt("0x" + hexString);
+export function bufferToBigint(bytes: Buffer): BigInt {
+  return toBigIntBE(bytes);
 }

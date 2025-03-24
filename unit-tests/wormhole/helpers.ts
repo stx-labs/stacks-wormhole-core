@@ -42,14 +42,20 @@ export namespace wormhole {
       let ethereumAddress = keccak_256(uncompressedPublicKey).slice(12, 32);
       keychain.push({
         guardianId: i,
-        secretKey: secretKey,
-        uncompressedPublicKey: uncompressedPublicKey,
-        ethereumAddress: ethereumAddress,
+        secretKey,
+        uncompressedPublicKey,
+        ethereumAddress,
         compressedPublicKey: secp.getPublicKey(secretKey, true),
       });
     }
     return keychain;
   };
+
+  export interface NewEmitter {
+    chain: number;
+    sequence: bigint;
+    address: Uint8Array;
+  }
 
   export interface Emitter {
     chain: number;
@@ -90,6 +96,7 @@ export namespace wormhole {
 
   export const GovernanceUpdateEmitter = {
     chain: 1,
+    sequence: 0,
     address: hexToBytes(
       "0000000000000000000000000000000000000000000000000000000000000004",
     ),
@@ -109,46 +116,42 @@ export namespace wormhole {
     // []byte      payload             (VAA message content)
     export const vaaBody = (opts?: VaaBodyBuildOptions) => {
       // Timestamp
-      let timestamp = fc.nat(4294967295);
-      if (opts && opts.timestamp) {
-        timestamp = fc.constant(opts.timestamp);
-      }
+      const timestamp =
+        opts && opts.timestamp
+          ? fc.constant(opts.timestamp)
+          : fc.nat(4294967295);
 
       // Nonce
-      let nonce = fc.nat(4294967295);
-      if (opts && opts.nonce) {
-        nonce = fc.constant(opts.nonce);
-      }
+      const nonce =
+        opts && opts.nonce ? fc.constant(opts.nonce) : fc.nat(4294967295);
 
       // Emitter chain
-      let emitterChain = fc.nat(65535);
-      if (opts && opts.emitterChain) {
-        emitterChain = fc.constant(opts.emitterChain);
-      }
+      const emitterChain =
+        opts && opts.emitterChain
+          ? fc.constant(opts.emitterChain)
+          : fc.nat(65535);
 
       // Emitter address
-      let emitterAddress = fc.uint8Array({ minLength: 32, maxLength: 32 });
-      if (opts && opts.emitterAddress) {
-        emitterAddress = fc.constant(opts.emitterAddress);
-      }
+      const emitterAddress =
+        opts && opts.emitterAddress
+          ? fc.constant(opts.emitterAddress)
+          : fc.uint8Array({ minLength: 32, maxLength: 32 });
 
       // Sequence
-      let sequence = fc.bigUintN(64);
-      if (opts && opts.sequence) {
-        sequence = fc.constant(opts.sequence);
-      }
+      const sequence =
+        opts && opts.sequence ? fc.constant(opts.sequence) : fc.bigInt();
 
       // Consistency level
-      let consistencyLevel = fc.nat(255);
-      if (opts && opts.consistencyLevel) {
-        consistencyLevel = fc.constant(opts.consistencyLevel);
-      }
+      const consistencyLevel =
+        opts && opts.consistencyLevel
+          ? fc.constant(opts.consistencyLevel)
+          : fc.nat(255);
 
       // Payload
-      let payload = fc.uint8Array({ minLength: 20, maxLength: 2048 });
-      if (opts && opts.payload) {
-        payload = fc.constant(opts.payload);
-      }
+      const payload =
+        opts && opts.payload
+          ? fc.constant(opts.payload)
+          : fc.uint8Array({ minLength: 20, maxLength: 2048 });
 
       return fc.tuple(
         timestamp,
@@ -174,27 +177,26 @@ export namespace wormhole {
       numberOfSignatures = 19,
     ) => {
       // Version
-      let version = fc.nat(255);
-      if (opts && opts.version) {
-        version = fc.constant(opts.version);
-      }
+      const version =
+        opts && opts.version ? fc.constant(opts.version) : fc.nat(255);
 
       // Guardian set id
-      let guardianSetId = fc.nat(255);
-      if (opts && opts.guardianSetId) {
-        guardianSetId = fc.constant(opts.guardianSetId);
-      }
+      const guardianSetId =
+        opts && opts.guardianSetId
+          ? fc.constant(opts.guardianSetId)
+          : fc.nat(255);
 
       // Specified signatures
-      let specifiedSignatures = fc.array(
-        fc.uint8Array({ minLength: 66, maxLength: 66 }),
-        { minLength: 0, maxLength: 0 },
-      );
-      let specifiedSignaturesLen = 0;
-      if (opts && opts.signatures) {
-        specifiedSignatures = fc.constant(opts.signatures);
-        specifiedSignaturesLen = opts.signatures.length;
-      }
+      const specifiedSignatures =
+        opts && opts.signatures
+          ? fc.constant(opts.signatures)
+          : fc.array(fc.uint8Array({ minLength: 66, maxLength: 66 }), {
+              minLength: 0,
+              maxLength: 0,
+            });
+
+      const specifiedSignaturesLen =
+        opts && opts.signatures ? opts.signatures.length : 0;
 
       // Generated signatures
       let generatedSignatures = fc.array(
@@ -220,7 +222,7 @@ export namespace wormhole {
     opts?: VaaHeaderBuildOptions,
   ): VaaHeaderBuildOptions => {
     let signatures = [];
-    const messageHash = keccak_256(keccak_256(serializeVaaBodyToBuffer(body)));
+    const messageHash = hashVaaBody(body);
 
     for (let guardian of keychain) {
       const signature = secp.sign(messageHash, guardian.secretKey);
@@ -233,20 +235,28 @@ export namespace wormhole {
         const rec = Buffer.alloc(1);
         rec.writeUint8(signature.recovery, 0);
         signatures.push(
-          Buffer.concat([id, signature.toCompactRawBytes(), rec]),
+          Buffer.concat([
+            Uint8Array.from(id),
+            signature.toCompactRawBytes(),
+            Uint8Array.from(rec),
+          ]),
         );
       } else {
         const rec = Buffer.alloc(1);
         rec.writeUint8(0, 0);
         signatures.push(
-          Buffer.concat([id, signature.toCompactRawBytes(), rec]),
+          Buffer.concat([
+            Uint8Array.from(id),
+            signature.toCompactRawBytes(),
+            Uint8Array.from(rec),
+          ]),
         );
       }
     }
     return {
       version: opts?.version,
       guardianSetId: opts?.guardianSetId,
-      signatures: signatures,
+      signatures: signatures.map((x) => Uint8Array.from(x)),
     };
   };
 
@@ -371,14 +381,22 @@ export namespace wormhole {
     };
   };
 
+  export const hashVaaBody = (body: VaaBody): Uint8Array => {
+    return keccak_256(
+      keccak_256(Uint8Array.from(serializeVaaBodyToBuffer(body))),
+    );
+  };
+
   export const serializeVaaToBuffer = (
     vaaHeader: VaaHeader,
     vaaBody: VaaBody,
   ) => {
-    return Buffer.concat([
-      serializeVaaHeaderToBuffer(vaaHeader),
-      serializeVaaBodyToBuffer(vaaBody),
-    ]);
+    return Buffer.concat(
+      [
+        serializeVaaHeaderToBuffer(vaaHeader),
+        serializeVaaBodyToBuffer(vaaBody),
+      ].map((x) => Uint8Array.from(x)),
+    );
   };
 
   export const serializeVaaHeaderToBuffer = (vaaHeader: VaaHeader) => {
@@ -396,7 +414,7 @@ export namespace wormhole {
     components.push(v);
 
     components.push(Buffer.concat(vaaHeader.signatures));
-    return Buffer.concat(components);
+    return Buffer.concat(components.map((x) => Uint8Array.from(x)));
   };
 
   export const serializeVaaBodyToBuffer = (vaaBody: VaaBody) => {
@@ -423,13 +441,19 @@ export namespace wormhole {
 
     components.push(vaaBody.payload);
 
-    return Buffer.concat(components);
+    return Buffer.concat(components.map((x) => Uint8Array.from(x)));
   };
 
-  export const validGuardianRotationModule = Buffer.from(
+  // This hex string represents the ASCII string "Core"
+  export const coreModule = Buffer.from(
     "00000000000000000000000000000000000000000000000000000000436f7265",
     "hex",
   );
+
+  export const validContractUpgradeModule = coreModule;
+  export const validGuardianRotationModule = coreModule;
+  export const validSetMessageFeeModule = coreModule;
+  export const validTransferFeesModule = coreModule;
 
   export const serializeGuardianUpdateVaaPayloadToBuffer = (
     keyChain: Guardian[],
@@ -461,7 +485,110 @@ export namespace wormhole {
       components.push(guardian.ethereumAddress);
     }
 
-    return Buffer.concat(components);
+    return Buffer.concat(components.map((x) => Uint8Array.from(x)));
+  };
+
+  // Serialize payload for a ContractUpgrade VAA
+  //
+  // Wire format reminder:
+  // ===========================
+  // [32]byte    module     (Module, should be "Core")
+  // u8          action     (Action type, `4` for TransferFees)
+  // u16         chain      (Blockchain ID which this message is intended for)
+  // principal   contract   (Successor contract)
+  //
+  // See also: https://github.com/wormhole-foundation/wormhole/blob/main/whitepapers/0004_message_publishing.md
+  export const serializeContractUpgradeVaaPayloadToBuffer = (
+    action: number,
+    chain: number,
+    contract: string,
+    module = validSetMessageFeeModule,
+  ) => {
+    const components = [];
+    components.push(module);
+
+    let v = Buffer.alloc(1);
+    v.writeUint8(action, 0);
+    components.push(v);
+
+    v = Buffer.alloc(2);
+    v.writeUInt16BE(chain, 0);
+    components.push(v);
+
+    // Encode `contract` as Stacks wire format
+    v = Buffer.from(Cl.serialize(Cl.principal(contract)));
+    components.push(v);
+
+    return Buffer.concat(components.map((x) => Uint8Array.from(x)));
+  };
+
+  // Serialize payload for a SetMessageFee VAA
+  //
+  // Wire format reminder:
+  // ===========================
+  // [32]byte    module     (Module, should be "Core")
+  // u8          action     (Action type, `3` for SetMessageFee)
+  // u16         chain      (Blockchain ID which this message is intended for)
+  // u256        fee        (New fee (in uSTX) to emit a message to Wormhole Guardians)
+  //
+  // See also: https://github.com/wormhole-foundation/wormhole/blob/main/whitepapers/0004_message_publishing.md
+  export const serializeSetMessageFeeVaaPayloadToBuffer = (
+    action: number,
+    chain: number,
+    fee: number | bigint,
+    module = validSetMessageFeeModule,
+  ) => {
+    const components = [];
+    components.push(module);
+
+    const v1 = Buffer.alloc(1);
+    v1.writeUint8(action, 0);
+    components.push(v1);
+
+    const v2 = Buffer.alloc(2);
+    v2.writeUInt16BE(chain, 0);
+    components.push(v2);
+
+    components.push(bigintToBuffer(fee, 32));
+
+    return Buffer.concat(components.map((x) => Uint8Array.from(x)));
+  };
+
+  // Serialize payload for a TransferFees VAA
+  //
+  // Wire format reminder:
+  // ===========================
+  // [32]byte    module     (Module, should be "Core")
+  // u8          action     (Action type, `4` for TransferFees)
+  // u16         chain      (Blockchain ID which this message is intended for)
+  // u256        amount     (Amount to transfer from accumulated message fees)
+  // principal   recipient  (Recipient of message fees)
+  //
+  // See also: https://github.com/wormhole-foundation/wormhole/blob/main/whitepapers/0004_message_publishing.md
+  export const serializeTransferFeesVaaPayloadToBuffer = (
+    action: number,
+    chain: number,
+    amount: number | bigint,
+    recipient: string,
+    module = validSetMessageFeeModule,
+  ) => {
+    const components = [];
+    components.push(module);
+
+    const v1 = Buffer.alloc(1);
+    v1.writeUint8(action, 0);
+    components.push(v1);
+
+    const v2 = Buffer.alloc(2);
+    v2.writeUInt16BE(chain, 0);
+    components.push(v2);
+
+    components.push(bigintToBuffer(amount, 32));
+
+    // Encode `recipient` as Stacks wire format
+    components.push(Buffer.from(Cl.serialize(Cl.principal(recipient))));
+
+    return Buffer.concat(components.map((x) => Uint8Array.from(x)));
   };
 
   export function applyGuardianSetUpdate(
@@ -479,7 +606,7 @@ export namespace wormhole {
         wormhole.validGuardianRotationModule,
       );
     let vaaBody = wormhole.buildValidVaaBodySpecs({
-      payload: guardianRotationPayload,
+      payload: Uint8Array.from(guardianRotationPayload),
       emitter: wormhole.GovernanceUpdateEmitter,
     });
     let vaaHeader = wormhole.buildValidVaaHeader(keychain, vaaBody, {
@@ -494,8 +621,8 @@ export namespace wormhole {
     let result = simnet.mineBlock([
       tx.callPublicFn(
         contractName,
-        `update-guardians-set`,
-        [Cl.buffer(vaa), Cl.list(uncompressedPublicKey)],
+        `guardian-set-upgrade`,
+        [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
         txSenderAddress,
       ),
     ])[0].result;
@@ -509,32 +636,79 @@ export namespace wormhole {
     const vaaRotation1 = Cl.bufferFromHex(gsuMainnetVaas[0].vaa);
     let publicKeysRotation1 = gsuMainnetVaas[0].keys.map(Cl.bufferFromHex);
 
-    const vaaRotation2 = Cl.bufferFromHex(gsuMainnetVaas[1].vaa);
-    let publicKeysRotation2 = gsuMainnetVaas[1].keys.map(Cl.bufferFromHex);
-
-    const vaaRotation3 = Cl.bufferFromHex(gsuMainnetVaas[2].vaa);
-    let publicKeysRotation3 = gsuMainnetVaas[2].keys.map(Cl.bufferFromHex);
-
     const block = simnet.mineBlock([
       tx.callPublicFn(
         contractName,
-        "update-guardians-set",
+        "guardian-set-upgrade",
         [vaaRotation1, Cl.list(publicKeysRotation1)],
-        txSenderAddress,
-      ),
-      tx.callPublicFn(
-        contractName,
-        "update-guardians-set",
-        [vaaRotation2, Cl.list(publicKeysRotation2)],
-        txSenderAddress,
-      ),
-      tx.callPublicFn(
-        contractName,
-        "update-guardians-set",
-        [vaaRotation3, Cl.list(publicKeysRotation3)],
         txSenderAddress,
       ),
     ]);
     return block;
+  }
+
+  export function applyNextMainnetGuardianSetUpdates(
+    txSenderAddress: string,
+    contractName: string,
+  ) {
+    const vaaRotation2 = Cl.bufferFromHex(gsuMainnetVaas[1].vaa);
+    let publicKeysRotation2 = gsuMainnetVaas[1].keys.map(Cl.bufferFromHex);
+
+    const block = simnet.mineBlock([
+      tx.callPublicFn(
+        contractName,
+        "guardian-set-upgrade",
+        [vaaRotation2, Cl.list(publicKeysRotation2)],
+        txSenderAddress,
+      ),
+    ]);
+    return block;
+  }
+
+  export function setMessageFee(
+    keychain: wormhole.Guardian[],
+    guardianSetId: number,
+    fee: number | bigint,
+    chain: number,
+    contractName: string,
+    txSenderAddress: string,
+  ) {
+    const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
+      3,
+      chain,
+      fee,
+    );
+    const body = wormhole.buildValidVaaBodySpecs({
+      payload: Uint8Array.from(payload),
+      emitter: wormhole.GovernanceUpdateEmitter,
+    });
+    const header = wormhole.buildValidVaaHeader(keychain, body, {
+      version: 1,
+      guardianSetId,
+    });
+    const vaa = wormhole.serializeVaaToBuffer(header, body);
+
+    const result = simnet.callPublicFn(
+      contractName,
+      `set-message-fee`,
+      [Cl.buffer(Uint8Array.from(vaa))],
+      txSenderAddress,
+    );
+    return result;
+  }
+
+  // This links `wormhole-core` to it's state in `wormhole-core-state`
+  // This needs to be called before any other contracts in `wormhole-core`
+  export function initializeStateContract(
+    contractName: string,
+    txSenderAddress: string,
+  ) {
+    const result = simnet.callPublicFn(
+      contractName,
+      `initialize`,
+      [Cl.none()],
+      txSenderAddress,
+    );
+    return result;
   }
 }

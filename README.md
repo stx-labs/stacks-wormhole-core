@@ -23,23 +23,64 @@ Stacks is a Bitcoin layer that enables decentralized apps and smart contracts.
 
 The contracts are developed in Clarity and use [clarinet-sdk](https://www.npmjs.com/package/@hirosystems/clarinet-sdk) for its test harnessing.
 
-Git clone and compile **stacks-pyth-relayer**
+Git clone and compile **stacks-wormhole-core**
 
 ```bash
-$ git clone https://github.com/hirosystems/stacks-wormhole-bridge.git
-$ cd stacks-wormhole-bridge
+$ git clone https://github.com/hirosystems/stacks-wormhole-core.git
+$ cd stacks-wormhole-core
 $ npm install
 $ npm test
 ```
 
 ## Status
 
-This repository is a copy of https://github.com/hirosystems/stacks-pyth-bridge/tree/main/contracts/wormhole.
+This repository was forked from the Wormhole contracts in https://github.com/Trust-Machines/stacks-pyth-bridge/tree/clarity-v3/
 
-In the context of the implementation of Pyth, the following features have been implemented:
+This project aims to implement a `wormhole-core` contract.
+The core contract by itself cannot bridge assets to/from other chains.
+Rather, it implements the Wormhole protocol, managing Wormhole governance and providing message handling functions for other contracts.
+The scope of this contract is outlined [here](https://wormhole.com/docs/learn/infrastructure/core-contracts/), and includes:
 
-- Ability to verify a VAA by checking the 19 cryptographic signatures from authorized guardians to ensure authenticity. This process ensures that the data within the VAA has not been tampered with and adheres to the consensus rules of the Wormhole protocol. Once verified, the VAA can be used to execute secure and reliable cross-chain actions.
+- Setting list of up to 30 (currently 19) Wormhole Guardians that can sign VAAs (Verifiable Action Approval)
+- Parsing and validating VAAs against Guardian's public keys
+- Formatting and emmitting event messages for Guardians to observe and send VAAs to other blockchains
+- Collecting and transferring fees for emitting messages
+- Updating the core contract via governance VAA
 
-- Ability to rotate the set of guardians. This process involves updating the list of guardians (validators) who are responsible for observing events and signing VAAs, ensuring that no single entity or small group can control the network over time.
+Again, this set of contracts is only a messaging/governance layer.
+In order to send/receive messages or tokens to/from other chains, it is necessary to write contracts that manage the specific messages or tokens being transferred.
 
-Ultimately once the repo has been upgraded to a fully fledged version of Wormhole and the contracts are deployed the onchain deployment of Pyth should be updated and pointing to this new deployment (operation performed by Pyth governance).
+## Deployment
+
+This process will be different for the initial deployment, and slightly different for each update, depending on what has changed
+
+### Initial Deployment
+
+If there is no existing Wormhole state (in either the core or state contract) that needs to be preserved, follow this procedure:
+
+1. Deploy **all** contracts in `./contracts`
+2. Call `wormhole-core-v4::initialize` with argument `(none)`
+3. Relayer must pass GuardianSetUpgrade VAA to `guardian-set-upgrade` to set the initial Guardian Set
+
+### Future Updates
+
+If the core contract set has already been deployed and there is state to preserve, follow this procedure:
+
+#### Preparation
+
+1. In general, you should only be updating `wormhole-core`
+    1. Do not re-deploy trait or other contracts unless they have changed (and update version number if they have)
+    2. **Never** re-deploy `wormhole-core-state`. **This contract cannot be updated.** If you need additional state:
+        1. Use the key/value storage provided in `wormhole-core-state`
+        2. Deploy a new permanent state contract, eg. `wormhole-core-state-2`
+2. **If deploying from a different address than the initial deployment, hard-code the full principals of contracts from previous deployments into `contract-call?` functions**
+
+#### Deployment
+
+1. Deploy new core contract and any additional contracts needed
+2. Governance contract will issue a ContractUpgrade VAA containing principal of newly deployed core contract
+3. Replayer must pass ContractUpgrade VAA to `contract-upgrade` in existing core contract
+4. Call `wormhole-core-v4::initialize` in new contract with argument `(some <previous-contract>)`
+
+
+

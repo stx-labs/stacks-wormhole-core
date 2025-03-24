@@ -7,6 +7,9 @@ genesis:
     - name: deployer
       address: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
       balance: "100000000000000"
+    - name: empty
+      address: STVCT7ABJ6FPKG9FF46NE27MKJPTJSKT5CK0W813
+      balance: "0"
     - name: faucet
       address: STNHKEPYEPJ8ET55ZZ0M5A34J0R3N5FM2CMMMAZ6
       balance: "100000000000000"
@@ -64,14 +67,37 @@ plan:
             emulated-sender: SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F
             path: "./.cache/requirements/SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-merkle-tree-keccak160-v1.clar"
             clarity-version: 2
-        - emulated-contract-publish:
-            contract-name: wormhole-traits-v1
-            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
-            path: contracts/wormhole-traits-v1.clar
-            clarity-version: 2
-        - emulated-contract-publish:
-            contract-name: wormhole-core-v1
-            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
-            path: contracts/wormhole-core-v1.clar
-            clarity-version: 2
       epoch: "2.4"
+    - id: 1
+      transactions:
+        - emulated-contract-publish:
+            contract-name: wormhole-core-state
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: contracts/wormhole-core-state.clar
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: wormhole-trait-core-v2
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: contracts/wormhole-trait-core-v2.clar
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: wormhole-core-proxy-v2
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: contracts/wormhole-core-proxy-v2.clar
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: wormhole-trait-export-v1
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: contracts/wormhole-trait-export-v1.clar
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: wormhole-trait-governance-v1
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: contracts/wormhole-trait-governance-v1.clar
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: wormhole-core-v4
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: contracts/wormhole-core-v4.clar
+            clarity-version: 3
+      epoch: "3.0"

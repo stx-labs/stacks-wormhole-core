@@ -8,10 +8,14 @@ export default defineConfig({
   test: {
     include: ["./unit-tests/**/*.test.ts"],
     environment: "clarinet",
-    singleThread: true,
+    pool: "forks",
+    poolOptions: {
+      forks: { singleFork: true },
+    },
     setupFiles: [vitestSetupFilePath],
     environmentOptions: {
       clarinet: getClarinetVitestsArgv(),
     },
+    testTimeout: 15000,
   },
 });

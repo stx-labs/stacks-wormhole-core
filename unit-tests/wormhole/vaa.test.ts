@@ -4,11 +4,11 @@ import { it, fc } from "@fast-check/vitest";
 import { wormhole } from "./helpers";
 import { ParsedTransactionResult, tx } from "@hirosystems/clarinet-sdk";
 import { hexToBytes } from "@noble/hashes/utils";
+import { WormholeCore as WC } from "./constants";
 
-const contractName = "wormhole-core-v1";
 const verbosity = 0;
 
-describe("wormhole-core-v1::parse-vaa success", () => {
+describe(`${WC.CONTRACT_NAME}::parse-vaa success`, () => {
   const accounts = simnet.getAccounts();
   const sender = accounts.get("wallet_1")!;
   const keychain = wormhole.generateGuardianSetKeychain(19);
@@ -41,16 +41,16 @@ describe("wormhole-core-v1::parse-vaa success", () => {
             wormhole.serializeVaaToClarityValue(header, body, keychain);
 
           const res = simnet.callReadOnlyFn(
-            contractName,
+            WC.CONTRACT_NAME,
             `parse-vaa`,
-            [Cl.buffer(vaa)],
+            [Cl.buffer(Uint8Array.from(vaa))],
             sender,
           );
-          res.result;
           expect(res.result).toBeOk(
             Cl.tuple({
               vaa: decodedVaa,
               "recovered-public-keys": Cl.list(guardiansPublicKeys),
+              "vaa-body-hash": Cl.buffer(wormhole.hashVaaBody(body)),
             }),
           );
         },
@@ -60,10 +60,15 @@ describe("wormhole-core-v1::parse-vaa success", () => {
   });
 });
 
-describe("wormhole-core-v1::update-guardians-set failures", () => {
+describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade failures`, () => {
   const accounts = simnet.getAccounts();
-  const sender = accounts.get("wallet_1")!;
+  const deployer = accounts.get("deployer")!;
   const keychain = wormhole.generateGuardianSetKeychain(19);
+
+  beforeEach(async () => {
+    let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
+    expect(res.result).toBeOk(Cl.bool(true));
+  });
 
   it("should fail if the chain is invalid", () => {
     // Before performing this test, we need to setup the guardian set
@@ -76,7 +81,7 @@ describe("wormhole-core-v1::update-guardians-set failures", () => {
         wormhole.validGuardianRotationModule,
       );
     let body = wormhole.buildValidVaaBodySpecs({
-      payload: guardianRotationPayload,
+      payload: Uint8Array.from(guardianRotationPayload),
       emitter: wormhole.GovernanceUpdateEmitter,
     });
     let header = wormhole.buildValidVaaHeader(keychain, body, {
@@ -90,10 +95,10 @@ describe("wormhole-core-v1::update-guardians-set failures", () => {
       uncompressedPublicKey.push(Cl.buffer(guardian.uncompressedPublicKey));
     }
     const res = simnet.callPublicFn(
-      contractName,
-      `update-guardians-set`,
-      [Cl.buffer(vaa), Cl.list(uncompressedPublicKey)],
-      sender,
+      WC.CONTRACT_NAME,
+      `guardian-set-upgrade`,
+      [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
+      deployer,
     );
     expect(res.result).toBeErr(Cl.uint(1303));
   });
@@ -109,7 +114,7 @@ describe("wormhole-core-v1::update-guardians-set failures", () => {
         wormhole.validGuardianRotationModule,
       );
     let body = wormhole.buildValidVaaBodySpecs({
-      payload: guardianRotationPayload,
+      payload: Uint8Array.from(guardianRotationPayload),
       emitter: wormhole.GovernanceUpdateEmitter,
     });
     let header = wormhole.buildValidVaaHeader(keychain, body, {
@@ -123,10 +128,10 @@ describe("wormhole-core-v1::update-guardians-set failures", () => {
       uncompressedPublicKey.push(Cl.buffer(guardian.uncompressedPublicKey));
     }
     const res = simnet.callPublicFn(
-      contractName,
-      `update-guardians-set`,
-      [Cl.buffer(vaa), Cl.list(uncompressedPublicKey)],
-      sender,
+      WC.CONTRACT_NAME,
+      `guardian-set-upgrade`,
+      [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
+      deployer,
     );
     expect(res.result).toBeErr(Cl.uint(1302));
   });
@@ -142,7 +147,7 @@ describe("wormhole-core-v1::update-guardians-set failures", () => {
         wormhole.validGuardianRotationModule,
       );
     let body = wormhole.buildValidVaaBodySpecs({
-      payload: guardianRotationPayload,
+      payload: Uint8Array.from(guardianRotationPayload),
       emitter: wormhole.GovernanceUpdateEmitter,
     });
     let header = wormhole.buildValidVaaHeader(keychain, body, {
@@ -156,10 +161,10 @@ describe("wormhole-core-v1::update-guardians-set failures", () => {
       uncompressedPublicKey.push(Cl.buffer(guardian.uncompressedPublicKey));
     }
     const res = simnet.callPublicFn(
-      contractName,
-      `update-guardians-set`,
-      [Cl.buffer(vaa), Cl.list(uncompressedPublicKey)],
-      sender,
+      WC.CONTRACT_NAME,
+      `guardian-set-upgrade`,
+      [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
+      deployer,
     );
     expect(res.result).toBeErr(Cl.uint(1304));
   });
@@ -178,7 +183,7 @@ describe("wormhole-core-v1::update-guardians-set failures", () => {
         ),
       );
     let body = wormhole.buildValidVaaBodySpecs({
-      payload: guardianRotationPayload,
+      payload: Uint8Array.from(guardianRotationPayload),
       emitter: wormhole.GovernanceUpdateEmitter,
     });
     let header = wormhole.buildValidVaaHeader(keychain, body, {
@@ -192,10 +197,10 @@ describe("wormhole-core-v1::update-guardians-set failures", () => {
       uncompressedPublicKey.push(Cl.buffer(guardian.uncompressedPublicKey));
     }
     const res = simnet.callPublicFn(
-      contractName,
-      `update-guardians-set`,
-      [Cl.buffer(vaa), Cl.list(uncompressedPublicKey)],
-      sender,
+      WC.CONTRACT_NAME,
+      `guardian-set-upgrade`,
+      [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
+      deployer,
     );
     expect(res.result).toBeErr(Cl.uint(1301));
   });
@@ -217,7 +222,7 @@ describe("wormhole-core-v1::update-guardians-set failures", () => {
         wormhole.validGuardianRotationModule,
       );
     let body = wormhole.buildValidVaaBodySpecs({
-      payload: guardianRotationPayload,
+      payload: Uint8Array.from(guardianRotationPayload),
       emitter,
     });
     let header = wormhole.buildValidVaaHeader(keychain, body, {
@@ -231,12 +236,12 @@ describe("wormhole-core-v1::update-guardians-set failures", () => {
       uncompressedPublicKey.push(Cl.buffer(guardian.uncompressedPublicKey));
     }
     const res = simnet.callPublicFn(
-      contractName,
-      `update-guardians-set`,
-      [Cl.buffer(vaa), Cl.list(uncompressedPublicKey)],
-      sender,
+      WC.CONTRACT_NAME,
+      `guardian-set-upgrade`,
+      [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
+      deployer,
     );
-    expect(res.result).toBeErr(Cl.uint(1305));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_CHECK_EMITTER));
   });
 
   it("should fail if the emitter-chain is invalid", () => {
@@ -254,7 +259,7 @@ describe("wormhole-core-v1::update-guardians-set failures", () => {
         wormhole.validGuardianRotationModule,
       );
     let body = wormhole.buildValidVaaBodySpecs({
-      payload: guardianRotationPayload,
+      payload: Uint8Array.from(guardianRotationPayload),
       emitter,
     });
     let header = wormhole.buildValidVaaHeader(keychain, body, {
@@ -268,29 +273,35 @@ describe("wormhole-core-v1::update-guardians-set failures", () => {
       uncompressedPublicKey.push(Cl.buffer(guardian.uncompressedPublicKey));
     }
     const res = simnet.callPublicFn(
-      contractName,
-      `update-guardians-set`,
-      [Cl.buffer(vaa), Cl.list(uncompressedPublicKey)],
-      sender,
+      WC.CONTRACT_NAME,
+      `guardian-set-upgrade`,
+      [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
+      deployer,
     );
-    expect(res.result).toBeErr(Cl.uint(1305));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_CHECK_EMITTER));
   });
 });
 
-describe("wormhole-core-v1::update-guardians-set success", () => {
+describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade success`, () => {
   const accounts = simnet.getAccounts();
+  const deployer = accounts.get("deployer")!;
   const sender = accounts.get("wallet_1")!;
   const guardianSet1Keys = wormhole.generateGuardianSetKeychain(19);
   const guardianSet2Keys = wormhole.generateGuardianSetKeychain(19);
   let guardianSet1 = Cl.tuple({});
+
+  beforeEach(async () => {
+    let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
+    expect(res.result).toBeOk(Cl.bool(true));
+  });
 
   // Before starting the test suite, we have to setup the guardian set.
   beforeEach(async () => {
     let [result, vaaHeader, vaaBody] = wormhole.applyGuardianSetUpdate(
       guardianSet1Keys,
       1,
-      sender,
-      contractName,
+      deployer,
+      WC.CONTRACT_NAME,
     );
     let [serializeVaaToClarityValue, _] = wormhole.serializeVaaToClarityValue(
       vaaHeader as wormhole.VaaHeader,
@@ -327,7 +338,7 @@ describe("wormhole-core-v1::update-guardians-set success", () => {
 
   it("should return the set 1 as active", () => {
     let res = simnet.callReadOnlyFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `get-active-guardian-set`,
       [],
       sender,
@@ -357,7 +368,7 @@ describe("wormhole-core-v1::update-guardians-set success", () => {
         wormhole.validGuardianRotationModule,
       );
     const body = wormhole.buildValidVaaBodySpecs({
-      payload: guardianRotationPayload,
+      payload: Uint8Array.from(guardianRotationPayload),
       emitter: wormhole.GovernanceUpdateEmitter,
     });
     const header = wormhole.buildValidVaaHeader(guardianSet1Keys, body, {
@@ -376,9 +387,9 @@ describe("wormhole-core-v1::update-guardians-set success", () => {
     );
     let res = simnet.mineBlock([
       tx.callPublicFn(
-        contractName,
-        `update-guardians-set`,
-        [Cl.buffer(vaa), Cl.list(uncompressedPublicKey)],
+        WC.CONTRACT_NAME,
+        `guardian-set-upgrade`,
+        [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
         sender,
       ),
     ])[0].result;
@@ -397,7 +408,7 @@ describe("wormhole-core-v1::update-guardians-set success", () => {
     );
 
     res = simnet.callReadOnlyFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `get-active-guardian-set`,
       [],
       sender,
@@ -417,7 +428,7 @@ describe("wormhole-core-v1::update-guardians-set success", () => {
         wormhole.validGuardianRotationModule,
       );
     const body = wormhole.buildValidVaaBodySpecs({
-      payload: guardianRotationPayload,
+      payload: Uint8Array.from(guardianRotationPayload),
       emitter: wormhole.GovernanceUpdateEmitter,
     });
     const header = wormhole.buildValidVaaHeader(guardianSet1Keys, body, {
@@ -431,25 +442,36 @@ describe("wormhole-core-v1::update-guardians-set success", () => {
     }
     let res = simnet.mineBlock([
       tx.callPublicFn(
-        contractName,
-        `update-guardians-set`,
-        [Cl.buffer(vaa), Cl.list(uncompressedPublicKey)],
+        WC.CONTRACT_NAME,
+        `guardian-set-upgrade`,
+        [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
         sender,
       ),
     ])[0].result;
-    expect(res).toBeErr(Cl.uint(1207));
+    expect(res).toBeErr(Cl.uint(1205));
   });
 });
 
-describe("wormhole-core-v1::parse-and-verify-vaa success", () => {
+describe(`${WC.CONTRACT_NAME}::parse-and-verify-vaa success`, () => {
   const accounts = simnet.getAccounts();
+  const deployer = accounts.get("deployer")!;
   const sender = accounts.get("wallet_1")!;
   const guardianSet1Keys = wormhole.generateGuardianSetKeychain(19);
   // const guardianSet2Keys = wormhole.generateGuardianSetKeychain(19);
 
+  beforeEach(async () => {
+    let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
+    expect(res.result).toBeOk(Cl.bool(true));
+  });
+
   // Before starting the test suite, we have to setup the guardian set.
   beforeEach(async () => {
-    wormhole.applyGuardianSetUpdate(guardianSet1Keys, 1, sender, contractName);
+    wormhole.applyGuardianSetUpdate(
+      guardianSet1Keys,
+      1,
+      deployer,
+      WC.CONTRACT_NAME,
+    );
   });
 
   it("should succeed if the vaa is valid", () => {
@@ -481,9 +503,9 @@ describe("wormhole-core-v1::parse-and-verify-vaa success", () => {
             wormhole.serializeVaaToClarityValue(header, body, guardianSet1Keys);
 
           const res = simnet.callReadOnlyFn(
-            contractName,
+            WC.CONTRACT_NAME,
             `parse-vaa`,
-            [Cl.buffer(vaa)],
+            [Cl.buffer(Uint8Array.from(vaa))],
             sender,
           );
           res.result;
@@ -491,6 +513,7 @@ describe("wormhole-core-v1::parse-and-verify-vaa success", () => {
             Cl.tuple({
               vaa: decodedVaa,
               "recovered-public-keys": Cl.list(guardiansPublicKeys),
+              "vaa-body-hash": Cl.buffer(wormhole.hashVaaBody(body)),
             }),
           );
         },
@@ -518,23 +541,39 @@ describe("wormhole-core-v1::parse-and-verify-vaa success", () => {
     );
 
     const res = simnet.callReadOnlyFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `parse-and-verify-vaa`,
-      [Cl.buffer(vaa)],
+      [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );
-    expect(res.result).toBeOk(decodedVaa);
+    expect(res.result).toBeOk(
+      Cl.tuple({
+        vaa: decodedVaa,
+        "vaa-body-hash": Cl.buffer(wormhole.hashVaaBody(body)),
+      }),
+    );
   });
 });
 
-describe("wormhole-core-v1::parse-and-verify-vaa failures", () => {
+describe(`${WC.CONTRACT_NAME}::parse-and-verify-vaa failures`, () => {
   const accounts = simnet.getAccounts();
+  const deployer = accounts.get("deployer")!;
   const sender = accounts.get("wallet_1")!;
   const guardianSet1Keys = wormhole.generateGuardianSetKeychain(19);
 
+  beforeEach(async () => {
+    let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
+    expect(res.result).toBeOk(Cl.bool(true));
+  });
+
   // Before starting the test suite, we have to setup the guardian set.
   beforeEach(async () => {
-    wormhole.applyGuardianSetUpdate(guardianSet1Keys, 1, sender, contractName);
+    wormhole.applyGuardianSetUpdate(
+      guardianSet1Keys,
+      1,
+      deployer,
+      WC.CONTRACT_NAME,
+    );
   });
 
   it("should fail if the version is invalid", () => {
@@ -552,9 +591,9 @@ describe("wormhole-core-v1::parse-and-verify-vaa failures", () => {
       uncompressedPublicKey.push(Cl.buffer(guardian.uncompressedPublicKey));
     }
     const res = simnet.callReadOnlyFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `parse-and-verify-vaa`,
-      [Cl.buffer(vaa)],
+      [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );
     expect(res.result).toBeErr(Cl.uint(1101));
@@ -575,12 +614,12 @@ describe("wormhole-core-v1::parse-and-verify-vaa failures", () => {
       uncompressedPublicKey.push(Cl.buffer(guardian.uncompressedPublicKey));
     }
     const res = simnet.callReadOnlyFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `parse-and-verify-vaa`,
-      [Cl.buffer(vaa)],
+      [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(1105));
+    expect(res.result).toBeErr(Cl.uint(1103));
   });
 
   it("should fail if one key is being used multiple times", () => {
@@ -602,9 +641,9 @@ describe("wormhole-core-v1::parse-and-verify-vaa failures", () => {
       uncompressedPublicKey.push(Cl.buffer(guardian.uncompressedPublicKey));
     }
     const res = simnet.callReadOnlyFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `parse-and-verify-vaa`,
-      [Cl.buffer(vaa)],
+      [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );
     expect(res.result).toBeErr(Cl.uint(1102));
@@ -627,9 +666,9 @@ describe("wormhole-core-v1::parse-and-verify-vaa failures", () => {
       uncompressedPublicKey.push(Cl.buffer(guardian.uncompressedPublicKey));
     }
     const res = simnet.callReadOnlyFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `parse-and-verify-vaa`,
-      [Cl.buffer(vaa)],
+      [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );
     expect(res.result).toBeErr(Cl.uint(1102));
@@ -655,28 +694,43 @@ describe("wormhole-core-v1::parse-and-verify-vaa failures", () => {
       uncompressedPublicKey.push(Cl.buffer(guardian.uncompressedPublicKey));
     }
     const res = simnet.callReadOnlyFn(
-      contractName,
+      WC.CONTRACT_NAME,
       `parse-and-verify-vaa`,
-      [Cl.buffer(vaa)],
+      [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );
     expect(res.result).toBeErr(Cl.uint(1102));
   });
 });
 
-describe("wormhole-core-v1::update-guardians-set mainnet guardian rotations", () => {
+describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade mainnet guardian rotations`, () => {
   const accounts = simnet.getAccounts();
+  const deployer = accounts.get("deployer")!;
   const sender = accounts.get("wallet_1")!;
   let block: ParsedTransactionResult[] | undefined = undefined;
 
-  // Before starting the test suite, we have to setup the guardian set.
   beforeEach(async () => {
-    block = wormhole.applyMainnetGuardianSetUpdates(sender, contractName);
+    let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
+    expect(res.result).toBeOk(Cl.bool(true));
   });
 
-  it("should succeed handling the 3 guardians rotations", () => {
-    expect(block!).toHaveLength(3);
+  // Before starting the test suite, we have to setup the guardian set.
+  beforeEach(async () => {
+    block = wormhole.applyMainnetGuardianSetUpdates(deployer, WC.CONTRACT_NAME);
+  });
+
+  it("should succeed handling the 2 guardians rotations", () => {
+    expect(block!).toHaveLength(1);
     block!.forEach((b: ParsedTransactionResult) => {
+      expect(b.result).toHaveClarityType(ClarityType.ResponseOk);
+    });
+
+    const newUpdateBlock = wormhole.applyNextMainnetGuardianSetUpdates(
+      sender,
+      WC.CONTRACT_NAME,
+    );
+    expect(newUpdateBlock!).toHaveLength(1);
+    newUpdateBlock!.forEach((b: ParsedTransactionResult) => {
       expect(b.result).toHaveClarityType(ClarityType.ResponseOk);
     });
   });
