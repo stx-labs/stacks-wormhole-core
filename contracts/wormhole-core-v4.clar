@@ -115,6 +115,8 @@
 (define-constant ERR_GOV_CHECK_CHAIN (err u1507))
 ;; Wormhole Governance: Message not from authorized chain/emitter
 (define-constant ERR_GOV_CHECK_EMITTER (err u1508))
+;; Wormhole Governance: Tried to use more than max number of guardians allowed
+(define-constant ERR_GOV_MAX_GUARDIANS_EXCEEDED (err u1509))
 
 ;; Set Message Fee: error parsing first 128 bits of `fee`
 (define-constant ERR_SMF_PARSING_FEE_1 (err u1601))
@@ -169,6 +171,8 @@
 (define-constant GOV_ACTION_SET_MESSAGE_FEE u3)
 ;; Wormhole Governance: TransferFees action
 (define-constant GOV_ACTION_TRANSFER_FEES u4)
+;; Wormhole Governance: Maximum number of Wormhole Guardians possible
+(define-constant GOV_MAX_GUARDIANS u30)
 ;; Stacks chain id attributed by Pyth
 (define-constant EXPECTED_CHAIN_ID (if is-in-mainnet 0xea86 0xc377))
 ;; Core string module
@@ -185,6 +189,9 @@
 (define-constant MAX_VALUE_U32 u4294967295)
 ;; Max value for unsigned 64-bit integer
 (define-constant MAX_VALUE_U64 u18446744073709551615)
+;; List of `u0` with length of GOV_MAX_GUARDIANS
+(define-constant EMPTY_LIST_MAX_GUARDIANS (list u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0))
+(asserts! (is-eq (len EMPTY_LIST_MAX_GUARDIANS) GOV_MAX_GUARDIANS) ERR_GOV_MAX_GUARDIANS_EXCEEDED)
 
 ;;;; Data vars
 
@@ -323,8 +330,11 @@
           ERR_VAA_PARSING_GUARDIAN_SET))
         (cursor-signatures-len (unwrap! (read-uint-8 (get next cursor-guardian-set-id)) 
           ERR_VAA_PARSING_SIGNATURES_LEN))
+        (signatures-len (get value cursor-signatures-len))
+        (check-signatures-len (asserts! (<= signatures-len GOV_MAX_GUARDIANS)
+          ERR_GOV_MAX_GUARDIANS_EXCEEDED))
         (cursor-signatures (fold batch-read-signatures
-          (list u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0)
+          EMPTY_LIST_MAX_GUARDIANS
           { 
               next: (get next cursor-signatures-len), 
               value: (list),
@@ -357,7 +367,7 @@
         vaa: {
           version: (get value cursor-version), 
           guardian-set-id: (get value cursor-guardian-set-id),
-          signatures-len: (get value cursor-signatures-len),
+          signatures-len: signatures-len,
           signatures: (get value cursor-signatures),
           timestamp: (get value cursor-timestamp),
           nonce: (get value cursor-nonce),
@@ -408,7 +418,7 @@
           (try! (parse-vaa guardian-set-vaa))))
         (vaa (get vaa message))
         (hash (get vaa-body-hash message))
-        (cursor-guardians-data (try! (parse-and-verify-guardians-set (get payload vaa))))
+        (cursor-guardians-data (try! (parse-and-verify-guardian-set-upgrade (get payload vaa))))
         (set-id (get new-index cursor-guardians-data))
         (eth-addresses (get guardians-eth-addresses cursor-guardians-data))
         (consolidated-public-keys (fold check-and-consolidate-public-keys 
@@ -863,7 +873,7 @@
   )))
 
 ;; @desc Parse and verify payload's VAA  
-(define-private (parse-and-verify-guardians-set (bytes (buff 8192)))
+(define-private (parse-and-verify-guardian-set-upgrade (bytes (buff 8192)))
   (let 
       ((cursor-module (unwrap! (read-buff-32 { bytes: bytes, pos: u0 }) 
           ERR_GSU_PARSING_MODULE))
@@ -875,13 +885,16 @@
           ERR_GSU_PARSING_INDEX))
       (cursor-guardians-count (unwrap! (read-uint-8 (get next cursor-new-index)) 
           ERR_GSU_PARSING_GUARDIAN_LEN))
-      (guardians-bytes (unwrap! (read-buff-8192-max (get next cursor-guardians-count) (some (* (get value cursor-guardians-count) GUARDIAN_ETH_ADDRESS_SIZE))) 
+      (guardians-count (get value cursor-guardians-count))
+      (check-guardians-count (asserts! (<= guardians-count GOV_MAX_GUARDIANS)
+          ERR_GOV_MAX_GUARDIANS_EXCEEDED))
+      (guardians-bytes (unwrap! (read-buff-8192-max (get next cursor-guardians-count) (some (* guardians-count GUARDIAN_ETH_ADDRESS_SIZE)))
           ERR_GSU_PARSING_GUARDIANS_BYTES))
       (guardians-cues (get result (fold is-guardian-cue (get value guardians-bytes) { cursor: u0, result: (list) })))
       (eth-addresses (get result (fold parse-guardian guardians-cues { bytes: (get value guardians-bytes), result: (list) }))))
     (asserts! (is-eq (get pos (get next guardians-bytes)) (len bytes)) ERR_GSU_CHECK_OVERLAY)
     ;; Ensure there are no duplicated addresses
-    (asserts! (is-eq (len eth-addresses) (get value cursor-guardians-count)) ERR_DUPLICATED_GUARDIAN_ADDRESSES)
+    (asserts! (is-eq (len eth-addresses) guardians-count) ERR_DUPLICATED_GUARDIAN_ADDRESSES)
     ;; Ensure that this message was emitted from authorized module
     (asserts! (is-eq (get value cursor-module) CORE_STRING_MODULE) 
       ERR_GSU_CHECK_MODULE)
