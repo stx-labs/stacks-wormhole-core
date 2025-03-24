@@ -7,7 +7,8 @@
 ;; is recommended instead to interact with it via proxy (`wormhole-core-proxy`)
 ;; Using the proxy allows you to use the latest version of `wormhole-core` without updating your contract code
 
-;; Contract Principals
+;;;; Contract Principals
+
 ;; WARNING: THESE MAY NEED TO BE CHANGED WHEN UPDATING THE CORE CONTRACT!
 
 ;; The contract that is allowed to act as a proxy and specify `emitter` to `post-message`
@@ -1040,8 +1041,10 @@
     (asserts! (is-eq chain GOV_EMITTING_CHAIN) ERR_GOV_CHECK_EMITTER)
     (ok true)))
 
-;; Inlined code from `SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2`
-;; This prevents overhead from `contract-call?`
+;;;; Inlined code from `SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2`
+
+;; Inlining code avoids the overhead from `contract-call?`
+;; Only include the functions that are used here
 
 (define-private (read-buff-1 (cursor { bytes: (buff 8192), pos: uint }))
     (ok { 
