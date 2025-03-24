@@ -53,7 +53,7 @@
 ;; Unable to extract the hash the payload from the VAA
 (define-constant ERR_VAA_HASHING_BODY (err u1012))
 
-;; Number of valid signatures insufficient (min: 2/3 * num_guardians + 1)
+;; Unknown `version` number
 (define-constant ERR_VAA_CHECKS_VERSION_UNSUPPORTED (err u1101))
 ;; Number of valid signatures insufficient (min: 2/3 * num_guardians + 1)
 (define-constant ERR_VAA_CHECKS_THRESHOLD_SIGNATURE (err u1102))
