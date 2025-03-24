@@ -1,4 +1,4 @@
-;; title: wormhole-core-prooxy-v2
+;; title: wormhole-core-proxy-v2
 ;; version: v2
 ;; summary: Checks that `core` trait passed is valid and is active core contract
 ;; description:
