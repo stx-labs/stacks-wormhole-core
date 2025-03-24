@@ -657,8 +657,8 @@
 ;;       Returns parsed payload as tuple if successful
 ;;
 ;; Expected message format for TransferFees payload:
-;;   [54]byte    header     Governance payload header
-;;   [151]byte   recipient  Recipient of message fees
+;;   [54]byte      header     Governance payload header
+;;   [22-151]byte  recipient  Recipient of message fees
 ;;
 ;; @param vaa-payload: VAA `payload` as raw bytes
 (define-read-only (parse-and-verify-transfer-fees-payload (vaa-payload (buff 8192)))
@@ -746,8 +746,8 @@
 ;;       Returns parsed payload as tuple if successful
 ;;
 ;; Expected message format for ContractUpgrade VAA payload:
-;;   [54]byte    header     Governance payload header
-;;   [151]byte   recipient  Recipient of message fees
+;;   [54]byte      header     Governance payload header
+;;   [22-151]byte  recipient  Recipient of message fees
 ;;
 ;; @param vaa-payload: VAA `payload` as raw bytes
 (define-read-only (parse-and-verify-contract-upgrade-payload (vaa-payload (buff 8192)))
