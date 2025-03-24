@@ -120,7 +120,7 @@
 (define-public (consume-emitter-sequence (emitter principal))
   (begin
     (try! (check-caller-is-owner))
-    (let ((sequence (default-to u0 (get-emitter-sequence emitter))))
+    (let ((sequence (default-to u0 (emitter-sequence-get emitter))))
       (map-set emitter-sequence emitter (+ sequence u1))
       (ok sequence))))
 
@@ -173,7 +173,7 @@
     (ok current-owner)))
 
 ;; @desc Read next sequence number for `emitter`
-(define-read-only (get-emitter-sequence (emitter principal))
+(define-read-only (emitter-sequence-get (emitter principal))
   (map-get? emitter-sequence emitter))
 
 ;; @desc Return raw buffer from key/value store
