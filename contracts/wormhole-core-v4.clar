@@ -173,8 +173,8 @@
 (define-constant GOV_ACTION_TRANSFER_FEES u4)
 ;; Wormhole Governance: Maximum number of Wormhole Guardians possible
 (define-constant GOV_MAX_GUARDIANS u30)
-;; Stacks chain id attributed by Pyth
-(define-constant EXPECTED_CHAIN_ID (if is-in-mainnet 0xea86 0xc377))
+;; Stacks chain ID in Wormhole protocol
+(define-constant WORMHOLE_STACKS_CHAIN_ID (if is-in-mainnet 0xea86 0xc377))
 ;; Core string module
 (define-constant CORE_STRING_MODULE 0x00000000000000000000000000000000000000000000000000000000436f7265)
 ;; Guardian eth address size
@@ -233,6 +233,9 @@
     contract (initialize-from-previous-contract contract)
     ;; This is the first deployment, initialize all Wormhole state
     (initialize-wormhole)))
+
+;; @desc Get chain ID
+(define-read-only (get-chain-id) WORMHOLE_STACKS_CHAIN_ID)
 
 ;; @desc Get successor contract
 (define-read-only (get-successor-contract)
@@ -568,7 +571,7 @@
     (asserts! (is-eq action gov-action)
       ERR_GOV_CHECK_ACTION)
     ;; Ensure that this message is addressed to this chain
-    (asserts! (is-eq chain (buff-to-uint-be EXPECTED_CHAIN_ID))
+    (asserts! (is-eq chain (buff-to-uint-be WORMHOLE_STACKS_CHAIN_ID))
       ERR_GOV_CHECK_CHAIN)
 
     ;; --- Checks Passed, Return Parsed Payload ---
@@ -902,7 +905,7 @@
     (asserts! (is-eq (get value cursor-action) GOV_ACTION_GUARDIAN_SET_UPDATE)
       ERR_GSU_CHECK_ACTION)
     ;; Ensure that this message is matching the expected chain
-    (asserts! (or (is-eq (get value cursor-chain) (buff-to-uint-be EXPECTED_CHAIN_ID)) (is-eq (get value cursor-chain) GOV_BROADCAST_CHAIN_ID) ) ERR_GSU_CHECK_CHAIN)
+    (asserts! (or (is-eq (get value cursor-chain) (buff-to-uint-be WORMHOLE_STACKS_CHAIN_ID)) (is-eq (get value cursor-chain) GOV_BROADCAST_CHAIN_ID) ) ERR_GSU_CHECK_CHAIN)
     (if (var-get guardian-set-initialized)
       ;; Ensure that next index = current index + 1
       (asserts! (is-eq (get value cursor-new-index) (+ u1 (var-get active-guardian-set-id))) ERR_GSU_CHECK_INDEX)
