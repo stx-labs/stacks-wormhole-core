@@ -41,15 +41,38 @@
 
 ;;;; Data maps
 
+;; Map to track "Wormhole Address"
+;; In Wormhole protocol, addresses are limited to 32 bytes in size
+;; Since a Stacks Contract principal can be much longer, we use `keccak256(address)` in Wormhole messages
+;; This allows us to use the protocol unmodified
+(define-map wormhole-addr-to-principal
+  (buff 32)  ;; keccak256(principal)
+  principal  ;; Contract emitting message
+)
+
+;; Inverse of `wormhole-addr-to-principal`
+;; Each entry in that map must have corresponding entry here
+(define-map principal-to-wormhole-addr
+  principal  ;; Contract emitting message
+  (buff 32)  ;; keccak256(principal)
+)
+
 ;; Map tracking sequence numbers for all contracts which have sent a Wormhole message
 (define-map emitter-sequence
-    principal  ;; Contract emitting message
-    uint       ;; Sequence number of *next* message
+  principal  ;; Contract emitting message
+  uint       ;; Sequence number of *next* message
 )
+
 ;; Map tracking consumed governance VAA hashes to prevent replay attacks
 (define-map consumed-governance-vaa-hashes (buff 32) bool)
+
 ;; Map tracking guardian sets
-(define-map guardian-sets uint (list 30 { compressed-public-key: (buff 33), uncompressed-public-key: (buff 64) }))
+(define-map guardian-sets
+  uint         ;; Guardian set ID
+  (list 30 {   ;; Max Guardian set size is 30
+    compressed-public-key: (buff 33),
+    uncompressed-public-key: (buff 64)
+  }))
 
 ;; Since this contract can't be updated, provide a dynamically-typed key/value store,
 ;; which can be used if additional state is required by future core contract updates.
@@ -115,14 +138,18 @@
     (ok true)))
 
 ;; @desc Get next sequence # for emitter and mark it as used
-;;       On success, returns `(ok sequence)` and increments emitter's sequence
+;;       On success, returns `(ok {...})` and increments emitter's sequence
 ;;       On failure, returns `(err ...)` does not increment sequence
 (define-public (consume-emitter-sequence (emitter principal))
-  (begin
-    (try! (check-caller-is-owner))
-    (let ((sequence (default-to u0 (emitter-sequence-get emitter))))
-      (map-set emitter-sequence emitter (+ sequence u1))
-      (ok sequence))))
+  (let ((check-caller (try! (check-caller-is-owner)))
+        (wormhole-address (inner-get-wormhole-address emitter))
+        (sequence (default-to u0 (emitter-sequence-get emitter))))
+    (map-set emitter-sequence emitter (+ sequence u1))
+    (ok (merge
+      wormhole-address
+      {
+        sequence: sequence
+      }))))
 
 ;; @desc Track hashes of processed governance VAAs so we don't replay them
 ;;       Returns `(ok true)` if the VAA is marked as "consumed"
@@ -161,6 +188,36 @@
     (try! (check-caller-is-owner))
     (ok (map-set guardian-sets set-id guardian-set))))
 
+;; @desc Map "Wormhole address" to `principal` and vice versa
+;;       On success, returns tuple with the following fields:
+;;        - `created`: `true` if address was generated and added to cache
+;;        - `address`: 32-byte Wormhole address
+(define-public (get-wormhole-address (p principal))
+  (begin
+    (try! (check-caller-is-owner))
+    (ok (inner-get-wormhole-address p))))
+
+;;;; Private functions
+
+;; @desc Unchecked version of `register-wormhole-address`
+(define-private (inner-get-wormhole-address (p principal))
+  (match (principal-to-wormhole-addr-get p)
+    ;; Wormhole address already in map
+    addr {
+      created: false,
+      wormhole-address: addr
+    }
+    ;; Not in map, compute address
+    (let ((p-as-string (unwrap-panic (as-max-len? (contract-call? 'SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC.self-listing-helper-v3 principal-to-string p) u256)))
+    ;;(let ((p-as-string "FIXME")
+          (addr (keccak256 (string-ascii-to-buff p-as-string))))
+      (map-set wormhole-addr-to-principal addr p)
+      (map-set principal-to-wormhole-addr p addr)
+      {
+        created: true,
+        wormhole-address: addr
+      })))
+
 ;;;; Read-only functions
 
 ;; These functions do not modify state and can be called by anyone
@@ -172,25 +229,6 @@
     (asserts! (is-eq contract-caller current-owner) ERR_STATE_UNAUTHORIZED)
     (ok current-owner)))
 
-;; @desc Read next sequence number for `emitter`
-(define-read-only (emitter-sequence-get (emitter principal))
-  (map-get? emitter-sequence emitter))
-
-;; @desc Return raw buffer from key/value store
-;;       Caller is responsible for deserializing data with `from-consensus-buff?`
-(define-read-only (kv-store-get (key (string-ascii 32)))
-  (map-get? kv-store key))
-
-;; @desc Return guardian set
-;; @param set-id: Guardian set ID
-(define-read-only (guardian-sets-get (set-id uint))
-  (map-get? guardian-sets set-id))
-
-;; @desc Check if governance message has been used
-;; @param hash: keccak256(keccak256(vaa-body-hash))
-(define-read-only (consumed-governance-vaa-hashes-get (hash (buff 32)))
-  (map-get? consumed-governance-vaa-hashes hash))
-
 ;; @desc Returns contract owner, which is allowed to modify state
 (define-read-only (get-owner)
   (var-get owner))
@@ -198,3 +236,34 @@
 ;; @desc Returns currently active wormhole-core contract (defined by `owner`)
 (define-read-only (get-active-wormhole-core-contract)
   (get-owner))
+
+;; @desc Helper function so that we can hash a string
+(define-read-only (string-ascii-to-buff (s (string-ascii 256)))
+  (let ((cb (unwrap-panic (to-consensus-buff? s))))
+    ;; Consensus buff format for string:
+    ;;   bytes[0]:     Consensus Buff Type
+    ;;   bytes[1..4]:  String length
+    ;;   bytes[5..]:   String data
+    (unwrap-panic (slice? cb u5 (len cb)))))
+
+;;;; Read-only functions: <map_name>-get
+
+;; These functions simply call `map-get?` on the given map
+
+(define-read-only (principal-to-wormhole-addr-get (p principal))
+  (map-get? principal-to-wormhole-addr p))
+
+(define-read-only (wormhole-addr-to-principal-get (hash (buff 32)))
+  (map-get? wormhole-addr-to-principal hash))
+
+(define-read-only (emitter-sequence-get (p principal))
+  (map-get? emitter-sequence p))
+
+(define-read-only (kv-store-get (key (string-ascii 32)))
+  (map-get? kv-store key))
+
+(define-read-only (guardian-sets-get (set-id uint))
+  (map-get? guardian-sets set-id))
+
+(define-read-only (consumed-governance-vaa-hashes-get (hash (buff 32)))
+  (map-get? consumed-governance-vaa-hashes hash))

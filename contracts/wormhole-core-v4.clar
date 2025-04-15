@@ -786,6 +786,18 @@
       }
     }))))
 
+;; @desc Get or generate new "Wormhole address" for a Stacks `prrincipal` that can be used in Wormhole messages
+;;       Addresses in the Wormhole protocol are limited to 32 bytes, but a Stacks `principal` can be longer than this
+;;       NOTE: Charges sender a fee to generate new address
+(define-public (get-wormhole-address (p principal))
+  (let ((result (try! (contract-call? .wormhole-core-state get-wormhole-address p))))
+    (if (get created result)
+      ;; Charge fee for generating new address (to prevent state contract spamming)
+      (try! (charge-message-fee))
+      ;; Address already cached, no fee
+      true)
+    (ok result)))
+
 ;;;; Private functions
 
 ;; @desc Foldable function admitting an uncompressed 64 bytes public key as an input, producing a record { uncompressed-public-key, compressed-public-key }
@@ -1015,6 +1027,16 @@
       (var-set deployment-state DEPLOYMENT_STATE_ACTIVE)
       (ok true))))
 
+;; @desc Charge sender fee set by `set-message-fee`
+(define-private (charge-message-fee)
+  (let ((fee (var-get post-message-fee)))
+    ;; If a fee has been set, collect it
+    (if (> fee u0)
+      (try! (stx-transfer? fee tx-sender (get-contract-principal)))
+      true
+    )
+    (ok true)))
+
 ;; @desc This function does the work for both `post-message` and `post-message-by-proxy`
 ;;       See those functions for further details
 ;;       Those functions will set and/or check `emitter`, this one assumes `emiiter` is valid
@@ -1027,11 +1049,10 @@
     ;; `nonce` must fit into `u32` type
     (asserts! (<= nonce MAX_VALUE_U32) ERR_POST_OVERFLOW_NONCE)
     ;; If a fee has been set, collect it
-    (if (> fee u0)
-      (try! (stx-transfer? fee tx-sender (get-contract-principal)))
-      true
-    )
-    (let ((sequence-unchecked (try! (contract-call? .wormhole-core-state consume-emitter-sequence emitter)))
+    (try! (charge-message-fee))
+    (let ((result (try! (contract-call? .wormhole-core-state consume-emitter-sequence emitter)))
+          (sequence-unchecked (get sequence result))
+          (wormhole-address (get wormhole-address result))
           ;; `sequence` must fit into `u64` type, otherwise saturate
           (sequence (if (<= sequence-unchecked MAX_VALUE_U64) sequence-unchecked MAX_VALUE_U64))
           (message {
@@ -1044,8 +1065,11 @@
       ;; Message has passed checks, and we got a sequence number, so emit to watchers
       (print {
         event: "post-message",
-        data: message
+        data: (merge message {
+          emitter-keccak256: wormhole-address
+        })
       })
+      ;; TODO: Return `emitter-keccak256` and modify unit tests
       (ok message))))
 
 

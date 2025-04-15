@@ -53,7 +53,7 @@
 ;; Trait does not match active contract
 (define-constant ERR_TRAIT_CHECK_CONTRACT_MISMATCH (err u20002))
 
-;;;; public functions
+;;;; Public functions
 
 (define-public (parse-and-verify-vaa (core-contract <core-trait>) (vaa-bytes (buff 8192)))
   (begin
@@ -64,6 +64,13 @@
   (begin
     (try! (check-active-wormhole-core-contract core-contract))
     (contract-call? core-contract post-message-via-proxy payload nonce consistency-level-opt contract-caller)))
+
+(define-public (get-wormhole-address (core-contract <core-trait>) (p principal))
+  (begin
+    (try! (check-active-wormhole-core-contract core-contract))
+    (contract-call? core-contract get-wormhole-address p)))
+
+;;;; Read-only functions
 
 (define-read-only (check-active-wormhole-core-contract (expected-core-contract <core-trait>))
   (let ((active-core-contract (unwrap! (contract-call? .wormhole-core-state get-active-wormhole-core-contract) ERR_TRAIT_CHECK_NO_ACTIVE_CONTRACT)))
