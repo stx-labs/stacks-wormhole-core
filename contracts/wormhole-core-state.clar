@@ -208,8 +208,7 @@
       wormhole-address: addr
     }
     ;; Not in map, compute address
-    (let ((p-as-string (unwrap-panic (as-max-len? (contract-call? 'SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC.self-listing-helper-v3 principal-to-string p) u256)))
-    ;;(let ((p-as-string "FIXME")
+    (let ((p-as-string (contract-call? 'SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC.self-listing-helper-v3 principal-to-string p))
           (addr (keccak256 (string-ascii-to-buff p-as-string))))
       (map-set wormhole-addr-to-principal addr p)
       (map-set principal-to-wormhole-addr p addr)
