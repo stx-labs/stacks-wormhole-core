@@ -20,32 +20,32 @@ contract_id = 'SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC.self-listing-helper-v3'
 [contracts.wormhole-core-proxy-v2]
 path = 'contracts/wormhole-core-proxy-v2.clar'
 clarity_version = 3
-epoch = 3.0
+epoch = 3.1
 
 [contracts.wormhole-core-state]
 path = 'contracts/wormhole-core-state.clar'
 clarity_version = 3
-epoch = 3.0
+epoch = 3.1
 
 [contracts.wormhole-core-v4]
 path = 'contracts/wormhole-core-v4.clar'
 clarity_version = 3
-epoch = 3.0
+epoch = 3.1
 
 [contracts.wormhole-trait-core-v2]
 path = 'contracts/wormhole-trait-core-v2.clar'
 clarity_version = 3
-epoch = 3.0
+epoch = 3.1
 
 [contracts.wormhole-trait-export-v1]
 path = 'contracts/wormhole-trait-export-v1.clar'
 clarity_version = 3
-epoch = 3.0
+epoch = 3.1
 
 [contracts.wormhole-trait-governance-v1]
 path = 'contracts/wormhole-trait-governance-v1.clar'
 clarity_version = 3
-epoch = 3.0
+epoch = 3.1
 [repl.analysis]
 passes = []
 

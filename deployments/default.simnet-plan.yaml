@@ -139,6 +139,29 @@ plan:
             emulated-sender: SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC
             path: "./.cache/requirements/SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC.liquidity-locker.clar"
             clarity-version: 3
+      epoch: "3.0"
+    - id: 3
+      transactions:
+        - emulated-contract-publish:
+            contract-name: clarity-stacks
+            emulated-sender: SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC
+            path: "./.cache/requirements/SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC.clarity-stacks.clar"
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: clarity-stacks-helper
+            emulated-sender: SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC
+            path: "./.cache/requirements/SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC.clarity-stacks-helper.clar"
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: code-body-prover
+            emulated-sender: SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC
+            path: "./.cache/requirements/SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC.code-body-prover.clar"
+            clarity-version: 3
+        - emulated-contract-publish:
+            contract-name: self-listing-helper-v3
+            emulated-sender: SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC
+            path: "./.cache/requirements/SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC.self-listing-helper-v3.clar"
+            clarity-version: 3
         - emulated-contract-publish:
             contract-name: wormhole-core-state
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
@@ -168,28 +191,5 @@ plan:
             contract-name: wormhole-core-v4
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
             path: contracts/wormhole-core-v4.clar
-            clarity-version: 3
-      epoch: "3.0"
-    - id: 3
-      transactions:
-        - emulated-contract-publish:
-            contract-name: clarity-stacks
-            emulated-sender: SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC
-            path: "./.cache/requirements/SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC.clarity-stacks.clar"
-            clarity-version: 3
-        - emulated-contract-publish:
-            contract-name: clarity-stacks-helper
-            emulated-sender: SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC
-            path: "./.cache/requirements/SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC.clarity-stacks-helper.clar"
-            clarity-version: 3
-        - emulated-contract-publish:
-            contract-name: code-body-prover
-            emulated-sender: SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC
-            path: "./.cache/requirements/SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC.code-body-prover.clar"
-            clarity-version: 3
-        - emulated-contract-publish:
-            contract-name: self-listing-helper-v3
-            emulated-sender: SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC
-            path: "./.cache/requirements/SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC.self-listing-helper-v3.clar"
             clarity-version: 3
       epoch: "3.1"
