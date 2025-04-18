@@ -4,14 +4,16 @@ import { it } from "@fast-check/vitest";
 import { wormhole } from "./helpers";
 import { hexToBytes } from "@noble/hashes/utils";
 import { WormholeCore as WC, WormholeCoreProxy as WCP } from "./constants";
+import { keccak_256 } from "@noble/hashes/sha3";
 
 describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload success`, () => {
   const accounts = simnet.getAccounts();
   const action = WC.ACTION_CONTRACT_UPGRADE;
   const chain = WC.EXPECTED_CHAIN_ID;
   const sender = accounts.get("wallet_1")!;
-  const contract =
-    "ST18JNZYRFDM14H9C8XETYJ29HMRGJDHZCQSB4X74.wormhole-core-v9000";
+  const contract = keccak_256(
+    "ST18JNZYRFDM14H9C8XETYJ29HMRGJDHZCQSB4X74.wormhole-core-v9000",
+  );
 
   it("should return parsed payload", () => {
     const payload = wormhole.serializeContractUpgradeVaaPayloadToBuffer(
@@ -32,7 +34,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload success
         action: Cl.uint(action),
         chain: Cl.uint(chain),
         payload: Cl.tuple({
-          contract: Cl.principal(contract),
+          contract: Cl.buffer(contract),
         }),
       }),
     );
@@ -98,7 +100,8 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload failure
     expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_CHECK_CHAIN));
   });
 
-  it("should fail if `contract` address does not match this network", () => {
+  // Can't test this using Wormhole addresses
+  it.skip("should fail if `contract` address does not match this network", () => {
     const payload = wormhole.serializeContractUpgradeVaaPayloadToBuffer(
       WC.ACTION_CONTRACT_UPGRADE,
       WC.EXPECTED_CHAIN_ID,
@@ -114,7 +117,8 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload failure
     expect(res.result).toBeErr(Cl.uint(WC.ERR_UPG_CHECK_CONTRACT_ADDRESS));
   });
 
-  it("should fail if `contract` address is a standard principal", () => {
+  // Can't test this using Wormhole addresses
+  it.skip("should fail if `contract` address is a standard principal", () => {
     const payload = wormhole.serializeContractUpgradeVaaPayloadToBuffer(
       WC.ACTION_CONTRACT_UPGRADE,
       WC.EXPECTED_CHAIN_ID,
@@ -169,6 +173,9 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
     },
     principal() {
       return `${this.deployer}.wormhole-core-successor`;
+    },
+    wormholeAddress() {
+      return keccak_256(this.principal());
     },
   };
 
@@ -282,7 +289,7 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
       [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );
-    expect(res.result).toBeOk(Cl.principal(successorContract.principal()));
+    expect(res.result).toBeOk(Cl.buffer(successorContract.wormholeAddress()));
 
     // Finish upgrade by initializing new contract
     res = simnet.callPublicFn(
@@ -426,7 +433,7 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
       [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );
-    expect(res.result).toBeOk(Cl.principal(successorContract.principal()));
+    expect(res.result).toBeOk(Cl.buffer(successorContract.wormholeAddress()));
 
     // Finish upgrade by initializing new contract
     res = simnet.callPublicFn(

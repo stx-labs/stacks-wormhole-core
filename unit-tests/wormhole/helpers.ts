@@ -501,7 +501,7 @@ export namespace wormhole {
   export const serializeContractUpgradeVaaPayloadToBuffer = (
     action: number,
     chain: number,
-    contract: string,
+    contract: string | Buffer | Uint8Array,
     module = validSetMessageFeeModule,
   ) => {
     const components = [];
@@ -515,8 +515,13 @@ export namespace wormhole {
     v.writeUInt16BE(chain, 0);
     components.push(v);
 
-    // Encode `contract` as Stacks wire format
-    v = Buffer.from(Cl.serialize(Cl.principal(contract)));
+    // This field should be `keccak256(principal)`
+    // If arg is a string, hash it
+    // If buffer, assume it's already hashed
+    if (typeof contract === "string") {
+      contract = keccak_256(contract);
+    }
+    v = Buffer.from(contract);
     components.push(v);
 
     return Buffer.concat(components.map((x) => Uint8Array.from(x)));

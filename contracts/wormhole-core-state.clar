@@ -191,7 +191,7 @@
 ;; @desc Map "Wormhole address" to `principal` and vice versa
 ;;       On success, returns tuple with the following fields:
 ;;        - `created`: `true` if address was generated and added to cache
-;;        - `address`: 32-byte Wormhole address
+;;        - `wormhole-address`: 32-byte Wormhole address
 (define-public (get-wormhole-address (p principal))
   (begin
     (try! (check-caller-is-owner))
