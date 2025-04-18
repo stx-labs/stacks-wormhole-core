@@ -8,13 +8,42 @@ import {
   WormholeCoreState as WCS,
   MaxValue,
 } from "./constants";
+import { keccak_256 } from "@noble/hashes/sha3";
+
+const accounts = simnet.getAccounts();
+const action = WC.ACTION_TRANSFER_FEES;
+const chain = WC.EXPECTED_CHAIN_ID;
+const deployer = accounts.get("deployer")!;
+const sender = accounts.get("wallet_1")!;
+const recipient = accounts.get("empty")!;
+const recipientHash = keccak_256(recipient);
+const keychain = wormhole.generateGuardianSetKeychain(19);
+const contractPrinciple = `${deployer}.${WC.CONTRACT_NAME}`;
+
+function registerWormholeAddress(stacksAddress: string) {
+  const hash = keccak_256(stacksAddress);
+  const res = simnet.callPublicFn(
+    WC.CONTRACT_NAME,
+    "get-wormhole-address",
+    [Cl.principal(stacksAddress)],
+    sender,
+  );
+  expect(res.result).toBeOk(
+    Cl.tuple({
+      created: Cl.bool(true),
+      "wormhole-address": Cl.buffer(hash),
+    }),
+  );
+}
 
 describe(`${WC.CONTRACT_NAME}::parse-and-verify-transfer-fees-payload success`, () => {
-  const accounts = simnet.getAccounts();
-  const action = WC.ACTION_TRANSFER_FEES;
-  const chain = WC.EXPECTED_CHAIN_ID;
-  const sender = accounts.get("wallet_1")!;
-  const recipient = accounts.get("empty")!;
+  beforeEach(() => {
+    // Initialize state contract
+    let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
+    expect(res.result).toBeOk(Cl.bool(true));
+
+    registerWormholeAddress(recipient);
+  });
 
   it("should return parsed payload", () => {
     fc.assert(
@@ -23,7 +52,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-transfer-fees-payload success`, 
           action,
           chain,
           fcAmount,
-          recipient,
+          recipientHash,
         );
 
         const res = simnet.callReadOnlyFn(
@@ -49,9 +78,13 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-transfer-fees-payload success`, 
 });
 
 describe(`${WC.CONTRACT_NAME}::parse-and-verify-transfer-fees-payload failure`, () => {
-  const accounts = simnet.getAccounts();
-  const sender = accounts.get("wallet_1")!;
-  const recipient = accounts.get("empty")!;
+  beforeEach(() => {
+    // Initialize state contract
+    let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
+    expect(res.result).toBeOk(Cl.bool(true));
+
+    registerWormholeAddress(recipient);
+  });
 
   it("should fail if `amount` exceeds max `u128`", () => {
     const amount = MaxValue.U128 + 1n;
@@ -59,7 +92,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-transfer-fees-payload failure`, 
       WC.ACTION_TRANSFER_FEES,
       WC.EXPECTED_CHAIN_ID,
       amount,
-      recipient,
+      recipientHash,
     );
 
     const res = simnet.callReadOnlyFn(
@@ -81,7 +114,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-transfer-fees-payload failure`, 
       WC.ACTION_TRANSFER_FEES,
       WC.EXPECTED_CHAIN_ID,
       100,
-      recipient,
+      recipientHash,
       module,
     );
 
@@ -99,7 +132,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-transfer-fees-payload failure`, 
       7,
       WC.EXPECTED_CHAIN_ID,
       100,
-      recipient,
+      recipientHash,
     );
 
     const res = simnet.callReadOnlyFn(
@@ -116,7 +149,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-transfer-fees-payload failure`, 
       WC.ACTION_TRANSFER_FEES,
       0x3333,
       100,
-      recipient,
+      recipientHash,
     );
 
     const res = simnet.callReadOnlyFn(
@@ -128,7 +161,8 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-transfer-fees-payload failure`, 
     expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_CHECK_CHAIN));
   });
 
-  it("should fail if `recipient` address does not match this network", () => {
+  // No point in checking this now that we use address hashes in Wormhole messaging
+  it.skip("should fail if `recipient` address does not match this network", () => {
     const payload = wormhole.serializeTransferFeesVaaPayloadToBuffer(
       WC.ACTION_TRANSFER_FEES,
       WC.EXPECTED_CHAIN_ID,
@@ -145,12 +179,29 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-transfer-fees-payload failure`, 
     expect(res.result).toBeErr(Cl.uint(WC.ERR_TXF_CHECK_RECIPIENT_ADDRESS));
   });
 
-  it.skip("should fail if payload is larger than expected", () => {
+  it("should fail if `recipient` address is not registered", () => {
+    const payload = wormhole.serializeTransferFeesVaaPayloadToBuffer(
+      WC.ACTION_TRANSFER_FEES,
+      WC.EXPECTED_CHAIN_ID,
+      100,
+      "STXY4E4D52A93ZBWVJ89617YC7TSPVJJ2RD5W49M",
+    );
+
+    const res = simnet.callReadOnlyFn(
+      WC.CONTRACT_NAME,
+      `parse-and-verify-transfer-fees-payload`,
+      [Cl.buffer(Uint8Array.from(payload))],
+      sender,
+    );
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_TXF_LOOKUP_RECIPIENT_ADDRESS));
+  });
+
+  it("should fail if payload is larger than expected", () => {
     let payload = wormhole.serializeTransferFeesVaaPayloadToBuffer(
       WC.ACTION_TRANSFER_FEES,
       WC.EXPECTED_CHAIN_ID,
       100,
-      recipient,
+      recipientHash,
     );
     const validPayloadLen = payload.length;
     payload = Buffer.concat([Uint8Array.from(payload), new Uint8Array(1)]);
@@ -172,15 +223,9 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-transfer-fees-payload failure`, 
 });
 
 describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
-  const accounts = simnet.getAccounts();
-  const deployer = accounts.get("deployer")!;
-  const sender = accounts.get("wallet_1")!;
-  const recipient = accounts.get("empty")!;
-  const keychain = wormhole.generateGuardianSetKeychain(19);
-  const contractPrinciple = `${deployer}.${WC.CONTRACT_NAME}`;
-
   // Before starting the test suite, we have to...
   // - Initialize state contract
+  // - Register recipient's Wormhole address
   // - Set the guardian set
   // - Set message fee rate
   // - Post a message to fund contract
@@ -188,6 +233,9 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
     // Initialize state contract
     let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
     expect(res.result).toBeOk(Cl.bool(true));
+
+    // Register recipient's Wormhole address
+    registerWormholeAddress(recipient);
 
     // Setup guardians
     let [result, vaaHeader, vaaBody] = wormhole.applyGuardianSetUpdate(
@@ -269,7 +317,7 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
             WC.ACTION_TRANSFER_FEES,
             WC.EXPECTED_CHAIN_ID,
             amount,
-            recipient,
+            recipientHash,
           );
           const body = wormhole.buildValidVaaBodySpecs({
             payload: Uint8Array.from(payload),
@@ -318,7 +366,7 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
       WC.ACTION_TRANSFER_FEES,
       WC.EXPECTED_CHAIN_ID,
       amount,
-      recipient,
+      recipientHash,
     );
     const body = wormhole.buildValidVaaBodySpecs({
       payload: Uint8Array.from(payload),
@@ -363,7 +411,7 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
       WC.ACTION_TRANSFER_FEES,
       WC.EXPECTED_CHAIN_ID,
       amount,
-      recipient,
+      recipientHash,
     );
     const body = wormhole.buildValidVaaBodySpecs({
       payload: Uint8Array.from(payload),
@@ -399,7 +447,7 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
       WC.ACTION_TRANSFER_FEES,
       WC.EXPECTED_CHAIN_ID,
       100,
-      recipient,
+      recipientHash,
     );
     const body = wormhole.buildValidVaaBodySpecs({
       payload: Uint8Array.from(payload),
@@ -436,7 +484,7 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
       WC.ACTION_TRANSFER_FEES,
       WC.EXPECTED_CHAIN_ID,
       100,
-      recipient,
+      recipientHash,
     );
     const body = wormhole.buildValidVaaBodySpecs({
       payload: Uint8Array.from(payload),

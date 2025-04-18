@@ -137,8 +137,10 @@
 (define-constant ERR_TXF_CHECK_OVERLAY (err u1704))
 ;; Transfer Fees: `amount` value too high
 (define-constant ERR_TXF_CHECK_AMOUNT (err u1705))
+;; Transfer Fees: `recipient` hash is not registered with state contract
+(define-constant ERR_TXF_LOOKUP_RECIPIENT_ADDRESS (err u1706))
 ;; Transfer Fees: `recipient` is not a valid address on this network
-(define-constant ERR_TXF_CHECK_RECIPIENT_ADDRESS (err u1706))
+(define-constant ERR_TXF_CHECK_RECIPIENT_ADDRESS (err u1707))
 
 ;; Contract Upgrade: error parsing `contract`
 (define-constant ERR_UPG_PARSING_CONTRACT (err u1801))
@@ -676,8 +678,9 @@
 ;;       Returns parsed payload as tuple if successful
 ;;
 ;; Expected message format for TransferFees payload:
-;;   [54]byte      header     Governance payload header
-;;   [22-151]byte  recipient  Recipient of message fees
+;;   [54]byte   header     Governance payload header
+;;   u256       amount     Amount to transfer (in uSTX)
+;;   [32]byte   recipient  Hash of recipient address (MUST HAVE BEEN REGISTERED WITH `get-wormhole-address`!!)
 ;;
 ;; @param vaa-payload: VAA `payload` as raw bytes
 (define-read-only (parse-and-verify-transfer-fees-payload (vaa-payload (buff 8192)))
@@ -686,14 +689,15 @@
           ERR_TXF_PARSING_AMOUNT_1))
         (cursor-amount-second-128-bits (unwrap! (read-uint-128 (get next cursor-amount-first-128-bits))
           ERR_TXF_PARSING_AMOUNT_2))
-        (recipient-slice (slice (get next cursor-amount-second-128-bits) none))
-        (recipient (unwrap! (from-consensus-buff? principal recipient-slice)
-          ERR_TXF_PARSING_RECIPIENT)))
+        (recipient-hash (unwrap! (read-buff-32 (get next cursor-amount-second-128-bits))
+          ERR_TXF_PARSING_RECIPIENT))
+        (recipient (unwrap! (contract-call? .wormhole-core-state wormhole-to-stacks-get (get value recipient-hash))
+          ERR_TXF_LOOKUP_RECIPIENT_ADDRESS)))
 
     ;; --- Validate Message Data ---
     ;; Check no extra bytes in buffer
-    ;;(asserts! (is-eq (get pos (get next cursor-amount-second-128-bits)) (len vaa-payload))
-    ;;  ERR_TXF_CHECK_OVERLAY)
+    (asserts! (is-eq (get pos (get next recipient-hash)) (len (get payload gov-payload)))
+      ERR_TXF_CHECK_OVERLAY)
     ;; Check amount fits into `u128`, because that's the max value clarity can represent
     (asserts! (is-eq (get value cursor-amount-first-128-bits) u0)
       ERR_TXF_CHECK_AMOUNT)

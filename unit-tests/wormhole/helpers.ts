@@ -574,7 +574,7 @@ export namespace wormhole {
     action: number,
     chain: number,
     amount: number | bigint,
-    recipient: string,
+    recipient: string | Buffer | Uint8Array,
     module = validSetMessageFeeModule,
   ) => {
     const components = [];
@@ -590,8 +590,14 @@ export namespace wormhole {
 
     components.push(bigintToBuffer(amount, 32));
 
-    // Encode `recipient` as Stacks wire format
-    components.push(Buffer.from(Cl.serialize(Cl.principal(recipient))));
+    // This field should be `keccak256(principal)`
+    // If arg is a string, hash it
+    // If buffer, assume it's already hashed
+    if (typeof recipient === "string") {
+      recipient = keccak_256(recipient);
+    }
+    const v3 = Buffer.from(recipient);
+    components.push(v3);
 
     return Buffer.concat(components.map((x) => Uint8Array.from(x)));
   };

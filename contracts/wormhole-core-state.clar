@@ -45,14 +45,14 @@
 ;; In Wormhole protocol, addresses are limited to 32 bytes in size
 ;; Since a Stacks Contract principal can be much longer, we use `keccak256(address)` in Wormhole messages
 ;; This allows us to use the protocol unmodified
-(define-map wormhole-addr-to-principal
+(define-map wormhole-to-stacks
   (buff 32)  ;; keccak256(principal)
   principal  ;; Contract emitting message
 )
 
 ;; Inverse of `wormhole-addr-to-principal`
 ;; Each entry in that map must have corresponding entry here
-(define-map principal-to-wormhole-addr
+(define-map stacks-to-wormhole
   principal  ;; Contract emitting message
   (buff 32)  ;; keccak256(principal)
 )
@@ -201,7 +201,7 @@
 
 ;; @desc Unchecked version of `register-wormhole-address`
 (define-private (inner-get-wormhole-address (p principal))
-  (match (principal-to-wormhole-addr-get p)
+  (match (stacks-to-wormhole-get p)
     ;; Wormhole address already in map
     addr {
       created: false,
@@ -210,8 +210,8 @@
     ;; Not in map, compute address
     (let ((p-as-string (contract-call? 'SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC.self-listing-helper-v3 principal-to-string p))
           (addr (keccak256 (string-ascii-to-buff p-as-string))))
-      (map-set wormhole-addr-to-principal addr p)
-      (map-set principal-to-wormhole-addr p addr)
+      (map-set wormhole-to-stacks addr p)
+      (map-set stacks-to-wormhole p addr)
       {
         created: true,
         wormhole-address: addr
@@ -249,11 +249,11 @@
 
 ;; These functions simply call `map-get?` on the given map
 
-(define-read-only (principal-to-wormhole-addr-get (p principal))
-  (map-get? principal-to-wormhole-addr p))
+(define-read-only (stacks-to-wormhole-get (p principal))
+  (map-get? stacks-to-wormhole p))
 
-(define-read-only (wormhole-addr-to-principal-get (hash (buff 32)))
-  (map-get? wormhole-addr-to-principal hash))
+(define-read-only (wormhole-to-stacks-get (hash (buff 32)))
+  (map-get? wormhole-to-stacks hash))
 
 (define-read-only (emitter-sequence-get (p principal))
   (map-get? emitter-sequence p))

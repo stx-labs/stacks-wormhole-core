@@ -44,7 +44,8 @@ export class WormholeCore {
   static readonly ERR_TXF_PARSING_RECIPIENT = 1703;
   static readonly ERR_TXF_CHECK_OVERLAY = 1704;
   static readonly ERR_TXF_CHECK_AMOUNT = 1705;
-  static readonly ERR_TXF_CHECK_RECIPIENT_ADDRESS = 1706;
+  static readonly ERR_TXF_LOOKUP_RECIPIENT_ADDRESS = 1706;
+  static readonly ERR_TXF_CHECK_RECIPIENT_ADDRESS = 1707;
 
   static readonly ERR_UPG_PARSING_CONTRACT = 1801;
   static readonly ERR_UPG_CHECK_OVERLAY = 1802;

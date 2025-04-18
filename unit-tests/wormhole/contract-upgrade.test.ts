@@ -6,20 +6,22 @@ import { hexToBytes } from "@noble/hashes/utils";
 import { WormholeCore as WC, WormholeCoreProxy as WCP } from "./constants";
 import { keccak_256 } from "@noble/hashes/sha3";
 
+const accounts = simnet.getAccounts();
+const action = WC.ACTION_CONTRACT_UPGRADE;
+const chain = WC.EXPECTED_CHAIN_ID;
+const deployer = accounts.get("deployer")!;
+const sender = accounts.get("wallet_1")!;
+
 describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload success`, () => {
-  const accounts = simnet.getAccounts();
-  const action = WC.ACTION_CONTRACT_UPGRADE;
-  const chain = WC.EXPECTED_CHAIN_ID;
-  const sender = accounts.get("wallet_1")!;
-  const contract = keccak_256(
-    "ST18JNZYRFDM14H9C8XETYJ29HMRGJDHZCQSB4X74.wormhole-core-v9000",
-  );
+  const contract =
+    "ST18JNZYRFDM14H9C8XETYJ29HMRGJDHZCQSB4X74.wormhole-core-v9000";
+  const contractHash = keccak_256(contract);
 
   it("should return parsed payload", () => {
     const payload = wormhole.serializeContractUpgradeVaaPayloadToBuffer(
       action,
       chain,
-      contract,
+      contractHash,
     );
 
     const res = simnet.callReadOnlyFn(
@@ -34,7 +36,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload success
         action: Cl.uint(action),
         chain: Cl.uint(chain),
         payload: Cl.tuple({
-          contract: Cl.buffer(contract),
+          contract: Cl.buffer(contractHash),
         }),
       }),
     );
@@ -42,8 +44,6 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload success
 });
 
 describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload failure`, () => {
-  const accounts = simnet.getAccounts();
-  const sender = accounts.get("wallet_1")!;
   const contract = "ST18JNZYRFDM14H9C8XETYJ29HMRGJDHZCQSB4X74.wormhole-core-v7";
 
   it("should fail if `module` is not 'core'", () => {
@@ -134,7 +134,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload failure
     expect(res.result).toBeErr(Cl.uint(WC.ERR_UPG_CHECK_CONTRACT_ADDRESS));
   });
 
-  it.skip("should fail if payload is larger than expected", () => {
+  it("should fail if payload is larger than expected", () => {
     let payload = wormhole.serializeContractUpgradeVaaPayloadToBuffer(
       WC.ACTION_CONTRACT_UPGRADE,
       WC.EXPECTED_CHAIN_ID,
@@ -157,9 +157,6 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload failure
 });
 
 describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
-  const accounts = simnet.getAccounts();
-  const deployer = accounts.get("deployer")!;
-  const sender = accounts.get("wallet_1")!;
   const contractPrinciple = `${deployer}.${WC.CONTRACT_NAME}`;
   const keychain = wormhole.generateGuardianSetKeychain(19);
   const postMessageFee = 1_000_000_000_000n;
