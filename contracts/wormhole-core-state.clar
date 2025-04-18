@@ -195,6 +195,7 @@
 (define-public (get-wormhole-address (p principal))
   (begin
     (try! (check-caller-is-owner))
+    (asserts! (is-standard p) ERR_STATE_INVALID_VALUE)
     (ok (inner-get-wormhole-address p))))
 
 ;;;; Private functions

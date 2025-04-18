@@ -60,7 +60,12 @@ export class WormholeCore {
 export class WormholeCoreState {
   static readonly CONTRACT_NAME = "wormhole-core-state";
   // Must match what is in `$(CONTRACT_NAME}.clar`
+  static readonly ERR_STATE_UNINITIALIZED = 10001;
+  static readonly ERR_STATE_UNAUTHORIZED = 10002;
+  static readonly ERR_STATE_ALREADY_INITIALIZED = 10003;
+  static readonly ERR_STATE_INVALID_VALUE = 10004;
   static readonly ERR_STATE_VAA_REPLAYED = 10005;
+  static readonly ERR_STATE_XFER_NOT_IN_PROGRESS = 10006;
 }
 
 // Constants from `wormhole-core-state` Clarity contract
