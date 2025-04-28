@@ -142,7 +142,25 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-set-message-fee-payload failure`
     expect(res.result).toBeErr(Cl.uint(WC.ERR_SMF_CHECK_OVERLAY));
   });
 
-  // TODO: Payload too small
+  it("should fail if payload is smaller than expected", () => {
+    const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
+      WC.ACTION_SET_MESSAGE_FEE,
+      WC.EXPECTED_CHAIN_ID,
+      100,
+    );
+    const payloadLen = payload.length;
+    const payloadSubarray = payload.subarray(0, payloadLen - 1);
+
+    expect(payloadSubarray.length).toBeLessThan(payloadLen);
+
+    const res = simnet.callReadOnlyFn(
+      WC.CONTRACT_NAME,
+      `parse-and-verify-set-message-fee-payload`,
+      [Cl.buffer(Uint8Array.from(payloadSubarray))],
+      sender,
+    );
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_SMF_PARSING_FEE_2));
+  });
 });
 
 describe(`${WC.CONTRACT_NAME}::set-message-fee`, () => {

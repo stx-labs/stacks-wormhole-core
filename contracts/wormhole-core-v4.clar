@@ -1072,7 +1072,6 @@
         event: "post-message",
         data: message
       })
-      ;; TODO: Return `emitter-keccak256` and modify unit tests
       (ok message))))
 
 

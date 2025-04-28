@@ -218,8 +218,26 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-transfer-fees-payload failure`, 
     expect(res.result).toBeErr(Cl.uint(WC.ERR_TXF_CHECK_OVERLAY));
   });
 
-  // TODO: Payload too small
-  // TODO: `recipient` not valid Stacks principle
+  it("should fail if payload is smaller than expected", () => {
+    const payload = wormhole.serializeTransferFeesVaaPayloadToBuffer(
+      WC.ACTION_TRANSFER_FEES,
+      WC.EXPECTED_CHAIN_ID,
+      100,
+      recipientHash,
+    );
+    const payloadLen = payload.length;
+    const payloadSubarray = payload.subarray(0, payloadLen - 1);
+
+    expect(payloadSubarray.length).toBeLessThan(payloadLen);
+
+    const res = simnet.callReadOnlyFn(
+      WC.CONTRACT_NAME,
+      `parse-and-verify-transfer-fees-payload`,
+      [Cl.buffer(Uint8Array.from(payloadSubarray))],
+      sender,
+    );
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_TXF_PARSING_RECIPIENT));
+  });
 });
 
 describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
@@ -510,6 +528,4 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
 
     expect(recipientBalance).toEqual(0n);
   });
-
-  // TODO: Invalid recipient
 });
