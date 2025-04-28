@@ -50,7 +50,7 @@
   principal  ;; Contract emitting message
 )
 
-;; Inverse of `wormhole-addr-to-principal`
+;; Inverse of `wormhole-to-stacks`
 ;; Each entry in that map must have corresponding entry here
 (define-map stacks-to-wormhole
   principal  ;; Contract emitting message
@@ -138,8 +138,8 @@
     (ok true)))
 
 ;; @desc Get next sequence # for emitter and mark it as used
-;;       On success, returns `(ok {...})` and increments emitter's sequence
-;;       On failure, returns `(err ...)` does not increment sequence
+;;       On success, returns `(ok {wormhole-address, created, sequence})` and increments emitter's sequence
+;;       On failure, returns `(err uint)` does not increment sequence
 (define-public (consume-emitter-sequence (emitter principal))
   (let ((check-caller (try! (check-caller-is-owner)))
         (wormhole-address (inner-get-wormhole-address emitter))
