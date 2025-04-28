@@ -237,6 +237,7 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
     expect(res.result).toBeOk(
       Cl.tuple({
         emitter: Cl.principal(sender),
+        "emitter-keccak256": Cl.buffer(keccak_256(sender)),
         nonce,
         sequence: Cl.uint(0),
         "consistency-level": consistencyLevel,
@@ -361,6 +362,7 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
     expect(res.result).toBeOk(
       Cl.tuple({
         emitter: Cl.principal(sender),
+        "emitter-keccak256": Cl.buffer(keccak_256(sender)),
         nonce,
         sequence: Cl.uint(1), // This is the second call to `post-message` by this sender
         "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),
@@ -394,6 +396,7 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
     expect(res.result).toBeOk(
       Cl.tuple({
         emitter: Cl.principal(sender),
+        "emitter-keccak256": Cl.buffer(keccak_256(sender)),
         nonce,
         sequence: Cl.uint(expectedSequence++), // This is the second call to `post-message` by this sender
         "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),
@@ -451,6 +454,7 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
     expect(res.result).toBeOk(
       Cl.tuple({
         emitter: Cl.principal(sender),
+        "emitter-keccak256": Cl.buffer(keccak_256(sender)),
         nonce,
         sequence: Cl.uint(expectedSequence++), // This is the second call to `post-message` by this sender
         "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),

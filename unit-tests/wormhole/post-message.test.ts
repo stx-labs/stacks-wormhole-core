@@ -3,13 +3,15 @@ import { expect, describe, beforeEach } from "vitest";
 import { it, fc } from "@fast-check/vitest";
 import { wormhole } from "./helpers";
 import { WormholeCore as WC } from "./constants";
+import { keccak_256 } from "@noble/hashes/sha3";
+
+const accounts = simnet.getAccounts();
+const deployer = accounts.get("deployer")!;
+const sender = accounts.get("wallet_1")!;
+const emitter = Cl.principal(sender);
+const emitterHash = Cl.buffer(keccak_256(sender));
 
 describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
-  const accounts = simnet.getAccounts();
-  const deployer = accounts.get("deployer")!;
-  const sender = accounts.get("wallet_1")!;
-  const emitter = Cl.principal(sender);
-
   beforeEach(async () => {
     let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
     expect(res.result).toBeOk(Cl.bool(true));
@@ -32,6 +34,7 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
       expect(res.result).toBeOk(
         Cl.tuple({
           emitter,
+          "emitter-keccak256": emitterHash,
           nonce,
           sequence: Cl.uint(i),
           "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),
@@ -60,6 +63,7 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
           expect(res.result).toBeOk(
             Cl.tuple({
               emitter,
+              "emitter-keccak256": emitterHash,
               nonce,
               sequence: Cl.uint(sequence),
               "consistency-level": consistencyLevel,
@@ -85,6 +89,7 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
     expect(res.result).toBeOk(
       Cl.tuple({
         emitter,
+        "emitter-keccak256": emitterHash,
         nonce,
         sequence: Cl.uint(0),
         "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),
@@ -112,6 +117,7 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
           expect(res.result).toBeOk(
             Cl.tuple({
               emitter,
+              "emitter-keccak256": emitterHash,
               nonce,
               sequence: Cl.uint(sequence),
               "consistency-level": consistencyLevel,
@@ -139,6 +145,7 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
       expect(res.result).toBeOk(
         Cl.tuple({
           emitter,
+          "emitter-keccak256": emitterHash,
           nonce,
           sequence: Cl.uint(i),
           "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),
@@ -161,6 +168,7 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
     expect(res.result).toBeOk(
       Cl.tuple({
         emitter,
+        "emitter-keccak256": emitterHash,
         nonce,
         sequence: Cl.uint(0),
         "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),
@@ -193,9 +201,11 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
       [payload, nonce, Cl.none()],
       sender,
     );
+    const proxyAddress = `${deployer}.${proxyContract.name}`;
     expect(res.result).toBeOk(
       Cl.tuple({
-        emitter: Cl.principal(`${deployer}.${proxyContract.name}`),
+        emitter: Cl.principal(proxyAddress),
+        "emitter-keccak256": Cl.buffer(keccak_256(proxyAddress)),
         nonce,
         sequence: Cl.uint(0),
         "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),
@@ -224,6 +234,7 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
     expect(res.result).toBeOk(
       Cl.tuple({
         emitter,
+        "emitter-keccak256": emitterHash,
         nonce,
         sequence: Cl.uint(0),
         "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),
@@ -287,7 +298,6 @@ describe(`${WC.CONTRACT_NAME}::post-message failure`, () => {
   });
 
   it("should not increment `sequence` if send fails", () => {
-    const emitter = Cl.principal(sender);
     const payload = Cl.buffer(new Uint8Array(1024));
     const attempts = 10;
     const nonce = Cl.uint(1);
@@ -316,6 +326,7 @@ describe(`${WC.CONTRACT_NAME}::post-message failure`, () => {
     expect(res.result).toBeOk(
       Cl.tuple({
         emitter,
+        "emitter-keccak256": emitterHash,
         nonce,
         sequence: Cl.uint(0),
         "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),

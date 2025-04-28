@@ -491,7 +491,7 @@
 (define-public (post-message-via-proxy (payload (buff 8192)) (nonce uint) (consistency-level-opt (optional uint)) (emitter principal))
   (begin
     (asserts! (is-eq contract-caller PRINCIPAL_PROXY_CONTRACT) ERR_PROXY_UNAUTHORIZED)
-    (post-message-checked-emitter payload nonce consistency-level-opt emitter)))
+    (inner-post-message payload nonce consistency-level-opt emitter)))
 
 ;; @desc Post message for Wormhole Guardians
 ;;
@@ -499,7 +499,7 @@
 ;; @param nonce: 32-bit nonce set by emitter
 ;; @param consistency-level-opt: Optional, use custom level instead of default
 (define-public (post-message (payload (buff 8192)) (nonce uint) (consistency-level-opt (optional uint)))
-  (post-message-checked-emitter payload nonce consistency-level-opt contract-caller))
+  (inner-post-message payload nonce consistency-level-opt contract-caller))
 
 ;; @desc Set message fee for `post-message` using VAA
 ;;       Returns `ok(fee)` if successful
@@ -1044,7 +1044,7 @@
 ;; @desc This function does the work for both `post-message` and `post-message-by-proxy`
 ;;       See those functions for further details
 ;;       Those functions will set and/or check `emitter`, this one assumes `emiiter` is valid
-(define-private (post-message-checked-emitter (payload (buff 8192)) (nonce uint) (consistency-level-opt (optional uint)) (emitter principal))
+(define-private (inner-post-message (payload (buff 8192)) (nonce uint) (consistency-level-opt (optional uint)) (emitter principal))
   (let ((active (try! (check-active-deployment)))
         (consistency-level (default-to DEFAULT_CONSISTENCY_LEVEL consistency-level-opt))
         (fee (var-get post-message-fee)))
@@ -1061,6 +1061,7 @@
           (sequence (if (<= sequence-unchecked MAX_VALUE_U64) sequence-unchecked MAX_VALUE_U64))
           (message {
             emitter: emitter,
+            emitter-keccak256: wormhole-address,
             nonce: nonce,
             sequence: sequence,
             consistency-level: consistency-level,
@@ -1069,9 +1070,7 @@
       ;; Message has passed checks, and we got a sequence number, so emit to watchers
       (print {
         event: "post-message",
-        data: (merge message {
-          emitter-keccak256: wormhole-address
-        })
+        data: message
       })
       ;; TODO: Return `emitter-keccak256` and modify unit tests
       (ok message))))

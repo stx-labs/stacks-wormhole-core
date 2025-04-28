@@ -8,6 +8,7 @@ import {
   WormholeCoreState as WCS,
   MaxValue,
 } from "./constants";
+import { keccak_256 } from "@noble/hashes/sha3";
 
 describe(`${WC.CONTRACT_NAME}::parse-and-verify-set-message-fee-payload success`, () => {
   const accounts = simnet.getAccounts();
@@ -277,6 +278,7 @@ describe(`${WC.CONTRACT_NAME}::set-message-fee`, () => {
       expect(res.result).toBeOk(
         Cl.tuple({
           emitter: Cl.principal(sender),
+          "emitter-keccak256": Cl.buffer(keccak_256(sender)),
           nonce,
           sequence: Cl.uint(i),
           "consistency-level": consistencyLevel,

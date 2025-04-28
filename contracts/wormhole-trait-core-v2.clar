@@ -25,6 +25,7 @@
     ;; NOTE: May charge sender a fee to send message
     (post-message ((buff 8192) uint (optional uint)) (response {
       emitter: principal,
+      emitter-keccak256: (buff 32),
       nonce: uint,                ;; Must fit into `u32`
       sequence: uint,             ;; Must fit into `u64`
       consistency-level: uint,    ;; Must fit into `u8`
@@ -35,6 +36,7 @@
     ;; NOTE: May charge sender a fee to send message
     (post-message-via-proxy ((buff 8192) uint (optional uint) principal) (response {
       emitter: principal,
+      emitter-keccak256: (buff 32),
       nonce: uint,                ;; Must fit into `u32`
       sequence: uint,             ;; Must fit into `u64`
       consistency-level: uint,    ;; Must fit into `u8`
