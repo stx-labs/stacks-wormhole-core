@@ -8,6 +8,7 @@ import {
   WormholeCoreState as WCS,
   MaxValue,
 } from "./constants";
+import { keccak_256 } from "@noble/hashes/sha3";
 
 describe(`${WC.CONTRACT_NAME}::parse-and-verify-set-message-fee-payload success`, () => {
   const accounts = simnet.getAccounts();
@@ -141,7 +142,25 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-set-message-fee-payload failure`
     expect(res.result).toBeErr(Cl.uint(WC.ERR_SMF_CHECK_OVERLAY));
   });
 
-  // TODO: Payload too small
+  it("should fail if payload is smaller than expected", () => {
+    const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
+      WC.ACTION_SET_MESSAGE_FEE,
+      WC.EXPECTED_CHAIN_ID,
+      100,
+    );
+    const payloadLen = payload.length;
+    const payloadSubarray = payload.subarray(0, payloadLen - 1);
+
+    expect(payloadSubarray.length).toBeLessThan(payloadLen);
+
+    const res = simnet.callReadOnlyFn(
+      WC.CONTRACT_NAME,
+      `parse-and-verify-set-message-fee-payload`,
+      [Cl.buffer(Uint8Array.from(payloadSubarray))],
+      sender,
+    );
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_SMF_PARSING_FEE_2));
+  });
 });
 
 describe(`${WC.CONTRACT_NAME}::set-message-fee`, () => {
@@ -277,6 +296,7 @@ describe(`${WC.CONTRACT_NAME}::set-message-fee`, () => {
       expect(res.result).toBeOk(
         Cl.tuple({
           emitter: Cl.principal(sender),
+          "emitter-keccak256": Cl.buffer(keccak_256(sender)),
           nonce,
           sequence: Cl.uint(i),
           "consistency-level": consistencyLevel,

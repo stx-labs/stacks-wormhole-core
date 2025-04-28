@@ -137,8 +137,10 @@
 (define-constant ERR_TXF_CHECK_OVERLAY (err u1704))
 ;; Transfer Fees: `amount` value too high
 (define-constant ERR_TXF_CHECK_AMOUNT (err u1705))
+;; Transfer Fees: `recipient` hash is not registered with state contract
+(define-constant ERR_TXF_LOOKUP_RECIPIENT_ADDRESS (err u1706))
 ;; Transfer Fees: `recipient` is not a valid address on this network
-(define-constant ERR_TXF_CHECK_RECIPIENT_ADDRESS (err u1706))
+(define-constant ERR_TXF_CHECK_RECIPIENT_ADDRESS (err u1707))
 
 ;; Contract Upgrade: error parsing `contract`
 (define-constant ERR_UPG_PARSING_CONTRACT (err u1801))
@@ -201,8 +203,9 @@
 (define-constant DEPLOYMENT_STATE_DEPRECATED  u2) ;; This deployment has been upgraded and is no longer active
 ;; The state of this particular deployment of the core contract
 (define-data-var deployment-state uint DEPLOYMENT_STATE_UNITIALIZED)
-;; If we have recieved a ContractUpgrad VAA, this is the contract we are upgrading to
-(define-data-var successor-contract (optional principal) none)
+;; If we have recieved a ContractUpgrade VAA, this is the contract we are upgrading to
+;; We receive the hash of the address in the VAA. Store it this way so we don't have to register the sucessor contract manually with `get-wormhole-address`
+(define-data-var successor-contract (optional (buff 32)) none)
 
 ;; ----- DATA VARS BELOW THIS LINE MUST BE EXPORTED IN `get-exported-vars`! -----
 
@@ -270,7 +273,7 @@
 ;;   1. Make some changes to `wormhole-core` and deploy new contract
 ;;   2. Governance contract publishes VAA with address of updated `wormhole-core` contract
 ;;   3. Someone (anyone) calls `contract-upgrade` with the VAA
-;;   4. `contract-upgrade` will validate the VAA and record the address of the new contract
+;;   4. `contract-upgrade` will validate the VAA and record the address hash of the new contract
 ;;   5. Someone (anyone) calls new contract's `import-state` with the old contract's address to initialize it
 ;;   6. New contract's `import-state` calls old contract's `export-state`, which does the following:
 ;;     a. Checks that `contract-caller` is the one set by the ContractUpgrade VAA
@@ -288,14 +291,19 @@
   (let ((active (try! (check-active-deployment)))
         (contract-principal (get-contract-principal))
         (stx-balance (stx-get-balance contract-principal))
-        (new-contract (unwrap! (get-successor-contract) ERR_UPG_UNAUTHORIZED)))
+        (caller contract-caller)
+        (caller-parts (unwrap! (principal-destruct? caller) ERR_UPG_CHECK_CONTRACT_ADDRESS))
+        (wormhole-address (get wormhole-address (try! (contract-call? .wormhole-core-state get-wormhole-address caller))))
+        (new-wormhole-address (unwrap! (get-successor-contract) ERR_UPG_UNAUTHORIZED)))
+    ;; Check we have a contract principal and not a standard principal
+    (asserts! (is-some (get name caller-parts)) ERR_UPG_CHECK_CONTRACT_ADDRESS)
     ;; Only the contract set by the ContractUpgrade VAA is allowed to call this function
-    (asserts! (is-eq contract-caller new-contract) ERR_UPG_UNAUTHORIZED)
+    (asserts! (is-eq wormhole-address new-wormhole-address) ERR_UPG_UNAUTHORIZED)
     ;; Transfer ownership of state contract
-    (try! (contract-call? .wormhole-core-state start-ownership-transfer new-contract))
+    (try! (contract-call? .wormhole-core-state start-ownership-transfer caller))
     ;; If we have an STX balance, transfer to new contract
     (if (> stx-balance u0)
-      (try! (as-contract (stx-transfer? stx-balance tx-sender new-contract)))
+      (try! (as-contract (stx-transfer? stx-balance tx-sender caller)))
       true)
     (var-set deployment-state DEPLOYMENT_STATE_DEPRECATED)
     (ok (get-exported-vars))))
@@ -483,7 +491,7 @@
 (define-public (post-message-via-proxy (payload (buff 8192)) (nonce uint) (consistency-level-opt (optional uint)) (emitter principal))
   (begin
     (asserts! (is-eq contract-caller PRINCIPAL_PROXY_CONTRACT) ERR_PROXY_UNAUTHORIZED)
-    (post-message-checked-emitter payload nonce consistency-level-opt emitter)))
+    (inner-post-message payload nonce consistency-level-opt emitter)))
 
 ;; @desc Post message for Wormhole Guardians
 ;;
@@ -491,7 +499,7 @@
 ;; @param nonce: 32-bit nonce set by emitter
 ;; @param consistency-level-opt: Optional, use custom level instead of default
 (define-public (post-message (payload (buff 8192)) (nonce uint) (consistency-level-opt (optional uint)))
-  (post-message-checked-emitter payload nonce consistency-level-opt contract-caller))
+  (inner-post-message payload nonce consistency-level-opt contract-caller))
 
 ;; @desc Set message fee for `post-message` using VAA
 ;;       Returns `ok(fee)` if successful
@@ -670,8 +678,9 @@
 ;;       Returns parsed payload as tuple if successful
 ;;
 ;; Expected message format for TransferFees payload:
-;;   [54]byte      header     Governance payload header
-;;   [22-151]byte  recipient  Recipient of message fees
+;;   [54]byte   header     Governance payload header
+;;   u256       amount     Amount to transfer (in uSTX)
+;;   [32]byte   recipient  Hash of recipient address (MUST HAVE BEEN REGISTERED WITH `get-wormhole-address`!!)
 ;;
 ;; @param vaa-payload: VAA `payload` as raw bytes
 (define-read-only (parse-and-verify-transfer-fees-payload (vaa-payload (buff 8192)))
@@ -680,14 +689,15 @@
           ERR_TXF_PARSING_AMOUNT_1))
         (cursor-amount-second-128-bits (unwrap! (read-uint-128 (get next cursor-amount-first-128-bits))
           ERR_TXF_PARSING_AMOUNT_2))
-        (recipient-slice (slice (get next cursor-amount-second-128-bits) none))
-        (recipient (unwrap! (from-consensus-buff? principal recipient-slice)
-          ERR_TXF_PARSING_RECIPIENT)))
+        (recipient-hash (unwrap! (read-buff-32 (get next cursor-amount-second-128-bits))
+          ERR_TXF_PARSING_RECIPIENT))
+        (recipient (unwrap! (contract-call? .wormhole-core-state wormhole-to-stacks-get (get value recipient-hash))
+          ERR_TXF_LOOKUP_RECIPIENT_ADDRESS)))
 
     ;; --- Validate Message Data ---
     ;; Check no extra bytes in buffer
-    ;;(asserts! (is-eq (get pos (get next cursor-amount-second-128-bits)) (len vaa-payload))
-    ;;  ERR_TXF_CHECK_OVERLAY)
+    (asserts! (is-eq (get pos (get next recipient-hash)) (len (get payload gov-payload)))
+      ERR_TXF_CHECK_OVERLAY)
     ;; Check amount fits into `u128`, because that's the max value clarity can represent
     (asserts! (is-eq (get value cursor-amount-first-128-bits) u0)
       ERR_TXF_CHECK_AMOUNT)
@@ -760,31 +770,37 @@
 ;;
 ;; Expected message format for ContractUpgrade VAA payload:
 ;;   [54]byte      header     Governance payload header
-;;   [22-151]byte  recipient  Recipient of message fees
+;;   [32]byte      successor  Hash of sucessor contract principal
 ;;
 ;; @param vaa-payload: VAA `payload` as raw bytes
 (define-read-only (parse-and-verify-contract-upgrade-payload (vaa-payload (buff 8192)))
   (let ((gov-payload (try! (parse-and-verify-governance-payload-header GOV_ACTION_CONTRACT_UPGRADE vaa-payload)))
-        (contract-slice (slice { bytes: (get payload gov-payload), pos: u0 } none))
-        (contract (unwrap! (from-consensus-buff? principal contract-slice)
-          ERR_UPG_PARSING_CONTRACT))
-        (contract-parts (unwrap! (principal-destruct? contract)
-          ERR_UPG_CHECK_CONTRACT_ADDRESS)))
+        (contract (unwrap! (read-buff-32 { bytes: (get payload gov-payload), pos: u0 })
+          ERR_UPG_PARSING_CONTRACT)))
 
     ;; --- Validate Message Data ---
     ;; Check no extra bytes in buffer
-    ;;(asserts! (is-eq (get pos (get next cursor-amount-second-128-bits)) (len vaa-payload))
-    ;;  ERR_TXF_CHECK_OVERLAY)
-    ;; Check we have a contract principal and not a standard principal
-    (asserts! (is-some (get name contract-parts))
-      ERR_UPG_CHECK_CONTRACT_ADDRESS)
+    (asserts! (is-eq (get pos (get next contract)) (len (get payload gov-payload)))
+      ERR_UPG_CHECK_OVERLAY)
 
     ;; --- Checks Passed, Return Parsed Payload ---
     (ok (merge gov-payload {
       payload: {
-        contract: contract,
+        contract: (get value contract),
       }
     }))))
+
+;; @desc Get or generate new "Wormhole address" for a Stacks `prrincipal` that can be used in Wormhole messages
+;;       Addresses in the Wormhole protocol are limited to 32 bytes, but a Stacks `principal` can be longer than this
+;;       NOTE: Charges sender a fee to generate new address
+(define-public (get-wormhole-address (p principal))
+  (let ((result (try! (contract-call? .wormhole-core-state get-wormhole-address p))))
+    (if (get created result)
+      ;; Charge fee for generating new address (to prevent state contract spamming)
+      (try! (charge-message-fee))
+      ;; Address already cached, no fee
+      true)
+    (ok result)))
 
 ;;;; Private functions
 
@@ -1015,10 +1031,20 @@
       (var-set deployment-state DEPLOYMENT_STATE_ACTIVE)
       (ok true))))
 
+;; @desc Charge sender fee set by `set-message-fee`
+(define-private (charge-message-fee)
+  (let ((fee (var-get post-message-fee)))
+    ;; If a fee has been set, collect it
+    (if (> fee u0)
+      (try! (stx-transfer? fee tx-sender (get-contract-principal)))
+      true
+    )
+    (ok true)))
+
 ;; @desc This function does the work for both `post-message` and `post-message-by-proxy`
 ;;       See those functions for further details
 ;;       Those functions will set and/or check `emitter`, this one assumes `emiiter` is valid
-(define-private (post-message-checked-emitter (payload (buff 8192)) (nonce uint) (consistency-level-opt (optional uint)) (emitter principal))
+(define-private (inner-post-message (payload (buff 8192)) (nonce uint) (consistency-level-opt (optional uint)) (emitter principal))
   (let ((active (try! (check-active-deployment)))
         (consistency-level (default-to DEFAULT_CONSISTENCY_LEVEL consistency-level-opt))
         (fee (var-get post-message-fee)))
@@ -1027,15 +1053,15 @@
     ;; `nonce` must fit into `u32` type
     (asserts! (<= nonce MAX_VALUE_U32) ERR_POST_OVERFLOW_NONCE)
     ;; If a fee has been set, collect it
-    (if (> fee u0)
-      (try! (stx-transfer? fee tx-sender (get-contract-principal)))
-      true
-    )
-    (let ((sequence-unchecked (try! (contract-call? .wormhole-core-state consume-emitter-sequence emitter)))
+    (try! (charge-message-fee))
+    (let ((result (try! (contract-call? .wormhole-core-state consume-emitter-sequence emitter)))
+          (sequence-unchecked (get sequence result))
+          (wormhole-address (get wormhole-address result))
           ;; `sequence` must fit into `u64` type, otherwise saturate
           (sequence (if (<= sequence-unchecked MAX_VALUE_U64) sequence-unchecked MAX_VALUE_U64))
           (message {
             emitter: emitter,
+            emitter-keccak256: wormhole-address,
             nonce: nonce,
             sequence: sequence,
             consistency-level: consistency-level,
