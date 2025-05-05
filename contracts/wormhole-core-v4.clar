@@ -566,7 +566,7 @@
           ERR_GOV_PARSING_MODULE))
         (cursor-action (unwrap! (read-uint-8 (get next cursor-module))
           ERR_GOV_PARSING_ACTION))
-        (cursor-chain (unwrap! (read-uint-16 (get next cursor-action))
+        (cursor-chain (unwrap! (read-buff-2 (get next cursor-action))
           ERR_GOV_PARSING_CHAIN))
         (cursor-payload (unwrap! (read-buff-8192-max (get next cursor-chain) none)
           ERR_GOV_PARSING_PAYLOAD))
@@ -581,14 +581,14 @@
     (asserts! (is-eq action gov-action)
       ERR_GOV_CHECK_ACTION)
     ;; Ensure that this message is addressed to this chain
-    (asserts! (is-eq chain (buff-to-uint-be WORMHOLE_STACKS_CHAIN_ID))
+    (asserts! (is-eq chain WORMHOLE_STACKS_CHAIN_ID)
       ERR_GOV_CHECK_CHAIN)
 
     ;; --- Checks Passed, Return Parsed Payload ---
     (ok {
       module: module,
       action: action,
-      chain: chain,
+      chain: (buff-to-uint-be chain),
       payload: (get value cursor-payload),
     })))
 
