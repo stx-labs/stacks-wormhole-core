@@ -194,6 +194,8 @@
 ;; List of `u0` with length of GOV_MAX_GUARDIANS
 (define-constant EMPTY_LIST_MAX_GUARDIANS (list u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0))
 (asserts! (is-eq (len EMPTY_LIST_MAX_GUARDIANS) GOV_MAX_GUARDIANS) ERR_GOV_MAX_GUARDIANS_EXCEEDED)
+;; Empty 16-byte buffer
+(define-constant EMPTY_BUFFER_16 0x00000000000000000000000000000000)
 
 ;;;; Data vars
 
@@ -564,7 +566,7 @@
           ERR_GOV_PARSING_MODULE))
         (cursor-action (unwrap! (read-uint-8 (get next cursor-module))
           ERR_GOV_PARSING_ACTION))
-        (cursor-chain (unwrap! (read-uint-16 (get next cursor-action))
+        (cursor-chain (unwrap! (read-buff-2 (get next cursor-action))
           ERR_GOV_PARSING_CHAIN))
         (cursor-payload (unwrap! (read-buff-8192-max (get next cursor-chain) none)
           ERR_GOV_PARSING_PAYLOAD))
@@ -579,14 +581,14 @@
     (asserts! (is-eq action gov-action)
       ERR_GOV_CHECK_ACTION)
     ;; Ensure that this message is addressed to this chain
-    (asserts! (is-eq chain (buff-to-uint-be WORMHOLE_STACKS_CHAIN_ID))
+    (asserts! (is-eq chain WORMHOLE_STACKS_CHAIN_ID)
       ERR_GOV_CHECK_CHAIN)
 
     ;; --- Checks Passed, Return Parsed Payload ---
     (ok {
       module: module,
       action: action,
-      chain: chain,
+      chain: (buff-to-uint-be chain),
       payload: (get value cursor-payload),
     })))
 
@@ -600,7 +602,7 @@
 ;; @param vaa-payload: VAA `payload` as raw bytes
 (define-read-only (parse-and-verify-set-message-fee-payload (vaa-payload (buff 8192)))
   (let ((gov-payload (try! (parse-and-verify-governance-payload-header GOV_ACTION_SET_MESSAGE_FEE vaa-payload)))
-        (cursor-fee-first-128-bits (unwrap! (read-uint-128 { bytes: (get payload gov-payload), pos: u0 })
+        (cursor-fee-first-128-bits (unwrap! (read-buff-16 { bytes: (get payload gov-payload), pos: u0 })
           ERR_SMF_PARSING_FEE_1))
         (cursor-fee-second-128-bits (unwrap! (read-uint-128 (get next cursor-fee-first-128-bits))
           ERR_SMF_PARSING_FEE_2)))
@@ -610,7 +612,7 @@
     (asserts! (is-eq (get pos (get next cursor-fee-second-128-bits)) (len (get payload gov-payload)))
       ERR_SMF_CHECK_OVERLAY)
     ;; Check fee fits into `u128`, because that's the max value clarity can represent
-    (asserts! (is-eq (get value cursor-fee-first-128-bits) u0)
+    (asserts! (is-eq (get value cursor-fee-first-128-bits) EMPTY_BUFFER_16)
       ERR_SMF_CHECK_FEE)
 
     ;; --- Checks Passed, Return Parsed Payload ---
@@ -685,7 +687,7 @@
 ;; @param vaa-payload: VAA `payload` as raw bytes
 (define-read-only (parse-and-verify-transfer-fees-payload (vaa-payload (buff 8192)))
   (let ((gov-payload (try! (parse-and-verify-governance-payload-header GOV_ACTION_TRANSFER_FEES vaa-payload)))
-        (cursor-amount-first-128-bits (unwrap! (read-uint-128 { bytes: (get payload gov-payload), pos: u0 })
+        (cursor-amount-first-128-bits (unwrap! (read-buff-16 { bytes: (get payload gov-payload), pos: u0 })
           ERR_TXF_PARSING_AMOUNT_1))
         (cursor-amount-second-128-bits (unwrap! (read-uint-128 (get next cursor-amount-first-128-bits))
           ERR_TXF_PARSING_AMOUNT_2))
@@ -699,7 +701,7 @@
     (asserts! (is-eq (get pos (get next recipient-hash)) (len (get payload gov-payload)))
       ERR_TXF_CHECK_OVERLAY)
     ;; Check amount fits into `u128`, because that's the max value clarity can represent
-    (asserts! (is-eq (get value cursor-amount-first-128-bits) u0)
+    (asserts! (is-eq (get value cursor-amount-first-128-bits) EMPTY_BUFFER_16)
       ERR_TXF_CHECK_AMOUNT)
     ;; Check recipient address is valid on this network
     (asserts! (is-standard recipient)
