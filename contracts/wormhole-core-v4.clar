@@ -596,7 +596,7 @@
 ;;       Returns parsed payload as tuple if successful
 ;;
 ;; Expected message format for SetMessageFee payload:
-;;   [54]byte    header     Governance payload header
+;;   [35]byte    header     Governance payload header
 ;;   u256        fee        New fee to emit message (in uSTX)
 ;;
 ;; @param vaa-payload: VAA `payload` as raw bytes
@@ -680,7 +680,7 @@
 ;;       Returns parsed payload as tuple if successful
 ;;
 ;; Expected message format for TransferFees payload:
-;;   [54]byte   header     Governance payload header
+;;   [35]byte   header     Governance payload header
 ;;   u256       amount     Amount to transfer (in uSTX)
 ;;   [32]byte   recipient  Hash of recipient address (MUST HAVE BEEN REGISTERED WITH `get-wormhole-address`!!)
 ;;
@@ -771,7 +771,7 @@
 ;;       Returns parsed payload as tuple if successful
 ;;
 ;; Expected message format for ContractUpgrade VAA payload:
-;;   [54]byte      header     Governance payload header
+;;   [35]byte      header     Governance payload header
 ;;   [32]byte      successor  Hash of sucessor contract principal
 ;;
 ;; @param vaa-payload: VAA `payload` as raw bytes
