@@ -179,7 +179,7 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
     const proxyContract = {
       name: "proxy-contract",
       code: [
-        `(define-public (post-message-proxy (payload (buff 8192)) (nonce uint) (consistency-level-opt (optional uint)))`,
+        `(define-public (post-message-proxy (payload (buff 4096)) (nonce uint) (consistency-level-opt (optional uint)))`,
         `  (contract-call? .${WC.CONTRACT_NAME} post-message payload nonce consistency-level-opt))`,
       ].join("\n"),
     };
@@ -214,16 +214,16 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
     );
   });
 
-  it("should allow payload size of 8192 bytes", () => {
+  it("should allow payload size of 4096 bytes", () => {
     const nonce = Cl.uint(5);
 
     // Create payload with random data
-    const bufSize = 8192;
+    const bufSize = 4096;
     let randomData = new Uint8Array(bufSize);
     (globalThis as any).crypto.getRandomValues(randomData);
     const payload = Cl.buffer(randomData);
 
-    expect(payload.buffer.length).toBe(8192);
+    expect(payload.buffer.length).toBe(4096);
 
     let res = simnet.callPublicFn(
       WC.CONTRACT_NAME,
@@ -281,8 +281,8 @@ describe(`${WC.CONTRACT_NAME}::post-message failure`, () => {
     expect(res.result).toBeErr(Cl.uint(WC.ERR_POST_OVERFLOW_NONCE));
   });
 
-  it("should fail if `payload` exceeds 8192 bytes", () => {
-    const payload = Cl.buffer(new Uint8Array(8192 + 1));
+  it("should fail if `payload` exceeds 4096 bytes", () => {
+    const payload = Cl.buffer(new Uint8Array(4096 + 1));
     const nonce = Cl.uint(1);
 
     // We don't get an error value because the contract is never called
