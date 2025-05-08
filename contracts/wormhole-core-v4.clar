@@ -895,27 +895,29 @@
 
 ;; @desc Parse and verify payload's VAA
 (define-private (parse-and-verify-guardian-set-upgrade (bytes (buff 4096)))
-  (let
-      ((cursor-module (unwrap! (read-buff-32 { bytes: bytes, pos: u0 })
+  (let ((cursor-module (unwrap! (read-buff-32 { bytes: bytes, pos: u0 })
           ERR_GSU_PARSING_MODULE))
-      (cursor-action (unwrap! (read-uint-8 (get next cursor-module))
+        (cursor-action (unwrap! (read-uint-8 (get next cursor-module))
           ERR_GSU_PARSING_ACTION))
-      (cursor-chain (unwrap! (read-uint-16 (get next cursor-action))
+        (cursor-chain (unwrap! (read-uint-16 (get next cursor-action))
           ERR_GSU_PARSING_CHAIN))
-      (cursor-new-index (unwrap! (read-uint-32 (get next cursor-chain))
+        (cursor-new-index (unwrap! (read-uint-32 (get next cursor-chain))
           ERR_GSU_PARSING_INDEX))
-      (cursor-guardians-count (unwrap! (read-uint-8 (get next cursor-new-index))
+        (cursor-guardians-count (unwrap! (read-uint-8 (get next cursor-new-index))
           ERR_GSU_PARSING_GUARDIAN_LEN))
-      (guardians-count (get value cursor-guardians-count))
-      (check-guardians-count (asserts! (<= guardians-count GOV_MAX_GUARDIANS)
+        (guardians-count (get value cursor-guardians-count))
+        (check-guardians-count (asserts! (<= guardians-count GOV_MAX_GUARDIANS)
           ERR_GOV_MAX_GUARDIANS_EXCEEDED))
-      (guardians-bytes (unwrap! (read-buff-4096-max (get next cursor-guardians-count) (some (* guardians-count GUARDIAN_ETH_ADDRESS_SIZE)))
+        (guardians-bytes (unwrap! (read-buff-4096-max (get next cursor-guardians-count) (some (* guardians-count GUARDIAN_ETH_ADDRESS_SIZE)))
           ERR_GSU_PARSING_GUARDIANS_BYTES))
-      (guardians-cues (get result (fold is-guardian-cue (get value guardians-bytes) { cursor: u0, result: (list) })))
-      (eth-addresses (get result (fold parse-guardian guardians-cues { bytes: (get value guardians-bytes), result: (list) }))))
-    (asserts! (is-eq (get pos (get next guardians-bytes)) (len bytes)) ERR_GSU_CHECK_OVERLAY)
+        (guardians-cues (get result (fold is-guardian-cue (get value guardians-bytes) { cursor: u0, result: (list) })))
+        (eth-addresses (get result (fold parse-guardian guardians-cues { bytes: (get value guardians-bytes), result: (list) }))))
+    ;; Check for extra bytes in message
+    (asserts! (is-eq (get pos (get next guardians-bytes)) (len bytes))
+      ERR_GSU_CHECK_OVERLAY)
     ;; Ensure there are no duplicated addresses
-    (asserts! (is-eq (len eth-addresses) guardians-count) ERR_DUPLICATED_GUARDIAN_ADDRESSES)
+    (asserts! (is-eq (len eth-addresses) guardians-count)
+      ERR_DUPLICATED_GUARDIAN_ADDRESSES)
     ;; Ensure that this message was emitted from authorized module
     (asserts! (is-eq (get value cursor-module) CORE_STRING_MODULE)
       ERR_GSU_CHECK_MODULE)
@@ -923,13 +925,15 @@
     (asserts! (is-eq (get value cursor-action) GOV_ACTION_GUARDIAN_SET_UPDATE)
       ERR_GSU_CHECK_ACTION)
     ;; Ensure that this message is matching the expected chain
-    (asserts! (or (is-eq (get value cursor-chain) (buff-to-uint-be WORMHOLE_STACKS_CHAIN_ID)) (is-eq (get value cursor-chain) GOV_BROADCAST_CHAIN_ID) ) ERR_GSU_CHECK_CHAIN)
+    (asserts! (or (is-eq (get value cursor-chain) (buff-to-uint-be WORMHOLE_STACKS_CHAIN_ID)) (is-eq (get value cursor-chain) GOV_BROADCAST_CHAIN_ID))
+      ERR_GSU_CHECK_CHAIN)
     (if (var-get guardian-set-initialized)
       ;; Ensure that next index = current index + 1
-      (asserts! (is-eq (get value cursor-new-index) (+ u1 (var-get active-guardian-set-id))) ERR_GSU_CHECK_INDEX)
+      (asserts! (is-eq (get value cursor-new-index) (+ u1 (var-get active-guardian-set-id)))
+        ERR_GSU_CHECK_INDEX)
       ;; Ensure that next index > current index
-      (asserts! (> (get value cursor-new-index) (var-get active-guardian-set-id)) ERR_GSU_CHECK_INDEX)
-    )
+      (asserts! (> (get value cursor-new-index) (var-get active-guardian-set-id))
+        ERR_GSU_CHECK_INDEX))
 
     ;; Good to go!
     (ok {
@@ -938,7 +942,7 @@
         action: (get value cursor-action),
         chain: (get value cursor-chain),
         new-index: (get value cursor-new-index)
-      })))
+    })))
 
 (define-private (get-quorum (guardian-set-size uint))
   (+ (/ (* guardian-set-size u2) u3) u1))
