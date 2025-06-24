@@ -150,6 +150,8 @@
 (define-constant ERR_UPG_CHECK_CONTRACT_ADDRESS (err u1803))
 ;; Contract Upgrade: Unauthorized successor contract
 (define-constant ERR_UPG_UNAUTHORIZED (err u1804))
+;; Contract Upgrade: Previous contract invalid
+(define-constant ERR_UPG_PREV_CONTRACT_INVALID (err u1804))
 
 ;; Deployment State: This deployment is not the active core contract
 (define-constant ERR_DEPLOYMENT_STATE_NOT_ACTIVE (err u1901))
@@ -1018,7 +1020,8 @@
 ;;
 ;; NOTE: This uses the previous contract's version of `export-trait`
 (define-private (initialize-from-previous-contract (previous-contract <previous-export-trait>))
-  (begin
+  (let ((active-contract (unwrap! (contract-call? .wormhole-core-state get-active-wormhole-core-contract) ERR_UPG_PREV_CONTRACT_INVALID)))
+    (asserts! (is-eq (contract-of previous-contract) active-contract) ERR_UPG_PREV_CONTRACT_INVALID)
     ;; Only allow importing state once
     (asserts! (is-eq (get-deployment-state) DEPLOYMENT_STATE_UNITIALIZED) ERR_DEPLOYMENT_STATE_ALREADY_INITIALIZED)
     (let ((previous-state (try! (contract-call? previous-contract export-state))))
