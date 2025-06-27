@@ -127,19 +127,28 @@
     (var-set transferring-to none)
     (ok true)))
 
-;; @desc Get next sequence # for emitter and mark it as used
-;;       On success, returns `(ok {wormhole-address, created, sequence})` and increments emitter's sequence
-;;       On failure, returns `(err uint)` does not increment sequence
-(define-public (consume-emitter-sequence (emitter principal))
+(define-public (post-message (payload (buff 8192)) (nonce uint) (consistency-level-opt (optional uint)) (emitter principal))
   (let ((check-caller (try! (check-caller-is-owner)))
-        (wormhole-address (inner-get-wormhole-address emitter))
-        (sequence (default-to u0 (emitter-sequence-get emitter))))
-    (map-set emitter-sequence emitter (+ sequence u1))
-    (ok (merge
-      wormhole-address
-      {
-        sequence: sequence
-      }))))
+        (result (try! (consume-emitter-sequence emitter)))
+        (sequence-unchecked (get sequence result))
+        (wormhole-address (get wormhole-address result))
+        ;; `sequence` must fit into `u64` type, otherwise saturate
+        (sequence (if (<= sequence-unchecked MAX_VALUE_U64) sequence-unchecked MAX_VALUE_U64))
+        (message {
+          emitter: emitter,
+          emitter-keccak256: wormhole-address,
+          nonce: nonce,
+          sequence: sequence,
+          consistency-level: consistency-level,
+          payload: payload
+        }))
+    ;; Message has passed checks, and we got a sequence number, so emit to watchers
+    (print {
+      event: "post-message",
+      data: message
+    })))
+
+
 
 ;; @desc Track hashes of processed governance VAAs so we don't replay them
 ;;       Returns `(ok true)` if the VAA is marked as "consumed"
@@ -207,6 +216,19 @@
         created: true,
         wormhole-address: addr
       })))
+
+;; @desc Get next sequence # for emitter and mark it as used
+;;       On success, returns `(ok {wormhole-address, created, sequence})` and increments emitter's sequence
+;;       On failure, returns `(err uint)` does not increment sequence
+(define-private (consume-emitter-sequence (emitter principal))
+  (let ((wormhole-address (inner-get-wormhole-address emitter))
+        (sequence (default-to u0 (emitter-sequence-get emitter))))
+    (map-set emitter-sequence emitter (+ sequence u1))
+    (ok (merge
+      wormhole-address
+      {
+        sequence: sequence
+      }))))
 
 ;;;; Read-only functions
 

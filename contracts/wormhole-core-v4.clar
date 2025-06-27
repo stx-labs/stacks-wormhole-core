@@ -1057,25 +1057,7 @@
     (asserts! (<= nonce MAX_VALUE_U32) ERR_POST_OVERFLOW_NONCE)
     ;; If a fee has been set, collect it
     (try! (charge-message-fee))
-    (let ((result (try! (contract-call? .wormhole-core-state consume-emitter-sequence emitter)))
-          (sequence-unchecked (get sequence result))
-          (wormhole-address (get wormhole-address result))
-          ;; `sequence` must fit into `u64` type, otherwise saturate
-          (sequence (if (<= sequence-unchecked MAX_VALUE_U64) sequence-unchecked MAX_VALUE_U64))
-          (message {
-            emitter: emitter,
-            emitter-keccak256: wormhole-address,
-            nonce: nonce,
-            sequence: sequence,
-            consistency-level: consistency-level,
-            payload: payload
-          }))
-      ;; Message has passed checks, and we got a sequence number, so emit to watchers
-      (print {
-        event: "post-message",
-        data: message
-      })
-      (ok message))))
+    (contract-call? .wormhole-core-state post-message payload nonce consistency-level emitter)))
 
 
 (define-private (check-emitter (address (buff 32)) (chain uint))
