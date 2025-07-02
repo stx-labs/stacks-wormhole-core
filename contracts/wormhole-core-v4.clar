@@ -1061,8 +1061,8 @@
           (sequence (get sequence result))
           (wormhole-address (get wormhole-address result))
           (message {
-            emitter: emitter,
-            emitter-keccak256: wormhole-address,
+            emitter-principal: emitter,
+            emitter: wormhole-address,
             nonce: nonce,
             sequence: sequence,
             consistency-level: consistency-level,
