@@ -154,8 +154,6 @@
 (define-constant ERR_UPG_PREV_CONTRACT_INVALID (err u1805))
 ;; Contract Upgrade: No upgrade in progress
 (define-constant ERR_UPG_NOT_IN_PROGRESS (err u1806))
-;; Contract Upgrade: Must wait longer to cancel contract upgrade
-(define-constant ERR_UPG_WAIT_TO_CANCEL (err u1807))
 
 ;; Deployment State: This deployment is not the active core contract
 (define-constant ERR_DEPLOYMENT_STATE_NOT_ACTIVE (err u1901))
@@ -202,8 +200,6 @@
 (asserts! (is-eq (len EMPTY_LIST_MAX_GUARDIANS) GOV_MAX_GUARDIANS) ERR_GOV_MAX_GUARDIANS_EXCEEDED)
 ;; Empty 16-byte buffer
 (define-constant EMPTY_BUFFER_16 0x00000000000000000000000000000000)
-;; Number of burn blocks to wait from `ContractUpgrade` VAA before we can cancel (~24 hours, assuming 6 blocks/hour)
-(define-constant BURN_BLOCKS_BEFORE_CANCEL_UPDATE u144)
 
 ;;;; Data vars
 
@@ -317,17 +313,6 @@
       true)
     (var-set deployment-state DEPLOYMENT_STATE_DEPRECATED)
     (ok (get-exported-vars))))
-
-;; @desc If something goes wrong during the contract upgrade process, try calling this to cancel
-(define-public (cancel-contract-upgrade)
-  (let ((upgrade-data (unwrap! (get-successor-contract) ERR_UPG_NOT_IN_PROGRESS))
-        (can-cancel-at (+ (get set-at-burn-block upgrade-data) BURN_BLOCKS_BEFORE_CANCEL_UPDATE))
-        (check-timestamp (asserts! (>= burn-block-height can-cancel-at) ERR_UPG_WAIT_TO_CANCEL))
-        (cancelled-transfer (try! (contract-call? .wormhole-core-state cancel-ownership-transfer))))
-    ;; Re-activate and cancel upgrade
-    (var-set deployment-state DEPLOYMENT_STATE_ACTIVE)
-    (var-set successor-contract none)
-    (ok cancelled-transfer)))
 
 ;; @desc Parse a Verified Action Approval (VAA)
 ;;
@@ -746,7 +731,7 @@
     ;; Save address and keep this contract active for now.
     ;; When successor contract calls this contract's `export-state` function, this contract will transfer state ownership and then deactivate
     ;; This verifies new contract actually exists before this one becomes unusable
-    ;; Also keep track of when this was set. Don't allow cancelling the update for a while to prevent DoS attacks
+    ;; Also keep track of when this was set
     (var-set successor-contract (some {
       wormhole-address: contract,
       set-at-burn-block: burn-block-height
