@@ -314,82 +314,6 @@
     (var-set deployment-state DEPLOYMENT_STATE_DEPRECATED)
     (ok (get-exported-vars))))
 
-;; @desc Parse a Verified Action Approval (VAA)
-;;
-;; VAA Header
-;; byte        version             (VAA Version)
-;; u32         guardian_set_index  (Indicates which guardian set is signing)
-;; u8          len_signatures      (Number of signatures stored)
-;; [][66]byte  signatures          (Collection of ecdsa signatures)
-;;
-;; VAA Body
-;; u32         timestamp           (Timestamp of the block where the source transaction occurred)
-;; u32         nonce               (A grouping number)
-;; u16         emitter_chain       (Wormhole ChainId of emitter contract)
-;; [32]byte    emitter_address     (Emitter contract address, in Wormhole format)
-;; u64         sequence            (Strictly increasing sequence, tied to emitter address & chain)
-;; u8          consistency_level   (What finality level was reached before emitting this message)
-;; []byte      payload             (VAA message content)
-;;
-;; @param vaa-bytes: VAA as raw bytes
-(define-read-only (parse-vaa (vaa-bytes (buff 8192)))
-  (let ((cursor-version (unwrap! (read-uint-8 { bytes: vaa-bytes, pos: u0 })
-          ERR_VAA_PARSING_VERSION))
-        (cursor-guardian-set-id (unwrap! (read-uint-32 (get next cursor-version))
-          ERR_VAA_PARSING_GUARDIAN_SET))
-        (cursor-signatures-len (unwrap! (read-uint-8 (get next cursor-guardian-set-id))
-          ERR_VAA_PARSING_SIGNATURES_LEN))
-        (signatures-len (get value cursor-signatures-len))
-        (check-signatures-len (asserts! (<= signatures-len GOV_MAX_GUARDIANS)
-          ERR_GOV_MAX_GUARDIANS_EXCEEDED))
-        (cursor-signatures (fold batch-read-signatures
-          EMPTY_LIST_MAX_GUARDIANS
-          {
-              next: (get next cursor-signatures-len),
-              value: (list),
-              iter: (get value cursor-signatures-len)
-          }))
-        (vaa-body-hash (keccak256 (keccak256 (get value (unwrap! (read-buff-8192-max (get next cursor-signatures) none)
-          ERR_VAA_HASHING_BODY)))))
-        (cursor-timestamp (unwrap! (read-uint-32 (get next cursor-signatures))
-          ERR_VAA_PARSING_TIMESTAMP))
-        (cursor-nonce (unwrap! (read-uint-32 (get next cursor-timestamp))
-          ERR_VAA_PARSING_NONCE))
-        (cursor-emitter-chain (unwrap! (read-uint-16 (get next cursor-nonce))
-          ERR_VAA_PARSING_EMITTER_CHAIN))
-        (cursor-emitter-address (unwrap! (read-buff-32 (get next cursor-emitter-chain))
-          ERR_VAA_PARSING_EMITTER_ADDRESS))
-        (cursor-sequence (unwrap! (read-uint-64 (get next cursor-emitter-address))
-          ERR_VAA_PARSING_SEQUENCE))
-        (cursor-consistency-level (unwrap! (read-uint-8 (get next cursor-sequence))
-          ERR_VAA_PARSING_CONSISTENCY_LEVEL))
-        (cursor-payload (unwrap! (read-buff-8192-max (get next cursor-consistency-level) none)
-          ERR_VAA_PARSING_PAYLOAD))
-        (public-keys-results (fold batch-recover-public-keys
-          (get value cursor-signatures)
-          {
-              message-hash: vaa-body-hash,
-              value: (list)
-          })))
-    (asserts! (is-eq (get pos (get next cursor-payload)) (len vaa-bytes)) ERR_GSU_CHECK_OVERLAY)
-    (ok {
-        vaa: {
-          version: (get value cursor-version),
-          guardian-set-id: (get value cursor-guardian-set-id),
-          signatures-len: signatures-len,
-          signatures: (get value cursor-signatures),
-          timestamp: (get value cursor-timestamp),
-          nonce: (get value cursor-nonce),
-          emitter-chain: (get value cursor-emitter-chain),
-          emitter-address: (get value cursor-emitter-address),
-          sequence: (get value cursor-sequence),
-          consistency-level: (get value cursor-consistency-level),
-          payload: (get value cursor-payload),
-        },
-        recovered-public-keys: (get value public-keys-results),
-        vaa-body-hash: vaa-body-hash,
-    })))
-
 ;; @desc Parse and check the validity of a Verified Action Approval (VAA)
 ;; @param vaa-bytes: VAA as raw bytes
 (define-read-only (parse-and-verify-vaa (vaa-bytes (buff 8192)))
@@ -543,80 +467,10 @@
     ;; Replace payload raw bytes with parsed payload
     (ok {
       vaa: (merge vaa {
-        payload: (try! (parse-and-verify-set-message-fee-payload (get payload vaa)))
+        payload: (try! (parse-set-message-fee-payload (get payload vaa)))
       }),
       vaa-body-hash: (get vaa-body-hash message)
     })))
-
-;; @desc Parse and validate the header of a VAA containing a governance payload
-;;       Returns parsed payload as tuple if successful
-;;
-;; Expected message format for VAA governance payload header:
-;;   [32]byte    module     Should be "Core"
-;;   u8          action     Should be `3` for this message type
-;;   u16         chain      Chain this action is intended for
-;;
-;; @param vaa-payload: VAA `payload` as raw bytes
-(define-read-only (parse-and-verify-governance-payload-header (gov-action uint) (vaa-payload (buff 8192)))
-  (let ((cursor-module (unwrap! (read-buff-32 { bytes: vaa-payload, pos: u0 })
-          ERR_GOV_PARSING_MODULE))
-        (cursor-action (unwrap! (read-uint-8 (get next cursor-module))
-          ERR_GOV_PARSING_ACTION))
-        (cursor-chain (unwrap! (read-buff-2 (get next cursor-action))
-          ERR_GOV_PARSING_CHAIN))
-        (cursor-payload (unwrap! (read-buff-8192-max (get next cursor-chain) none)
-          ERR_GOV_PARSING_PAYLOAD))
-        (module (get value cursor-module))
-        (action (get value cursor-action))
-        (chain (get value cursor-chain)))
-
-    ;; Ensure that this message was emitted from authorized module
-    (asserts! (is-eq module CORE_STRING_MODULE)
-      ERR_GOV_CHECK_MODULE)
-    ;; Ensure that this message is matching the expected action
-    (asserts! (is-eq action gov-action)
-      ERR_GOV_CHECK_ACTION)
-    ;; Ensure that this message is addressed to this chain
-    (asserts! (is-eq chain WORMHOLE_STACKS_CHAIN_ID)
-      ERR_GOV_CHECK_CHAIN)
-
-    ;; --- Checks Passed, Return Parsed Payload ---
-    (ok {
-      module: module,
-      action: action,
-      chain: (buff-to-uint-be chain),
-      payload: (get value cursor-payload),
-    })))
-
-;; @desc Parse and validate VAA payload for `set-message-fee`
-;;       Returns parsed payload as tuple if successful
-;;
-;; Expected message format for SetMessageFee payload:
-;;   [54]byte    header     Governance payload header
-;;   u256        fee        New fee to emit message (in uSTX)
-;;
-;; @param vaa-payload: VAA `payload` as raw bytes
-(define-read-only (parse-and-verify-set-message-fee-payload (vaa-payload (buff 8192)))
-  (let ((gov-payload (try! (parse-and-verify-governance-payload-header GOV_ACTION_SET_MESSAGE_FEE vaa-payload)))
-        (cursor-fee-first-128-bits (unwrap! (read-buff-16 { bytes: (get payload gov-payload), pos: u0 })
-          ERR_SMF_PARSING_FEE_1))
-        (cursor-fee-second-128-bits (unwrap! (read-uint-128 (get next cursor-fee-first-128-bits))
-          ERR_SMF_PARSING_FEE_2)))
-
-    ;; --- Validate Message Data ---
-    ;; Check no extra bytes in buffer
-    (asserts! (is-eq (get pos (get next cursor-fee-second-128-bits)) (len (get payload gov-payload)))
-      ERR_SMF_CHECK_OVERLAY)
-    ;; Check fee fits into `u128`, because that's the max value clarity can represent
-    (asserts! (is-eq (get value cursor-fee-first-128-bits) EMPTY_BUFFER_16)
-      ERR_SMF_CHECK_FEE)
-
-    ;; --- Checks Passed, Return Parsed Payload ---
-    (ok (merge gov-payload {
-      payload: {
-        fee: (get value cursor-fee-second-128-bits)
-      }
-    }))))
 
 ;; @desc Transfer message fees accumulated from `post-message` using VAA
 ;;       Returns `ok({amount, recipient})` if successful
@@ -667,49 +521,10 @@
     ;; Replace payload raw bytes with parsed payload
     (ok {
       vaa: (merge vaa {
-        payload: (try! (parse-and-verify-transfer-fees-payload (get payload vaa)))
+        payload: (try! (parse-transfer-fees-payload (get payload vaa)))
       }),
       vaa-body-hash: (get vaa-body-hash message)
     })))
-
-;; @desc Parse and validate VAA payload for `transfer-fees`
-;;       Returns parsed payload as tuple if successful
-;;
-;; Expected message format for TransferFees payload:
-;;   [54]byte   header     Governance payload header
-;;   u256       amount     Amount to transfer (in uSTX)
-;;   [32]byte   recipient  Hash of recipient address (MUST HAVE BEEN REGISTERED WITH `get-wormhole-address`!!)
-;;
-;; @param vaa-payload: VAA `payload` as raw bytes
-(define-read-only (parse-and-verify-transfer-fees-payload (vaa-payload (buff 8192)))
-  (let ((gov-payload (try! (parse-and-verify-governance-payload-header GOV_ACTION_TRANSFER_FEES vaa-payload)))
-        (cursor-amount-first-128-bits (unwrap! (read-buff-16 { bytes: (get payload gov-payload), pos: u0 })
-          ERR_TXF_PARSING_AMOUNT_1))
-        (cursor-amount-second-128-bits (unwrap! (read-uint-128 (get next cursor-amount-first-128-bits))
-          ERR_TXF_PARSING_AMOUNT_2))
-        (recipient-hash (unwrap! (read-buff-32 (get next cursor-amount-second-128-bits))
-          ERR_TXF_PARSING_RECIPIENT))
-        (recipient (unwrap! (contract-call? .wormhole-core-state wormhole-to-stacks-get (get value recipient-hash))
-          ERR_TXF_LOOKUP_RECIPIENT_ADDRESS)))
-
-    ;; --- Validate Message Data ---
-    ;; Check no extra bytes in buffer
-    (asserts! (is-eq (get pos (get next recipient-hash)) (len (get payload gov-payload)))
-      ERR_TXF_CHECK_OVERLAY)
-    ;; Check amount fits into `u128`, because that's the max value clarity can represent
-    (asserts! (is-eq (get value cursor-amount-first-128-bits) EMPTY_BUFFER_16)
-      ERR_TXF_CHECK_AMOUNT)
-    ;; Check recipient address is valid on this network
-    (asserts! (is-standard recipient)
-      ERR_TXF_CHECK_RECIPIENT_ADDRESS)
-
-    ;; --- Checks Passed, Return Parsed Payload ---
-    (ok (merge gov-payload {
-      payload: {
-        amount: (get value cursor-amount-second-128-bits),
-        recipient: recipient,
-      }
-    }))))
 
 ;; @desc Upgrade wormhole-core contract to new deployment
 ;;       Returns `(ok contract)` if successful
@@ -762,35 +577,10 @@
     ;; Replace payload raw bytes with parsed payload
     (ok {
       vaa: (merge vaa {
-        payload: (try! (parse-and-verify-contract-upgrade-payload (get payload vaa)))
+        payload: (try! (parse-contract-upgrade-payload (get payload vaa)))
       }),
       vaa-body-hash: (get vaa-body-hash message)
     })))
-
-;; @desc Parse and validate VAA payload for `contract-upgrade`
-;;       Returns parsed payload as tuple if successful
-;;
-;; Expected message format for ContractUpgrade VAA payload:
-;;   [54]byte      header     Governance payload header
-;;   [32]byte      successor  Hash of sucessor contract principal
-;;
-;; @param vaa-payload: VAA `payload` as raw bytes
-(define-read-only (parse-and-verify-contract-upgrade-payload (vaa-payload (buff 8192)))
-  (let ((gov-payload (try! (parse-and-verify-governance-payload-header GOV_ACTION_CONTRACT_UPGRADE vaa-payload)))
-        (contract (unwrap! (read-buff-32 { bytes: (get payload gov-payload), pos: u0 })
-          ERR_UPG_PARSING_CONTRACT)))
-
-    ;; --- Validate Message Data ---
-    ;; Check no extra bytes in buffer
-    (asserts! (is-eq (get pos (get next contract)) (len (get payload gov-payload)))
-      ERR_UPG_CHECK_OVERLAY)
-
-    ;; --- Checks Passed, Return Parsed Payload ---
-    (ok (merge gov-payload {
-      payload: {
-        contract: (get value contract),
-      }
-    }))))
 
 ;; @desc Get or generate new "Wormhole address" for a Stacks `prrincipal` that can be used in Wormhole messages
 ;;       Addresses in the Wormhole protocol are limited to 32 bytes, but a Stacks `principal` can be longer than this
@@ -805,6 +595,216 @@
     (ok result)))
 
 ;;;; Private functions
+
+;; @desc Parse a Verified Action Approval (VAA)
+;;
+;; VAA Header
+;; byte        version             (VAA Version)
+;; u32         guardian_set_index  (Indicates which guardian set is signing)
+;; u8          len_signatures      (Number of signatures stored)
+;; [][66]byte  signatures          (Collection of ecdsa signatures)
+;;
+;; VAA Body
+;; u32         timestamp           (Timestamp of the block where the source transaction occurred)
+;; u32         nonce               (A grouping number)
+;; u16         emitter_chain       (Wormhole ChainId of emitter contract)
+;; [32]byte    emitter_address     (Emitter contract address, in Wormhole format)
+;; u64         sequence            (Strictly increasing sequence, tied to emitter address & chain)
+;; u8          consistency_level   (What finality level was reached before emitting this message)
+;; []byte      payload             (VAA message content)
+;;
+;; @param vaa-bytes: VAA as raw bytes
+(define-private (parse-vaa (vaa-bytes (buff 8192)))
+  (let ((cursor-version (unwrap! (read-uint-8 { bytes: vaa-bytes, pos: u0 })
+          ERR_VAA_PARSING_VERSION))
+        (cursor-guardian-set-id (unwrap! (read-uint-32 (get next cursor-version))
+          ERR_VAA_PARSING_GUARDIAN_SET))
+        (cursor-signatures-len (unwrap! (read-uint-8 (get next cursor-guardian-set-id))
+          ERR_VAA_PARSING_SIGNATURES_LEN))
+        (signatures-len (get value cursor-signatures-len))
+        (check-signatures-len (asserts! (<= signatures-len GOV_MAX_GUARDIANS)
+          ERR_GOV_MAX_GUARDIANS_EXCEEDED))
+        (cursor-signatures (fold batch-read-signatures
+          EMPTY_LIST_MAX_GUARDIANS
+          {
+              next: (get next cursor-signatures-len),
+              value: (list),
+              iter: (get value cursor-signatures-len)
+          }))
+        (vaa-body-hash (keccak256 (keccak256 (get value (unwrap! (read-buff-8192-max (get next cursor-signatures) none)
+          ERR_VAA_HASHING_BODY)))))
+        (cursor-timestamp (unwrap! (read-uint-32 (get next cursor-signatures))
+          ERR_VAA_PARSING_TIMESTAMP))
+        (cursor-nonce (unwrap! (read-uint-32 (get next cursor-timestamp))
+          ERR_VAA_PARSING_NONCE))
+        (cursor-emitter-chain (unwrap! (read-uint-16 (get next cursor-nonce))
+          ERR_VAA_PARSING_EMITTER_CHAIN))
+        (cursor-emitter-address (unwrap! (read-buff-32 (get next cursor-emitter-chain))
+          ERR_VAA_PARSING_EMITTER_ADDRESS))
+        (cursor-sequence (unwrap! (read-uint-64 (get next cursor-emitter-address))
+          ERR_VAA_PARSING_SEQUENCE))
+        (cursor-consistency-level (unwrap! (read-uint-8 (get next cursor-sequence))
+          ERR_VAA_PARSING_CONSISTENCY_LEVEL))
+        (cursor-payload (unwrap! (read-buff-8192-max (get next cursor-consistency-level) none)
+          ERR_VAA_PARSING_PAYLOAD))
+        (public-keys-results (fold batch-recover-public-keys
+          (get value cursor-signatures)
+          {
+              message-hash: vaa-body-hash,
+              value: (list)
+          })))
+    (asserts! (is-eq (get pos (get next cursor-payload)) (len vaa-bytes)) ERR_GSU_CHECK_OVERLAY)
+    (ok {
+        vaa: {
+          version: (get value cursor-version),
+          guardian-set-id: (get value cursor-guardian-set-id),
+          signatures-len: signatures-len,
+          signatures: (get value cursor-signatures),
+          timestamp: (get value cursor-timestamp),
+          nonce: (get value cursor-nonce),
+          emitter-chain: (get value cursor-emitter-chain),
+          emitter-address: (get value cursor-emitter-address),
+          sequence: (get value cursor-sequence),
+          consistency-level: (get value cursor-consistency-level),
+          payload: (get value cursor-payload),
+        },
+        recovered-public-keys: (get value public-keys-results),
+        vaa-body-hash: vaa-body-hash,
+    })))
+
+;; @desc Parse and check the header of a VAA containing a governance payload
+;;       Returns parsed payload as tuple if successful
+;;
+;; Expected message format for VAA governance payload header:
+;;   [32]byte    module     Should be "Core"
+;;   u8          action     Should be `3` for this message type
+;;   u16         chain      Chain this action is intended for
+;;
+;; @param vaa-payload: VAA `payload` as raw bytes
+(define-private (parse-governance-payload-header (gov-action uint) (vaa-payload (buff 8192)))
+  (let ((cursor-module (unwrap! (read-buff-32 { bytes: vaa-payload, pos: u0 })
+          ERR_GOV_PARSING_MODULE))
+        (cursor-action (unwrap! (read-uint-8 (get next cursor-module))
+          ERR_GOV_PARSING_ACTION))
+        (cursor-chain (unwrap! (read-buff-2 (get next cursor-action))
+          ERR_GOV_PARSING_CHAIN))
+        (cursor-payload (unwrap! (read-buff-8192-max (get next cursor-chain) none)
+          ERR_GOV_PARSING_PAYLOAD))
+        (module (get value cursor-module))
+        (action (get value cursor-action))
+        (chain (get value cursor-chain)))
+
+    ;; Ensure that this message was emitted from authorized module
+    (asserts! (is-eq module CORE_STRING_MODULE)
+      ERR_GOV_CHECK_MODULE)
+    ;; Ensure that this message is matching the expected action
+    (asserts! (is-eq action gov-action)
+      ERR_GOV_CHECK_ACTION)
+    ;; Ensure that this message is addressed to this chain
+    (asserts! (is-eq chain WORMHOLE_STACKS_CHAIN_ID)
+      ERR_GOV_CHECK_CHAIN)
+
+    ;; --- Checks Passed, Return Parsed Payload ---
+    (ok {
+      module: module,
+      action: action,
+      chain: (buff-to-uint-be chain),
+      payload: (get value cursor-payload),
+    })))
+
+;; @desc Parse and check VAA payload for `set-message-fee`
+;;       Returns parsed payload as tuple if successful
+;;
+;; Expected message format for SetMessageFee payload:
+;;   [54]byte    header     Governance payload header
+;;   u256        fee        New fee to emit message (in uSTX)
+;;
+;; @param vaa-payload: VAA `payload` as raw bytes
+(define-private (parse-set-message-fee-payload (vaa-payload (buff 8192)))
+  (let ((gov-payload (try! (parse-governance-payload-header GOV_ACTION_SET_MESSAGE_FEE vaa-payload)))
+        (cursor-fee-first-128-bits (unwrap! (read-buff-16 { bytes: (get payload gov-payload), pos: u0 })
+          ERR_SMF_PARSING_FEE_1))
+        (cursor-fee-second-128-bits (unwrap! (read-uint-128 (get next cursor-fee-first-128-bits))
+          ERR_SMF_PARSING_FEE_2)))
+
+    ;; --- Validate Message Data ---
+    ;; Check no extra bytes in buffer
+    (asserts! (is-eq (get pos (get next cursor-fee-second-128-bits)) (len (get payload gov-payload)))
+      ERR_SMF_CHECK_OVERLAY)
+    ;; Check fee fits into `u128`, because that's the max value clarity can represent
+    (asserts! (is-eq (get value cursor-fee-first-128-bits) EMPTY_BUFFER_16)
+      ERR_SMF_CHECK_FEE)
+
+    ;; --- Checks Passed, Return Parsed Payload ---
+    (ok (merge gov-payload {
+      payload: {
+        fee: (get value cursor-fee-second-128-bits)
+      }
+    }))))
+
+;; @desc Parse and check VAA payload for `transfer-fees`
+;;       Returns parsed payload as tuple if successful
+;;
+;; Expected message format for TransferFees payload:
+;;   [54]byte   header     Governance payload header
+;;   u256       amount     Amount to transfer (in uSTX)
+;;   [32]byte   recipient  Hash of recipient address (MUST HAVE BEEN REGISTERED WITH `get-wormhole-address`!!)
+;;
+;; @param vaa-payload: VAA `payload` as raw bytes
+(define-private (parse-transfer-fees-payload (vaa-payload (buff 8192)))
+  (let ((gov-payload (try! (parse-governance-payload-header GOV_ACTION_TRANSFER_FEES vaa-payload)))
+        (cursor-amount-first-128-bits (unwrap! (read-buff-16 { bytes: (get payload gov-payload), pos: u0 })
+          ERR_TXF_PARSING_AMOUNT_1))
+        (cursor-amount-second-128-bits (unwrap! (read-uint-128 (get next cursor-amount-first-128-bits))
+          ERR_TXF_PARSING_AMOUNT_2))
+        (recipient-hash (unwrap! (read-buff-32 (get next cursor-amount-second-128-bits))
+          ERR_TXF_PARSING_RECIPIENT))
+        (recipient (unwrap! (contract-call? .wormhole-core-state wormhole-to-stacks-get (get value recipient-hash))
+          ERR_TXF_LOOKUP_RECIPIENT_ADDRESS)))
+
+    ;; --- Validate Message Data ---
+    ;; Check no extra bytes in buffer
+    (asserts! (is-eq (get pos (get next recipient-hash)) (len (get payload gov-payload)))
+      ERR_TXF_CHECK_OVERLAY)
+    ;; Check amount fits into `u128`, because that's the max value clarity can represent
+    (asserts! (is-eq (get value cursor-amount-first-128-bits) EMPTY_BUFFER_16)
+      ERR_TXF_CHECK_AMOUNT)
+    ;; Check recipient address is valid on this network
+    (asserts! (is-standard recipient)
+      ERR_TXF_CHECK_RECIPIENT_ADDRESS)
+
+    ;; --- Checks Passed, Return Parsed Payload ---
+    (ok (merge gov-payload {
+      payload: {
+        amount: (get value cursor-amount-second-128-bits),
+        recipient: recipient,
+      }
+    }))))
+
+;; @desc Parse and check VAA payload for `contract-upgrade`
+;;       Returns parsed payload as tuple if successful
+;;
+;; Expected message format for ContractUpgrade VAA payload:
+;;   [54]byte      header     Governance payload header
+;;   [32]byte      successor  Hash of sucessor contract principal
+;;
+;; @param vaa-payload: VAA `payload` as raw bytes
+(define-private (parse-contract-upgrade-payload (vaa-payload (buff 8192)))
+  (let ((gov-payload (try! (parse-governance-payload-header GOV_ACTION_CONTRACT_UPGRADE vaa-payload)))
+        (contract (unwrap! (read-buff-32 { bytes: (get payload gov-payload), pos: u0 })
+          ERR_UPG_PARSING_CONTRACT)))
+
+    ;; --- Validate Message Data ---
+    ;; Check no extra bytes in buffer
+    (asserts! (is-eq (get pos (get next contract)) (len (get payload gov-payload)))
+      ERR_UPG_CHECK_OVERLAY)
+
+    ;; --- Checks Passed, Return Parsed Payload ---
+    (ok (merge gov-payload {
+      payload: {
+        contract: (get value contract),
+      }
+    }))))
 
 ;; @desc Foldable function admitting an uncompressed 64 bytes public key as an input, producing a record { uncompressed-public-key, compressed-public-key }
 (define-private (check-and-consolidate-public-keys
