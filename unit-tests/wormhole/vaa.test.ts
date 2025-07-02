@@ -40,7 +40,7 @@ describe(`${WC.CONTRACT_NAME}::parse-vaa success`, () => {
           let [decodedVaa, guardiansPublicKeys] =
             wormhole.serializeVaaToClarityValue(header, body, keychain);
 
-          const res = simnet.callReadOnlyFn(
+          const res = simnet.callPrivateFn(
             WC.CONTRACT_NAME,
             `parse-vaa`,
             [Cl.buffer(Uint8Array.from(vaa))],
@@ -502,7 +502,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-vaa success`, () => {
           let [decodedVaa, guardiansPublicKeys] =
             wormhole.serializeVaaToClarityValue(header, body, guardianSet1Keys);
 
-          const res = simnet.callReadOnlyFn(
+          const res = simnet.callPrivateFn(
             WC.CONTRACT_NAME,
             `parse-vaa`,
             [Cl.buffer(Uint8Array.from(vaa))],
