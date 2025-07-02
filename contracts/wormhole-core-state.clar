@@ -103,7 +103,6 @@
     (ok true)))
 
 ;; @desc: Start ownership transfer: Set successor contract which will be allowed to claim ownership of this contract
-;;        If successor fails to claim ownership, the transfer can be cancelled
 ;;        The 2-step process prevents transferring ownership to a broken deployment and permanently losing access to the state contract
 (define-public (start-ownership-transfer (new-owner principal))
   (let ((current-owner (try! (check-caller-is-owner)))
@@ -115,15 +114,6 @@
     ;; Checks passed! Ownership transfer in progress
     (var-set transferring-to (some new-owner))
     (ok true)))
-
-;; @desc Cancel ownership tranfer
-;;       Returns principal of contract to which ownership was being transferred
-(define-public (cancel-ownership-transfer)
-  (let ((cancelled-transfer (unwrap! (var-get transferring-to) ERR_STATE_XFER_NOT_IN_PROGRESS)))
-    (try! (check-caller-is-owner))
-    ;; Checks passed! Ownership transfer cancelled
-    (var-set transferring-to none)
-    (ok cancelled-transfer)))
 
 ;; @desc: Finalize ownership transfer: Set successor contract as owner
 ;;        Called by the contract we are transferring ownership to, NOT the current owner
