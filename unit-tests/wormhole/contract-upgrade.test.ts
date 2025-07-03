@@ -12,7 +12,7 @@ const chain = WC.EXPECTED_CHAIN_ID;
 const deployer = accounts.get("deployer")!;
 const sender = accounts.get("wallet_1")!;
 
-describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload success`, () => {
+describe(`${WC.CONTRACT_NAME}::parse-contract-upgrade-payload success`, () => {
   const contract =
     "ST18JNZYRFDM14H9C8XETYJ29HMRGJDHZCQSB4X74.wormhole-core-v9000";
   const contractHash = keccak_256(contract);
@@ -24,9 +24,9 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload success
       contractHash,
     );
 
-    const res = simnet.callReadOnlyFn(
+    const res = simnet.callPrivateFn(
       WC.CONTRACT_NAME,
-      `parse-and-verify-contract-upgrade-payload`,
+      `parse-contract-upgrade-payload`,
       [Cl.buffer(Uint8Array.from(payload))],
       sender,
     );
@@ -43,7 +43,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload success
   });
 });
 
-describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload failure`, () => {
+describe(`${WC.CONTRACT_NAME}::parse-contract-upgrade-payload failure`, () => {
   const contract = "ST18JNZYRFDM14H9C8XETYJ29HMRGJDHZCQSB4X74.wormhole-core-v7";
 
   it("should fail if `module` is not 'core'", () => {
@@ -59,9 +59,9 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload failure
       module,
     );
 
-    const res = simnet.callReadOnlyFn(
+    const res = simnet.callPrivateFn(
       WC.CONTRACT_NAME,
-      `parse-and-verify-contract-upgrade-payload`,
+      `parse-contract-upgrade-payload`,
       [Cl.buffer(Uint8Array.from(payload))],
       sender,
     );
@@ -75,9 +75,9 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload failure
       contract,
     );
 
-    const res = simnet.callReadOnlyFn(
+    const res = simnet.callPrivateFn(
       WC.CONTRACT_NAME,
-      `parse-and-verify-contract-upgrade-payload`,
+      `parse-contract-upgrade-payload`,
       [Cl.buffer(Uint8Array.from(payload))],
       sender,
     );
@@ -91,9 +91,9 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload failure
       contract,
     );
 
-    const res = simnet.callReadOnlyFn(
+    const res = simnet.callPrivateFn(
       WC.CONTRACT_NAME,
-      `parse-and-verify-contract-upgrade-payload`,
+      `parse-contract-upgrade-payload`,
       [Cl.buffer(Uint8Array.from(payload))],
       sender,
     );
@@ -108,9 +108,9 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload failure
       "SP3NG7N03QKACBR7AWTPK79ZV86RAKXKDEH4BVF2B.wormhole-core-v5",
     );
 
-    const res = simnet.callReadOnlyFn(
+    const res = simnet.callPrivateFn(
       WC.CONTRACT_NAME,
-      `parse-and-verify-contract-upgrade-payload`,
+      `parse-contract-upgrade-payload`,
       [Cl.buffer(Uint8Array.from(payload))],
       sender,
     );
@@ -125,9 +125,9 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload failure
       "ST1EYXDYXB4DD7WJC1QS7GZC35NT5CG35QSCZ08Q2",
     );
 
-    const res = simnet.callReadOnlyFn(
+    const res = simnet.callPrivateFn(
       WC.CONTRACT_NAME,
-      `parse-and-verify-contract-upgrade-payload`,
+      `parse-contract-upgrade-payload`,
       [Cl.buffer(Uint8Array.from(payload))],
       sender,
     );
@@ -146,9 +146,9 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-contract-upgrade-payload failure
 
     expect(actualPayloadLen).toBeGreaterThan(validPayloadLen);
 
-    const res = simnet.callReadOnlyFn(
+    const res = simnet.callPrivateFn(
       WC.CONTRACT_NAME,
-      `parse-and-verify-contract-upgrade-payload`,
+      `parse-contract-upgrade-payload`,
       [Cl.buffer(Uint8Array.from(payload))],
       sender,
     );
