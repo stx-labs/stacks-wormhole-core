@@ -27,6 +27,11 @@
 (define-constant ERR_STATE_VAA_REPLAYED (err u10005))
 ;; No state transfer in progress
 (define-constant ERR_STATE_XFER_NOT_IN_PROGRESS (err u10006))
+;; Sequence number for emitter is too large
+(define-constant ERR_STATE_OVERFLOW_SEQUENCE (err u10007))
+
+;; Max value for unsigned 64-bit integer
+(define-constant MAX_VALUE_U64 u18446744073709551615)
 
 ;;;; Data vars
 
@@ -83,7 +88,7 @@
 ;; This option is here to provide options and flexibility for future core contract updates
 (define-map kv-store (string-ascii 32) (buff 4096))
 
-;;;; Public functions
+;;;; Public functions: Update process
 
 ;; ALL PUBLIC FUNCTIONS WHICH MODIFY STATE MUST CALL `check-caller-is-owner`
 
@@ -127,19 +132,27 @@
     (var-set transferring-to none)
     (ok true)))
 
-;; @desc Get next sequence # for emitter and mark it as used
-;;       On success, returns `(ok {wormhole-address, created, sequence})` and increments emitter's sequence
-;;       On failure, returns `(err uint)` does not increment sequence
-(define-public (consume-emitter-sequence (emitter principal))
+;;;; Public functions
+
+;; @desc: Post a message to watchers
+;;        This needs to be in the state contract so the source address of these messages never changes
+(define-public (post-message (payload (buff 8192)) (nonce uint) (consistency-level uint) (emitter principal))
   (let ((check-caller (try! (check-caller-is-owner)))
-        (wormhole-address (inner-get-wormhole-address emitter))
-        (sequence (default-to u0 (emitter-sequence-get emitter))))
-    (map-set emitter-sequence emitter (+ sequence u1))
-    (ok (merge
-      wormhole-address
-      {
-        sequence: sequence
-      }))))
+        (result (try! (consume-emitter-sequence emitter)))
+        (message {
+            emitter-principal: emitter,
+            emitter: (get wormhole-address result),
+            nonce: nonce,
+            sequence: (get sequence result),
+            consistency-level: consistency-level,
+            payload: payload
+          }))
+      ;; Message has passed checks, and we got a sequence number, so emit to watchers
+      (print {
+        event: "post-message",
+        data: message
+      })
+      (ok message)))
 
 ;; @desc Track hashes of processed governance VAAs so we don't replay them
 ;;       Returns `(ok true)` if the VAA is marked as "consumed"
@@ -189,6 +202,21 @@
     (ok (inner-get-wormhole-address p))))
 
 ;;;; Private functions
+
+;; @desc Get next sequence # for emitter and mark it as used
+;;       On success, returns `(ok {wormhole-address, created, sequence})` and increments emitter's sequence
+;;       On failure, returns `(err uint)` does not increment sequence
+(define-private (consume-emitter-sequence (emitter principal))
+  (let ((wormhole-address (inner-get-wormhole-address emitter))
+        (sequence (default-to u0 (emitter-sequence-get emitter))))
+    ;; If `sequence` has reached its limit we cannot continue
+    (asserts! (<= sequence MAX_VALUE_U64) ERR_STATE_OVERFLOW_SEQUENCE)
+    (map-set emitter-sequence emitter (+ sequence u1))
+    (ok (merge
+      wormhole-address
+      {
+        sequence: sequence
+      }))))
 
 ;; @desc Unchecked version of `register-wormhole-address`
 (define-private (inner-get-wormhole-address (p principal))

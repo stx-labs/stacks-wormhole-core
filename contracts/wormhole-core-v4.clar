@@ -96,8 +96,6 @@
 (define-constant ERR_POST_OVERFLOW_CONSISTENCY_LEVEL (err u1401))
 ;; Post Message: Nonce is too large
 (define-constant ERR_POST_OVERFLOW_NONCE (err u1402))
-;; Post Message: Sequence is too large
-(define-constant ERR_POST_OVERFLOW_SEQUENCE (err u1403))
 
 ;; Wormhole Governance: error parsing `module`
 (define-constant ERR_GOV_PARSING_MODULE (err u1501))
@@ -193,8 +191,6 @@
 (define-constant MAX_VALUE_U8 u255)
 ;; Max value for unsigned 32-bit integer
 (define-constant MAX_VALUE_U32 u4294967295)
-;; Max value for unsigned 64-bit integer
-(define-constant MAX_VALUE_U64 u18446744073709551615)
 ;; List of `u0` with length of GOV_MAX_GUARDIANS
 (define-constant EMPTY_LIST_MAX_GUARDIANS (list u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0 u0))
 (asserts! (is-eq (len EMPTY_LIST_MAX_GUARDIANS) GOV_MAX_GUARDIANS) ERR_GOV_MAX_GUARDIANS_EXCEEDED)
@@ -1057,25 +1053,7 @@
     (asserts! (<= nonce MAX_VALUE_U32) ERR_POST_OVERFLOW_NONCE)
     ;; If a fee has been set, collect it
     (try! (charge-message-fee))
-    (let ((result (try! (contract-call? .wormhole-core-state consume-emitter-sequence emitter)))
-          (sequence (get sequence result))
-          (wormhole-address (get wormhole-address result))
-          (message {
-            emitter-principal: emitter,
-            emitter: wormhole-address,
-            nonce: nonce,
-            sequence: sequence,
-            consistency-level: consistency-level,
-            payload: payload
-          }))
-      ;; If `sequence` has reached its limit we cannot continue
-      (asserts! (<= sequence MAX_VALUE_U64) ERR_POST_OVERFLOW_SEQUENCE)
-      ;; Message has passed checks, and we got a sequence number, so emit to watchers
-      (print {
-        event: "post-message",
-        data: message
-      })
-      (ok message))))
+    (contract-call? .wormhole-core-state post-message payload nonce consistency-level emitter)))
 
 
 (define-private (check-emitter (address (buff 32)) (chain uint))
