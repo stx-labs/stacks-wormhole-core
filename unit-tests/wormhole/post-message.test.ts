@@ -8,8 +8,8 @@ import { keccak_256 } from "@noble/hashes/sha3";
 const accounts = simnet.getAccounts();
 const deployer = accounts.get("deployer")!;
 const sender = accounts.get("wallet_1")!;
-const emitter = Cl.principal(sender);
-const emitterHash = Cl.buffer(keccak_256(sender));
+const emitterPrincipal = Cl.principal(sender);
+const emitter = Cl.buffer(keccak_256(sender));
 
 describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
   beforeEach(async () => {
@@ -33,8 +33,8 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
       );
       expect(res.result).toBeOk(
         Cl.tuple({
+          "emitter-principal": emitterPrincipal,
           emitter,
-          "emitter-keccak256": emitterHash,
           nonce,
           sequence: Cl.uint(i),
           "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),
@@ -62,8 +62,8 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
           );
           expect(res.result).toBeOk(
             Cl.tuple({
+              "emitter-principal": emitterPrincipal,
               emitter,
-              "emitter-keccak256": emitterHash,
               nonce,
               sequence: Cl.uint(sequence),
               "consistency-level": consistencyLevel,
@@ -88,8 +88,8 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
     );
     expect(res.result).toBeOk(
       Cl.tuple({
+        "emitter-principal": emitterPrincipal,
         emitter,
-        "emitter-keccak256": emitterHash,
         nonce,
         sequence: Cl.uint(0),
         "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),
@@ -116,8 +116,8 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
           );
           expect(res.result).toBeOk(
             Cl.tuple({
+              "emitter-principal": emitterPrincipal,
               emitter,
-              "emitter-keccak256": emitterHash,
               nonce,
               sequence: Cl.uint(sequence),
               "consistency-level": consistencyLevel,
@@ -144,8 +144,8 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
       );
       expect(res.result).toBeOk(
         Cl.tuple({
+          "emitter-principal": emitterPrincipal,
           emitter,
-          "emitter-keccak256": emitterHash,
           nonce,
           sequence: Cl.uint(i),
           "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),
@@ -167,8 +167,8 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
     );
     expect(res.result).toBeOk(
       Cl.tuple({
+        "emitter-principal": emitterPrincipal,
         emitter,
-        "emitter-keccak256": emitterHash,
         nonce,
         sequence: Cl.uint(0),
         "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),
@@ -204,8 +204,8 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
     const proxyAddress = `${deployer}.${proxyContract.name}`;
     expect(res.result).toBeOk(
       Cl.tuple({
-        emitter: Cl.principal(proxyAddress),
-        "emitter-keccak256": Cl.buffer(keccak_256(proxyAddress)),
+        "emitter-principal": Cl.principal(proxyAddress),
+        emitter: Cl.buffer(keccak_256(proxyAddress)),
         nonce,
         sequence: Cl.uint(0),
         "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),
@@ -233,8 +233,8 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
     );
     expect(res.result).toBeOk(
       Cl.tuple({
+        "emitter-principal": emitterPrincipal,
         emitter,
-        "emitter-keccak256": emitterHash,
         nonce,
         sequence: Cl.uint(0),
         "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),
@@ -325,8 +325,8 @@ describe(`${WC.CONTRACT_NAME}::post-message failure`, () => {
     );
     expect(res.result).toBeOk(
       Cl.tuple({
+        "emitter-principal": emitterPrincipal,
         emitter,
-        "emitter-keccak256": emitterHash,
         nonce,
         sequence: Cl.uint(0),
         "consistency-level": Cl.uint(WC.DEFAULT_CONSISTENCY_LEVEL),

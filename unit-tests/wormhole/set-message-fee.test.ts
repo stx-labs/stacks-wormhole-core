@@ -295,8 +295,8 @@ describe(`${WC.CONTRACT_NAME}::set-message-fee`, () => {
       );
       expect(res.result).toBeOk(
         Cl.tuple({
-          emitter: Cl.principal(sender),
-          "emitter-keccak256": Cl.buffer(keccak_256(sender)),
+          "emitter-principal": Cl.principal(sender),
+          emitter: Cl.buffer(keccak_256(sender)),
           nonce,
           sequence: Cl.uint(i),
           "consistency-level": consistencyLevel,
