@@ -55,12 +55,12 @@
 
 ;;;; Public functions
 
-(define-public (parse-and-verify-vaa (core-contract <core-trait>) (vaa-bytes (buff 8192)))
+(define-public (parse-and-verify-vaa (core-contract <core-trait>) (vaa-bytes (buff 4096)))
   (begin
     (try! (check-active-wormhole-core-contract core-contract))
     (contract-call? core-contract parse-and-verify-vaa vaa-bytes)))
 
-(define-public (post-message (core-contract <core-trait>) (payload (buff 8192)) (nonce uint) (consistency-level-opt (optional uint)))
+(define-public (post-message (core-contract <core-trait>) (payload (buff 4096)) (nonce uint) (consistency-level-opt (optional uint)))
   (begin
     (try! (check-active-wormhole-core-contract core-contract))
     (contract-call? core-contract post-message-via-proxy payload nonce consistency-level-opt contract-caller)))

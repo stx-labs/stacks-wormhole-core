@@ -136,7 +136,7 @@
 
 ;; @desc: Post a message to watchers
 ;;        This needs to be in the state contract so the source address of these messages never changes
-(define-public (post-message (payload (buff 8192)) (nonce uint) (consistency-level uint) (emitter principal))
+(define-public (post-message (payload (buff 4096)) (nonce uint) (consistency-level uint) (emitter principal))
   (let ((check-caller (try! (check-caller-is-owner)))
         (result (try! (consume-emitter-sequence emitter)))
         (message {
