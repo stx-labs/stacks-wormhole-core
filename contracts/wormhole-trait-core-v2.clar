@@ -4,7 +4,7 @@
 (define-trait core-trait
   (
     ;; Parse and Verify cryptographic validity of a VAA
-    (parse-and-verify-vaa ((buff 8192)) (response {
+    (parse-and-verify-vaa ((buff 4096)) (response {
       vaa: {
         version: uint,
         guardian-set-id: uint,
@@ -16,31 +16,31 @@
         emitter-address: (buff 32),
         sequence: uint,
         consistency-level: uint,
-        payload: (buff 8192),
+        payload: (buff 4096),
       },
       vaa-body-hash: (buff 32)
     } uint))
     ;; Emit message for Guardians to observe
     ;; Provided in this trait in case user wants to implement their own proxy logic
     ;; NOTE: May charge sender a fee to send message
-    (post-message ((buff 8192) uint (optional uint)) (response {
+    (post-message ((buff 4096) uint (optional uint)) (response {
       emitter-principal: principal,
       emitter: (buff 32),
       nonce: uint,                ;; Must fit into `u32`
       sequence: uint,             ;; Must fit into `u64`
       consistency-level: uint,    ;; Must fit into `u8`
-      payload: (buff 8192)
+      payload: (buff 4096)
     } uint))
     ;; Emit message for Guardians to observe
     ;; Can only called by *OUR* proxy contract!
     ;; NOTE: May charge sender a fee to send message
-    (post-message-via-proxy ((buff 8192) uint (optional uint) principal) (response {
+    (post-message-via-proxy ((buff 4096) uint (optional uint) principal) (response {
       emitter-principal: principal,
       emitter: (buff 32),
       nonce: uint,                ;; Must fit into `u32`
       sequence: uint,             ;; Must fit into `u64`
       consistency-level: uint,    ;; Must fit into `u8`
-      payload: (buff 8192)
+      payload: (buff 4096)
     } uint))
     ;; Get or generate new "Wormhole address" for a Stacks `prrincipal` that can be used in Wormhole messages
     ;; Addresses in the Wormhole protocol are limited to 32 bytes, but a Stacks `principal` can be longer than this
