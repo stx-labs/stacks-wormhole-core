@@ -218,13 +218,21 @@
 ;; Keep track of exiting guardian set
 (define-data-var previous-guardian-set {set-id: uint, expires-at: uint} {set-id: u0, expires-at: u0})
 ;; Fee to post message to Wormhole guardians
-(define-data-var post-message-fee uint u0)
+(define-constant MINIMUM_MESSAGE_FEE u1)
+(define-data-var message-fee uint MINIMUM_MESSAGE_FEE)
 
 ;;;; Data maps
 
 ;; WARNING: It's not a good idea to store maps in this contract!
 ;; There is no limit to how big they can get and this can make import/export during a ContractUpgrade operation impossible
 ;; Please use a separate state contract like `wormhole-core-state` for maps!
+
+;;;; Public functions: Getters
+
+(define-read-only (get-chain-id) WORMHOLE_STACKS_CHAIN_ID)
+(define-read-only (get-successor-contract) (var-get successor-contract))
+(define-read-only (get-deployment-state) (var-get deployment-state))
+(define-read-only (get-message-fee) (var-get message-fee))
 
 ;;;; Public functions
 
@@ -238,17 +246,6 @@
     contract (initialize-from-previous-contract contract)
     ;; This is the first deployment, initialize all Wormhole state
     (initialize-wormhole)))
-
-;; @desc Get chain ID
-(define-read-only (get-chain-id) WORMHOLE_STACKS_CHAIN_ID)
-
-;; @desc Get successor contract
-(define-read-only (get-successor-contract)
-  (var-get successor-contract))
-
-;; @desc Get current state of this contract deployment
-(define-read-only (get-deployment-state)
-  (var-get deployment-state))
 
 ;; @desc Returns true if this is the currently active core contract deployment (can only be one at any time)
 (define-read-only (is-active-deployment)
@@ -266,7 +263,7 @@
   guardian-set-initialized: (var-get guardian-set-initialized),
   active-guardian-set-id: (var-get active-guardian-set-id),
   previous-guardian-set: (var-get previous-guardian-set),
-  post-message-fee: (var-get post-message-fee)})
+  message-fee: (var-get message-fee)})
 
 ;; @desc Deactivate this contract, transfer state contract ownership, and return this contract's state
 ;;       Can only be called by successor contract
@@ -436,7 +433,7 @@
     (try! (contract-call? .wormhole-core-state consume-governance-vaa hash))
 
     ;; --- Commit State ---
-    (var-set post-message-fee fee)
+    (var-set message-fee fee)
 
     ;; Emit event
     (print {
@@ -721,7 +718,8 @@
         (cursor-fee-first-128-bits (unwrap! (read-buff-16 { bytes: (get payload gov-payload), pos: u0 })
           ERR_SMF_PARSING_FEE_1))
         (cursor-fee-second-128-bits (unwrap! (read-uint-128 (get next cursor-fee-first-128-bits))
-          ERR_SMF_PARSING_FEE_2)))
+          ERR_SMF_PARSING_FEE_2))
+        (fee (get value cursor-fee-second-128-bits)))
 
     ;; --- Validate Message Data ---
     ;; Check no extra bytes in buffer
@@ -730,11 +728,14 @@
     ;; Check fee fits into `u128`, because that's the max value clarity can represent
     (asserts! (is-eq (get value cursor-fee-first-128-bits) EMPTY_BUFFER_16)
       ERR_SMF_CHECK_FEE)
+    ;; Check fee isn't below minimum
+    (asserts! (>= fee MINIMUM_MESSAGE_FEE)
+      ERR_SMF_CHECK_FEE)
 
     ;; --- Checks Passed, Return Parsed Payload ---
     (ok (merge gov-payload {
       payload: {
-        fee: (get value cursor-fee-second-128-bits)
+        fee: fee
       }
     }))))
 
@@ -1025,14 +1026,14 @@
       (var-set guardian-set-initialized (get guardian-set-initialized previous-state))
       (var-set active-guardian-set-id (get active-guardian-set-id previous-state))
       (var-set previous-guardian-set (get previous-guardian-set previous-state))
-      (var-set post-message-fee (get post-message-fee previous-state))
+      (var-set message-fee (get message-fee previous-state))
       ;; Activate this contract
       (var-set deployment-state DEPLOYMENT_STATE_ACTIVE)
       (ok true))))
 
 ;; @desc Charge sender fee set by `set-message-fee`
 (define-private (charge-message-fee)
-  (let ((fee (var-get post-message-fee)))
+  (let ((fee (var-get message-fee)))
     ;; If a fee has been set, collect it
     (if (> fee u0)
       (try! (stx-transfer? fee tx-sender (get-contract-principal)))
@@ -1046,7 +1047,7 @@
 (define-private (inner-post-message (payload (buff 4096)) (nonce uint) (consistency-level-opt (optional uint)) (emitter principal))
   (let ((active (try! (check-active-deployment)))
         (consistency-level (default-to DEFAULT_CONSISTENCY_LEVEL consistency-level-opt))
-        (fee (var-get post-message-fee)))
+        (fee (var-get message-fee)))
     ;; `consistency-level` must fit into `u8` type
     (asserts! (<= consistency-level MAX_VALUE_U8) ERR_POST_OVERFLOW_CONSISTENCY_LEVEL)
     ;; `nonce` must fit into `u32` type

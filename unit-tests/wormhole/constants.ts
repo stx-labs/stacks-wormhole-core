@@ -54,6 +54,8 @@ export class WormholeCore {
 
   static readonly ERR_DEPLOYMENT_STATE_NOT_ACTIVE = 1901;
   static readonly ERR_DEPLOYMENT_STATE_ALREADY_INITIALIZED = 1902;
+
+  static readonly MINIMUM_MESSAGE_FEE = 1;
 }
 
 // Constants from `wormhole-core-state` Clarity contract

@@ -294,6 +294,10 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
     );
     expect(res.result).toBeOk(Cl.uint(fee));
 
+    // Check contract balance
+    const stxBalances = () => simnet.getAssetsMap().get("STX");
+    const initialContractBalance = stxBalances()!.get(contractPrinciple)!;
+
     // Post message to fund contract
     const nonce = Cl.uint(0);
     const consistencyLevel = Cl.uint(0);
@@ -316,10 +320,9 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
     );
 
     // Check contract balance
-    const stxBalances = simnet.getAssetsMap().get("STX")!;
-    const contractBalance = stxBalances.get(contractPrinciple)!;
+    const contractBalance = stxBalances()!.get(contractPrinciple)!;
 
-    expect(contractBalance).toEqual(fee);
+    expect(contractBalance).toEqual(initialContractBalance + fee);
   });
 
   it("should succeed, transfer fees, and return `ok({amount, recipient})`", () => {

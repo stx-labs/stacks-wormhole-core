@@ -676,6 +676,15 @@ export namespace wormhole {
     return block;
   }
 
+  export function getMessageFee(contractName: string, txSenderAddress: string) {
+    return simnet.callReadOnlyFn(
+      contractName,
+      `get-message-fee`,
+      [],
+      txSenderAddress,
+    );
+  }
+
   export function setMessageFee(
     keychain: wormhole.Guardian[],
     guardianSetId: number,
