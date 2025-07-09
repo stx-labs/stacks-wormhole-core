@@ -67,6 +67,23 @@ describe(`${WC.CONTRACT_NAME}::parse-set-message-fee-payload failure`, () => {
     expect(res.result).toBeErr(Cl.uint(WC.ERR_SMF_CHECK_FEE));
   });
 
+  it("should fail if `fee` is `u0`", () => {
+    const fee = 0;
+    const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
+      WC.ACTION_SET_MESSAGE_FEE,
+      WC.EXPECTED_CHAIN_ID,
+      fee,
+    );
+
+    const res = simnet.callPrivateFn(
+      WC.CONTRACT_NAME,
+      `parse-set-message-fee-payload`,
+      [Cl.buffer(Uint8Array.from(payload))],
+      sender,
+    );
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_SMF_CHECK_FEE));
+  });
+
   it("should fail if `module` is not 'core'", () => {
     // "Dore" instead of "Core"
     const module = Buffer.from(
@@ -205,7 +222,7 @@ describe(`${WC.CONTRACT_NAME}::set-message-fee`, () => {
   it("should succeed and return `ok(fee)`", () => {
     fc.assert(
       fc.property(
-        fc.bigInt({ min: 0n, max: MaxValue.U128 }),
+        fc.bigInt({ min: BigInt(WC.MINIMUM_MESSAGE_FEE), max: MaxValue.U128 }),
         fc.bigInt({ min: 0n, max: MaxValue.U128 }),
         (fee, sequence) => {
           const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(

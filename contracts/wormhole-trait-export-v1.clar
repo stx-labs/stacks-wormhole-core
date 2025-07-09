@@ -11,7 +11,7 @@
         set-id: uint,
         expires-at: uint
       },
-      post-message-fee: uint,
+      message-fee: uint,
     } uint))
   )
 )
