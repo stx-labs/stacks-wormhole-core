@@ -18,7 +18,7 @@ describe(`${WC.CONTRACT_NAME}::parse-set-message-fee-payload success`, () => {
 
   it("should return parsed payload", () => {
     fc.assert(
-      fc.property(fc.bigInt({ min: 0n, max: MaxValue.U128 }), (fcFee) => {
+      fc.property(fc.bigInt({ min: BigInt(WC.MINIMUM_MESSAGE_FEE), max: MaxValue.U128 }), (fcFee) => {
         const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
           action,
           chain,
