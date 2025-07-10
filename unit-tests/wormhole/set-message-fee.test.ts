@@ -18,30 +18,33 @@ describe(`${WC.CONTRACT_NAME}::parse-set-message-fee-payload success`, () => {
 
   it("should return parsed payload", () => {
     fc.assert(
-      fc.property(fc.bigInt({ min: BigInt(WC.MINIMUM_MESSAGE_FEE), max: MaxValue.U128 }), (fcFee) => {
-        const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
-          action,
-          chain,
-          fcFee,
-        );
+      fc.property(
+        fc.bigInt({ min: BigInt(WC.MINIMUM_MESSAGE_FEE), max: MaxValue.U128 }),
+        (fcFee) => {
+          const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
+            action,
+            chain,
+            fcFee,
+          );
 
-        const res = simnet.callPrivateFn(
-          WC.CONTRACT_NAME,
-          `parse-set-message-fee-payload`,
-          [Cl.buffer(Uint8Array.from(payload))],
-          sender,
-        );
-        expect(res.result).toBeOk(
-          Cl.tuple({
-            module: Cl.buffer(Uint8Array.from(wormhole.coreModule)),
-            action: Cl.uint(action),
-            chain: Cl.uint(chain),
-            payload: Cl.tuple({
-              fee: Cl.uint(fcFee),
+          const res = simnet.callPrivateFn(
+            WC.CONTRACT_NAME,
+            `parse-set-message-fee-payload`,
+            [Cl.buffer(Uint8Array.from(payload))],
+            sender,
+          );
+          expect(res.result).toBeOk(
+            Cl.tuple({
+              module: Cl.buffer(Uint8Array.from(wormhole.coreModule)),
+              action: Cl.uint(action),
+              chain: Cl.uint(chain),
+              payload: Cl.tuple({
+                fee: Cl.uint(fcFee),
+              }),
             }),
-          }),
-        );
-      }),
+          );
+        },
+      ),
     );
   });
 });
