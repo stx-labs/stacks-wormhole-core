@@ -229,11 +229,11 @@
 
 ;;;; Public functions: Getters
 
-(define-read-only (get-chain-id) WORMHOLE_STACKS_CHAIN_ID)
+(define-read-only (get-chain-id) (ok WORMHOLE_STACKS_CHAIN_ID))
 (define-read-only (get-successor-contract) (var-get successor-contract))
 (define-read-only (get-deployment-state) (var-get deployment-state))
-(define-read-only (get-message-fee) (var-get message-fee))
-(define-read-only (get-governance-contract) { chain-id: GOV_EMITTING_CHAIN, address: GOV_EMITTING_ADDRESS })
+(define-read-only (get-message-fee) (ok (var-get message-fee)))
+(define-read-only (get-governance-contract) (ok { chain-id: GOV_EMITTING_CHAIN, address: GOV_EMITTING_ADDRESS }))
 ;;;; Public functions
 
 ;; @desc Initialize this contract and maybe other Wormhole contracts

@@ -53,7 +53,22 @@
 ;; Trait does not match active contract
 (define-constant ERR_TRAIT_CHECK_CONTRACT_MISMATCH (err u20002))
 
-;;;; Public functions
+;;;; Public functions: Proxy for `wormhole-core`
+
+(define-public (get-chain-id (core-contract <core-trait>))
+  (begin
+    (try! (check-active-wormhole-core-contract core-contract))
+    (contract-call? core-contract get-chain-id)))
+
+(define-public (get-message-fee (core-contract <core-trait>))
+  (begin
+    (try! (check-active-wormhole-core-contract core-contract))
+    (contract-call? core-contract get-message-fee)))
+
+(define-public (get-governance-contract (core-contract <core-trait>))
+  (begin
+    (try! (check-active-wormhole-core-contract core-contract))
+    (contract-call? core-contract get-governance-contract)))
 
 (define-public (parse-and-verify-vaa (core-contract <core-trait>) (vaa-bytes (buff 4096)))
   (begin

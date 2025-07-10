@@ -3,6 +3,14 @@
 ;; we will need to use this trait to proxy these functions
 (define-trait core-trait
   (
+    ;; Getters
+    ;; Ideally these would not return `result` types, but currently trait-defined functions must do this 
+    (get-chain-id () (response (buff 2) uint))
+    (get-message-fee () (response uint uint))
+    (get-governance-contract () (response {
+      chain-id: uint,
+      address: (buff 32),
+    } uint))
     ;; Parse and Verify cryptographic validity of a VAA
     (parse-and-verify-vaa ((buff 4096)) (response {
       vaa: {
