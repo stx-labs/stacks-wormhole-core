@@ -1043,8 +1043,10 @@
       (print {
         event: "initialize",
         data: {
-          previous-contract: previous-contract,
-          previous-state: previous-state
+          previous-contract: (some {
+            address: previous-contract,
+            state: previous-state
+          })
         }
       })
 
