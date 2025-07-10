@@ -3,7 +3,11 @@ import { expect, describe, beforeEach } from "vitest";
 import { it } from "@fast-check/vitest";
 import { wormhole } from "./helpers";
 import { hexToBytes } from "@noble/hashes/utils";
-import { WormholeCore as WC, WormholeCoreProxy as WCP } from "./constants";
+import {
+  WormholeCore as WC,
+  WormholeCoreProxy as WCP,
+  WormholeCoreState as WCS,
+} from "./constants";
 import { keccak_256 } from "@noble/hashes/sha3";
 
 const accounts = simnet.getAccounts();
@@ -463,13 +467,56 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
     );
   });
 
+  it("should fail if message is replayed", async () => {
+    // Publish successor contract
+    let res = simnet.deployContract(
+      successorContract.name,
+      await successorContract.code(),
+      null,
+      deployer,
+    );
+    expect(res.result).toBeBool(true);
+
+    // Construct and send ContractUpgrade VAA
+    const payload = wormhole.serializeContractUpgradeVaaPayloadToBuffer(
+      WC.ACTION_CONTRACT_UPGRADE,
+      WC.EXPECTED_CHAIN_ID,
+      successorContract.principal(),
+    );
+    const body = wormhole.buildValidVaaBodySpecs({
+      payload: Uint8Array.from(payload),
+      emitter: wormhole.GovernanceUpdateEmitter,
+    });
+    const header = wormhole.buildValidVaaHeader(keychain, body, {
+      version: 1,
+      guardianSetId: 1,
+    });
+    const vaa = wormhole.serializeVaaToBuffer(header, body);
+    res = simnet.callPublicFn(
+      WC.CONTRACT_NAME,
+      "contract-upgrade",
+      [Cl.buffer(Uint8Array.from(vaa))],
+      sender,
+    );
+    expect(res.result).toBeOk(Cl.buffer(successorContract.wormholeAddress()));
+
+    // Should fail second time
+    res = simnet.callPublicFn(
+      WC.CONTRACT_NAME,
+      "contract-upgrade",
+      [Cl.buffer(Uint8Array.from(vaa))],
+      sender,
+    );
+    expect(res.result).toBeErr(Cl.uint(WCS.ERR_STATE_VAA_REPLAYED));
+  });
+
   it("should fail if `emitter.chain` is invalid", () => {
     let emitter = {
       chain: 17,
       address: wormhole.GovernanceUpdateEmitter.address,
     };
     const payload = wormhole.serializeContractUpgradeVaaPayloadToBuffer(
-      WC.ACTION_TRANSFER_FEES,
+      WC.ACTION_CONTRACT_UPGRADE,
       WC.EXPECTED_CHAIN_ID,
       successorContract.principal(),
     );
@@ -499,7 +546,7 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
       ),
     };
     const payload = wormhole.serializeContractUpgradeVaaPayloadToBuffer(
-      WC.ACTION_TRANSFER_FEES,
+      WC.ACTION_CONTRACT_UPGRADE,
       WC.EXPECTED_CHAIN_ID,
       successorContract.principal(),
     );
