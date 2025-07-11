@@ -1009,6 +1009,15 @@
     (try! (contract-call? .wormhole-core-state initialize (get-contract-principal)))
     ;; This is the initial deployment of `wormhole-core`
     (var-set deployment-state DEPLOYMENT_STATE_ACTIVE)
+
+    ;; Emit event
+    (print {
+      event: "initialize",
+      data: {
+        previous-contract: none
+      }
+    })
+
     (ok true)))
 
 ;; @desc Call previous contract's `export-state` to initialize this contract
@@ -1029,6 +1038,18 @@
       (var-set message-fee (get message-fee previous-state))
       ;; Activate this contract
       (var-set deployment-state DEPLOYMENT_STATE_ACTIVE)
+
+      ;; Emit event
+      (print {
+        event: "initialize",
+        data: {
+          previous-contract: (some {
+            address: previous-contract,
+            state: previous-state
+          })
+        }
+      })
+
       (ok true))))
 
 ;; @desc Charge sender fee set by `set-message-fee`
