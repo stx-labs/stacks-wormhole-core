@@ -90,8 +90,6 @@
 
 ;;;; Public functions: Update process
 
-;; ALL PUBLIC FUNCTIONS WHICH MODIFY STATE MUST CALL `check-caller-is-owner`
-
 ;; @desc Initialize newly deployed contract with owner (active core contract)
 ;;
 ;; Returns:
@@ -132,7 +130,10 @@
     (var-set transferring-to none)
     (ok true)))
 
-;;;; Public functions
+;;;; Public functions: Owned by `wormhole-core`
+
+;; These functions "belong" to `wormhole-core` and cannot be called by anyone else
+;; ALL FUNCTIONS HERE MUST CALL `check-caller-is-owner`
 
 ;; @desc: Post a message to watchers
 ;;        This needs to be in the state contract so the source address of these messages never changes

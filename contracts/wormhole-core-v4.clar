@@ -577,15 +577,8 @@
 
 ;; @desc Get or generate new "Wormhole address" for a Stacks `prrincipal` that can be used in Wormhole messages
 ;;       Addresses in the Wormhole protocol are limited to 32 bytes, but a Stacks `principal` can be longer than this
-;;       NOTE: Charges sender a fee to generate new address
 (define-public (get-wormhole-address (p principal))
-  (let ((result (try! (contract-call? .wormhole-core-state get-wormhole-address p))))
-    (if (get created result)
-      ;; Charge fee for generating new address (to prevent state contract spamming)
-      (try! (charge-message-fee))
-      ;; Address already cached, no fee
-      true)
-    (ok result)))
+  (contract-call? .wormhole-core-state get-wormhole-address p))
 
 ;;;; Private functions
 
