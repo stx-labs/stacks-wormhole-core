@@ -296,7 +296,7 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
 
     // Check contract balance
     const stxBalances = () => simnet.getAssetsMap().get("STX");
-    const initialContractBalance = stxBalances()!.get(contractPrinciple)!;
+    const initialContractBalance = stxBalances()!.get(contractPrinciple) ?? 0n;
 
     // Post message to fund contract
     const nonce = Cl.uint(0);
@@ -320,7 +320,7 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
     );
 
     // Check contract balance
-    const contractBalance = stxBalances()!.get(contractPrinciple)!;
+    const contractBalance = stxBalances()!.get(contractPrinciple) ?? 0n;
 
     expect(contractBalance).toEqual(initialContractBalance + fee);
   });
