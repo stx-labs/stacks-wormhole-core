@@ -83,6 +83,8 @@
 (define-constant ERR_GSU_CHECK_CHAIN (err u1303))
 ;; Guardian Set Upgrade: new index invalid
 (define-constant ERR_GSU_CHECK_INDEX (err u1304))
+;; Guardian Set Upgrade: caller invalid
+(define-constant ERR_GSU_CHECK_CALLER (err u1305))
 ;; Overlay present in vaa bytes
 (define-constant ERR_GSU_CHECK_OVERLAY (err u1307))
 ;; Empty guardian set
@@ -196,6 +198,8 @@
 (asserts! (is-eq (len EMPTY_LIST_MAX_GUARDIANS) GOV_MAX_GUARDIANS) ERR_GOV_MAX_GUARDIANS_EXCEEDED)
 ;; Empty 16-byte buffer
 (define-constant EMPTY_BUFFER_16 0x00000000000000000000000000000000)
+;; Contract deployer
+(define-constant DEPLOYER tx-sender)
 
 ;;;; Data vars
 
@@ -341,7 +345,9 @@
   (let ((active (try! (check-active-deployment)))
         (message (if (var-get guardian-set-initialized)
           (try! (parse-and-verify-vaa guardian-set-vaa))
-          (try! (parse-vaa guardian-set-vaa))))
+          (begin
+            (asserts! (is-eq contract-caller DEPLOYER) ERR_GSU_CHECK_CALLER)
+            (try! (parse-vaa guardian-set-vaa)))))
         (vaa (get vaa message))
         (hash (get vaa-body-hash message))
         (cursor-guardians-data (try! (parse-and-verify-guardian-set-upgrade (get payload vaa))))
