@@ -2,6 +2,7 @@
 
 export class MaxValue {
   static readonly U8 = 255;
+  static readonly U16 = 65535;
   static readonly U32 = 4294967295;
   // Use `BigInt` for values over `Number.MAX_SAFE_INTEGER`
   static readonly U64 = 18446744073709551615n;
@@ -21,6 +22,40 @@ export class WormholeCore {
   static readonly DEPLOYMENT_STATE_UNITIALIZED = 0;
   static readonly DEPLOYMENT_STATE_ACTIVE = 1;
   static readonly DEPLOYMENT_STATE_DEPRECATED = 2;
+
+  static readonly ERR_VAA_PARSING_VERSION = 1001;
+  static readonly ERR_VAA_PARSING_GUARDIAN_SET = 1002;
+  static readonly ERR_VAA_PARSING_SIGNATURES_LEN = 1003;
+  static readonly ERR_VAA_PARSING_SIGNATURES = 1004;
+  static readonly ERR_VAA_PARSING_TIMESTAMP = 1005;
+  static readonly ERR_VAA_PARSING_NONCE = 1006;
+  static readonly ERR_VAA_PARSING_EMITTER_CHAIN = 1007;
+  static readonly ERR_VAA_PARSING_EMITTER_ADDRESS = 1008;
+  static readonly ERR_VAA_PARSING_SEQUENCE = 1009;
+  static readonly ERR_VAA_PARSING_CONSISTENCY_LEVEL = 1010;
+  static readonly ERR_VAA_PARSING_PAYLOAD = 1011;
+  static readonly ERR_VAA_HASHING_BODY = 1012;
+
+  static readonly ERR_VAA_CHECKS_VERSION_UNSUPPORTED = 1101;
+  static readonly ERR_VAA_CHECKS_THRESHOLD_SIGNATURE = 1102;
+  static readonly ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY = 1103;
+
+  static readonly ERR_GSU_PARSING_MODULE = 1201;
+  static readonly ERR_GSU_PARSING_ACTION = 1202;
+  static readonly ERR_GSU_PARSING_CHAIN = 1203;
+  static readonly ERR_GSU_PARSING_INDEX = 1204;
+  static readonly ERR_GSU_PARSING_GUARDIAN_LEN = 1205;
+  static readonly ERR_GSU_PARSING_GUARDIANS_BYTES = 1206;
+
+  static readonly ERR_GSU_CHECK_MODULE = 1301;
+  static readonly ERR_GSU_CHECK_ACTION = 1302;
+  static readonly ERR_GSU_CHECK_CHAIN = 1303;
+  static readonly ERR_GSU_CHECK_INDEX = 1304;
+  static readonly ERR_GSU_CHECK_CALLER = 1305;
+  static readonly ERR_GSU_CHECK_OVERLAY = 1307;
+  static readonly ERR_EMPTY_GUARDIAN_SET = 1308;
+  static readonly ERR_DUPLICATED_GUARDIAN_ADDRESSES = 1309;
+  static readonly ERR_STACKS_TIMESTAMP = 1310;
 
   static readonly ERR_POST_OVERFLOW_CONSISTENCY_LEVEL = 1401;
   static readonly ERR_POST_OVERFLOW_NONCE = 1402;
