@@ -34,8 +34,6 @@
 (define-constant ERR_VAA_PARSING_GUARDIAN_SET (err u1002))
 ;; Unable to extract the number of signatures from the VAA
 (define-constant ERR_VAA_PARSING_SIGNATURES_LEN (err u1003))
-;; Unable to extract the signatures from the VAA
-(define-constant ERR_VAA_PARSING_SIGNATURES (err u1004))
 ;; Unable to extract the timestamp from the VAA
 (define-constant ERR_VAA_PARSING_TIMESTAMP (err u1005))
 ;; Unable to extract the nonce from the VAA
@@ -152,8 +150,6 @@
 (define-constant ERR_UPG_UNAUTHORIZED (err u1804))
 ;; Contract Upgrade: Previous contract invalid
 (define-constant ERR_UPG_PREV_CONTRACT_INVALID (err u1805))
-;; Contract Upgrade: No upgrade in progress
-(define-constant ERR_UPG_NOT_IN_PROGRESS (err u1806))
 
 ;; Deployment State: This deployment is not the active core contract
 (define-constant ERR_DEPLOYMENT_STATE_NOT_ACTIVE (err u1901))

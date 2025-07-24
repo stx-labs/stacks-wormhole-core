@@ -46,6 +46,7 @@ export class WormholeCore {
   static readonly ERR_GSU_PARSING_INDEX = 1204;
   static readonly ERR_GSU_PARSING_GUARDIAN_LEN = 1205;
   static readonly ERR_GSU_PARSING_GUARDIANS_BYTES = 1206;
+  static readonly ERR_GSU_UNCOMPRESSED_PUBLIC_KEYS = 1207;
 
   static readonly ERR_GSU_CHECK_MODULE = 1301;
   static readonly ERR_GSU_CHECK_ACTION = 1302;
@@ -68,6 +69,7 @@ export class WormholeCore {
   static readonly ERR_GOV_CHECK_ACTION = 1506;
   static readonly ERR_GOV_CHECK_CHAIN = 1507;
   static readonly ERR_GOV_CHECK_EMITTER = 1508;
+  static readonly ERR_GOV_MAX_GUARDIANS_EXCEEDED = 1509;
 
   static readonly ERR_SMF_PARSING_FEE_1 = 1601;
   static readonly ERR_SMF_PARSING_FEE_2 = 1602;
@@ -86,10 +88,25 @@ export class WormholeCore {
   static readonly ERR_UPG_CHECK_OVERLAY = 1802;
   static readonly ERR_UPG_CHECK_CONTRACT_ADDRESS = 1803;
   static readonly ERR_UPG_UNAUTHORIZED = 1804;
+  static readonly ERR_UPG_PREV_CONTRACT_INVALID = 1805;
 
   static readonly ERR_DEPLOYMENT_STATE_NOT_ACTIVE = 1901;
   static readonly ERR_DEPLOYMENT_STATE_ALREADY_INITIALIZED = 1902;
 
+  static readonly ERR_PROXY_UNAUTHORIZED = 2001;
+
+  static readonly GOV_EMITTING_CHAIN = 1;
+  static readonly GOV_EMITTING_ADDRESS =
+    "0x0000000000000000000000000000000000000000000000000000000000000004";
+  static readonly GOV_BROADCAST_CHAIN_ID = 0;
+  static readonly GOV_ACTION_CONTRACT_UPGRADE = 1;
+  static readonly GOV_ACTION_GUARDIAN_SET_UPDATE = 2;
+  static readonly GOV_ACTION_SET_MESSAGE_FEE = 3;
+  static readonly GOV_ACTION_TRANSFER_FEES = 4;
+  static readonly GOV_MAX_GUARDIANS = 30;
+
+  static readonly CORE_STRING_MODULE =
+    "0x00000000000000000000000000000000000000000000000000000000436f7265";
   static readonly MINIMUM_MESSAGE_FEE = 1;
 }
 
