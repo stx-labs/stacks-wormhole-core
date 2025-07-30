@@ -670,17 +670,14 @@
 ;;
 ;; @param vaa-payload: VAA `payload` as raw bytes
 (define-private (parse-governance-payload-header (gov-action uint) (vaa-payload (buff 4096)))
-  (let ((cursor-module (unwrap! (read-buff-32 { bytes: vaa-payload, pos: u0 })
+  (let ((module (unwrap! (fast-read-buff-32 vaa-payload u0)
           ERR_GOV_PARSING_MODULE))
-        (cursor-action (unwrap! (read-uint-8 (get next cursor-module))
+        (action (unwrap! (fast-read-uint-8 vaa-payload u32)
           ERR_GOV_PARSING_ACTION))
-        (cursor-chain (unwrap! (read-buff-2 (get next cursor-action))
+        (chain (unwrap! (fast-read-buff-2 vaa-payload u33)
           ERR_GOV_PARSING_CHAIN))
-        (cursor-payload (unwrap! (read-buff-4096-max (get next cursor-chain) none)
-          ERR_GOV_PARSING_PAYLOAD))
-        (module (get value cursor-module))
-        (action (get value cursor-action))
-        (chain (get value cursor-chain)))
+        (payload (unwrap! (fast-read-buff-4096-max vaa-payload u35 none)
+          ERR_GOV_PARSING_PAYLOAD)))
 
     ;; Ensure that this message was emitted from authorized module
     (asserts! (is-eq module CORE_STRING_MODULE)
@@ -697,7 +694,7 @@
       module: module,
       action: action,
       chain: (buff-to-uint-be chain),
-      payload: (get value cursor-payload),
+      payload: payload,
     })))
 
 ;; @desc Parse and check VAA payload for `set-message-fee`
