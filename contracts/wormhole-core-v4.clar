@@ -603,58 +603,56 @@
 ;;
 ;; @param vaa-bytes: VAA as raw bytes
 (define-private (parse-vaa (vaa-bytes (buff 4096)))
-  (let ((cursor-version (unwrap! (read-uint-8 { bytes: vaa-bytes, pos: u0 })
+  (let ((version (unwrap! (fast-read-uint-8 vaa-bytes u0)
           ERR_VAA_PARSING_VERSION))
-        (cursor-guardian-set-id (unwrap! (read-uint-32 (get next cursor-version))
+        (guardian-set-id (unwrap! (fast-read-uint-32 vaa-bytes u1)
           ERR_VAA_PARSING_GUARDIAN_SET))
-        (cursor-signatures-len (unwrap! (read-uint-8 (get next cursor-guardian-set-id))
+        (signatures-len (unwrap! (fast-read-uint-8 vaa-bytes u5)
           ERR_VAA_PARSING_SIGNATURES_LEN))
-        (signatures-len (get value cursor-signatures-len))
         (check-signatures-len (asserts! (<= signatures-len GOV_MAX_GUARDIANS)
           ERR_GOV_MAX_GUARDIANS_EXCEEDED))
         (cursor-signatures (fold batch-read-signatures
           EMPTY_LIST_MAX_GUARDIANS
           {
-              next: (get next cursor-signatures-len),
+              next: { bytes: vaa-bytes, pos: u6 },
               value: (list),
-              iter: (get value cursor-signatures-len)
+              iter: signatures-len
           }))
-        (vaa-body-hash (keccak256 (keccak256 (get value (unwrap! (read-buff-4096-max (get next cursor-signatures) none)
-          ERR_VAA_HASHING_BODY)))))
-        (cursor-timestamp (unwrap! (read-uint-32 (get next cursor-signatures))
+        (signatures (get value cursor-signatures))
+        (end-signatures (unwrap-panic (slice? vaa-bytes (get pos (get next cursor-signatures)) (len vaa-bytes))))
+        (vaa-body-hash (keccak256 (keccak256 (unwrap! (fast-read-buff-4096-max end-signatures u0 none)
+          ERR_VAA_HASHING_BODY))))
+        (timestamp (unwrap! (fast-read-uint-32 end-signatures u0)
           ERR_VAA_PARSING_TIMESTAMP))
-        (cursor-nonce (unwrap! (read-uint-32 (get next cursor-timestamp))
+        (nonce (unwrap! (fast-read-uint-32 end-signatures u4)
           ERR_VAA_PARSING_NONCE))
-        (cursor-emitter-chain (unwrap! (read-uint-16 (get next cursor-nonce))
+        (emitter-chain (unwrap! (fast-read-uint-16 end-signatures u8)
           ERR_VAA_PARSING_EMITTER_CHAIN))
-        (cursor-emitter-address (unwrap! (read-buff-32 (get next cursor-emitter-chain))
+        (emitter-address (unwrap! (fast-read-buff-32 end-signatures u10)
           ERR_VAA_PARSING_EMITTER_ADDRESS))
-        (cursor-sequence (unwrap! (read-uint-64 (get next cursor-emitter-address))
+        (sequence (unwrap! (fast-read-uint-64 end-signatures u42)
           ERR_VAA_PARSING_SEQUENCE))
-        (cursor-consistency-level (unwrap! (read-uint-8 (get next cursor-sequence))
+        (consistency-level (unwrap! (fast-read-uint-8 end-signatures u50)
           ERR_VAA_PARSING_CONSISTENCY_LEVEL))
-        (cursor-payload (unwrap! (read-buff-4096-max (get next cursor-consistency-level) none)
+        (payload (unwrap! (fast-read-buff-4096-max end-signatures u51 none)
           ERR_VAA_PARSING_PAYLOAD))
-        (public-keys-results (fold batch-recover-public-keys
-          (get value cursor-signatures)
-          {
-              message-hash: vaa-body-hash,
-              value: (list)
-          })))
-    (asserts! (is-eq (get pos (get next cursor-payload)) (len vaa-bytes)) ERR_GSU_CHECK_OVERLAY)
+        (public-keys-results (fold batch-recover-public-keys signatures {
+          message-hash: vaa-body-hash,
+          value: (list)
+        })))
     (ok {
         vaa: {
-          version: (get value cursor-version),
-          guardian-set-id: (get value cursor-guardian-set-id),
+          version: version,
+          guardian-set-id: guardian-set-id,
           signatures-len: signatures-len,
-          signatures: (get value cursor-signatures),
-          timestamp: (get value cursor-timestamp),
-          nonce: (get value cursor-nonce),
-          emitter-chain: (get value cursor-emitter-chain),
-          emitter-address: (get value cursor-emitter-address),
-          sequence: (get value cursor-sequence),
-          consistency-level: (get value cursor-consistency-level),
-          payload: (get value cursor-payload),
+          signatures: signatures,
+          timestamp: timestamp,
+          nonce: nonce,
+          emitter-chain: emitter-chain,
+          emitter-address: emitter-address,
+          sequence: sequence,
+          consistency-level: consistency-level,
+          payload: payload,
         },
         recovered-public-keys: (get value public-keys-results),
         vaa-body-hash: vaa-body-hash,
