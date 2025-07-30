@@ -1164,10 +1164,49 @@
     (let ((cursor-bytes (try! (read-buff-16 cursor))))
         (ok (merge cursor-bytes { value: (buff-to-uint-be (get value cursor-bytes)) }))))
 
-(define-private (slice (cursor { bytes: (buff 4096), pos: uint }) (size (optional uint)))
-    (match (slice? (get bytes cursor)
-                   (get pos cursor)
-                   (match size value
-                   (+ (get pos cursor) value)
-                      (len (get bytes cursor))))
-        bytes bytes 0x))
+;; Faster versions of above function
+
+(define-private (fast-read-buff-1 (bytes (buff 4096)) (pos uint))
+  (ok (unwrap-panic (as-max-len? (unwrap! (slice? bytes pos (+ pos u1)) (err u1)) u1))))
+
+(define-private (fast-read-buff-2 (bytes (buff 4096)) (pos uint))
+  (ok (unwrap-panic (as-max-len? (unwrap! (slice? bytes pos (+ pos u2)) (err u1)) u2))))
+
+(define-private (fast-read-buff-4 (bytes (buff 4096)) (pos uint))
+  (ok (unwrap-panic (as-max-len? (unwrap! (slice? bytes pos (+ pos u4)) (err u1)) u4))))
+
+(define-private (fast-read-buff-8 (bytes (buff 4096)) (pos uint))
+  (ok (unwrap-panic (as-max-len? (unwrap! (slice? bytes pos (+ pos u8)) (err u1)) u8))))
+
+(define-private (fast-read-buff-16 (bytes (buff 4096)) (pos uint))
+  (ok (unwrap-panic (as-max-len? (unwrap! (slice? bytes pos (+ pos u16)) (err u1)) u16))))
+
+(define-private (fast-read-buff-20 (bytes (buff 4096)) (pos uint))
+  (ok (unwrap-panic (as-max-len? (unwrap! (slice? bytes pos (+ pos u20)) (err u1)) u20))))
+
+(define-private (fast-read-buff-32 (bytes (buff 4096)) (pos uint))
+  (ok (unwrap-panic (as-max-len? (unwrap! (slice? bytes pos (+ pos u32)) (err u1)) u32))))
+
+(define-private (fast-read-buff-65 (bytes (buff 4096)) (pos uint))
+  (ok (unwrap-panic (as-max-len? (unwrap! (slice? bytes pos (+ pos u65)) (err u1)) u65))))
+
+(define-private (fast-read-buff-4096-max (bytes (buff 4096)) (pos uint) (size (optional uint)))
+    (let ((max (match size
+            value (+ value pos)
+            (len bytes))))
+      (ok (unwrap-panic (as-max-len? (unwrap! (slice? bytes pos max) (err u1)) u4096)))))
+
+(define-private (fast-read-uint-8 (bytes (buff 4096)) (pos uint))
+  (ok (buff-to-uint-be (unwrap-panic (as-max-len? (unwrap! (slice? bytes pos (+ pos u1)) (err u1)) u1)))))
+
+(define-private (fast-read-uint-16 (bytes (buff 4096)) (pos uint))
+  (ok (buff-to-uint-be (unwrap-panic (as-max-len? (unwrap! (slice? bytes pos (+ pos u2)) (err u1)) u2)))))
+
+(define-private (fast-read-uint-32 (bytes (buff 4096)) (pos uint))
+  (ok (buff-to-uint-be (unwrap-panic (as-max-len? (unwrap! (slice? bytes pos (+ pos u4)) (err u1)) u4)))))
+
+(define-private (fast-read-uint-64 (bytes (buff 4096)) (pos uint))
+  (ok (buff-to-uint-be (unwrap-panic (as-max-len? (unwrap! (slice? bytes pos (+ pos u8)) (err u1)) u8)))))
+
+(define-private (fast-read-uint-128 (bytes (buff 4096)) (pos uint))
+  (ok (buff-to-uint-be (unwrap-panic (as-max-len? (unwrap! (slice? bytes pos (+ pos u16)) (err u1)) u16)))))
