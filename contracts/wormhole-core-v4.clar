@@ -739,31 +739,32 @@
 ;;
 ;; @param vaa-payload: VAA `payload` as raw bytes
 (define-private (parse-transfer-fees-payload (vaa-payload (buff 4096)))
-  (let ((gov-payload (try! (parse-governance-payload-header GOV_ACTION_TRANSFER_FEES vaa-payload)))
-        (cursor-amount-first-128-bits (unwrap! (read-buff-16 { bytes: (get payload gov-payload), pos: u0 })
+  (let ((gov-message (try! (parse-governance-payload-header GOV_ACTION_TRANSFER_FEES vaa-payload)))
+        (gov-payload (get payload gov-message))
+        (amount-first-128-bits (unwrap! (fast-read-buff-16 gov-payload u0)
           ERR_TXF_PARSING_AMOUNT_1))
-        (cursor-amount-second-128-bits (unwrap! (read-uint-128 (get next cursor-amount-first-128-bits))
+        (amount (unwrap! (fast-read-uint-128 gov-payload u16)
           ERR_TXF_PARSING_AMOUNT_2))
-        (recipient-hash (unwrap! (read-buff-32 (get next cursor-amount-second-128-bits))
+        (recipient-hash (unwrap! (fast-read-buff-32 gov-payload u32)
           ERR_TXF_PARSING_RECIPIENT))
-        (recipient (unwrap! (contract-call? .wormhole-core-state wormhole-to-stacks-get (get value recipient-hash))
+        (recipient (unwrap! (contract-call? .wormhole-core-state wormhole-to-stacks-get recipient-hash)
           ERR_TXF_LOOKUP_RECIPIENT_ADDRESS)))
 
     ;; --- Validate Message Data ---
     ;; Check no extra bytes in buffer
-    (asserts! (is-eq (get pos (get next recipient-hash)) (len (get payload gov-payload)))
+    (asserts! (is-eq (len gov-payload) u64)
       ERR_TXF_CHECK_OVERLAY)
     ;; Check amount fits into `u128`, because that's the max value clarity can represent
-    (asserts! (is-eq (get value cursor-amount-first-128-bits) EMPTY_BUFFER_16)
+    (asserts! (is-eq amount-first-128-bits EMPTY_BUFFER_16)
       ERR_TXF_CHECK_AMOUNT)
     ;; Check recipient address is valid on this network
     (asserts! (is-standard recipient)
       ERR_TXF_CHECK_RECIPIENT_ADDRESS)
 
     ;; --- Checks Passed, Return Parsed Payload ---
-    (ok (merge gov-payload {
+    (ok (merge gov-message {
       payload: {
-        amount: (get value cursor-amount-second-128-bits),
+        amount: amount,
         recipient: recipient,
       }
     }))))
