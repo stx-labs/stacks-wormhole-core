@@ -1066,40 +1066,10 @@
         next: { bytes: (get bytes cursor), pos: (+ (get pos cursor) u1) }
     }))
 
-(define-private (read-buff-2 (cursor { bytes: (buff 4096), pos: uint }))
-    (ok {
-        value: (unwrap! (as-max-len? (unwrap! (slice? (get bytes cursor) (get pos cursor) (+ (get pos cursor) u2)) (err u1)) u2) (err u1)),
-        next: { bytes: (get bytes cursor), pos: (+ (get pos cursor) u2) }
-    }))
-
-(define-private (read-buff-4 (cursor { bytes: (buff 4096), pos: uint }))
-    (ok {
-        value: (unwrap! (as-max-len? (unwrap! (slice? (get bytes cursor) (get pos cursor) (+ (get pos cursor) u4)) (err u1)) u4) (err u1)),
-        next: { bytes: (get bytes cursor), pos: (+ (get pos cursor) u4) }
-    }))
-
-(define-private (read-buff-8 (cursor { bytes: (buff 4096), pos: uint }))
-    (ok {
-        value: (unwrap! (as-max-len? (unwrap! (slice? (get bytes cursor) (get pos cursor) (+ (get pos cursor) u8)) (err u1)) u8) (err u1)),
-        next: { bytes: (get bytes cursor), pos: (+ (get pos cursor) u8) }
-    }))
-
-(define-private (read-buff-16 (cursor { bytes: (buff 4096), pos: uint }))
-    (ok {
-        value: (unwrap! (as-max-len? (unwrap! (slice? (get bytes cursor) (get pos cursor) (+ (get pos cursor) u16)) (err u1)) u16) (err u1)),
-        next: { bytes: (get bytes cursor), pos: (+ (get pos cursor) u16) }
-    }))
-
 (define-private (read-buff-20 (cursor { bytes: (buff 4096), pos: uint }))
     (ok {
         value: (unwrap! (as-max-len? (unwrap! (slice? (get bytes cursor) (get pos cursor) (+ (get pos cursor) u20)) (err u1)) u20) (err u1)),
         next: { bytes: (get bytes cursor), pos: (+ (get pos cursor) u20) }
-    }))
-
-(define-private (read-buff-32 (cursor { bytes: (buff 4096), pos: uint }))
-    (ok {
-        value: (unwrap! (as-max-len? (unwrap! (slice? (get bytes cursor) (get pos cursor) (+ (get pos cursor) u32)) (err u1)) u32) (err u1)),
-        next: { bytes: (get bytes cursor), pos: (+ (get pos cursor) u32) }
     }))
 
 (define-private (read-buff-65 (cursor { bytes: (buff 4096), pos: uint }))
@@ -1108,34 +1078,8 @@
         next: { bytes: (get bytes cursor), pos: (+ (get pos cursor) u65) }
     }))
 
-(define-private (read-buff-4096-max (cursor { bytes: (buff 4096), pos: uint }) (size (optional uint)))
-    (let ((min (get pos cursor))
-          (max (match size value
-            (+ value (get pos cursor))
-            (len (get bytes cursor)))))
-      (ok {
-          value: (unwrap! (as-max-len? (unwrap! (slice? (get bytes cursor) min max) (err u1)) u4096) (err u1)),
-          next: { bytes: (get bytes cursor), pos: max }
-      })))
-
 (define-private (read-uint-8 (cursor { bytes: (buff 4096), pos: uint }))
     (let ((cursor-bytes (try! (read-buff-1 cursor))))
-        (ok (merge cursor-bytes { value: (buff-to-uint-be (get value cursor-bytes)) }))))
-
-(define-private (read-uint-16 (cursor { bytes: (buff 4096), pos: uint }))
-    (let ((cursor-bytes (try! (read-buff-2 cursor))))
-        (ok (merge cursor-bytes { value: (buff-to-uint-be (get value cursor-bytes)) }))))
-
-(define-private (read-uint-32 (cursor { bytes: (buff 4096), pos: uint }))
-    (let ((cursor-bytes (try! (read-buff-4 cursor))))
-        (ok (merge cursor-bytes { value: (buff-to-uint-be (get value cursor-bytes)) }))))
-
-(define-private (read-uint-64 (cursor { bytes: (buff 4096), pos: uint }))
-    (let ((cursor-bytes (try! (read-buff-8 cursor))))
-        (ok (merge cursor-bytes { value: (buff-to-uint-be (get value cursor-bytes)) }))))
-
-(define-private (read-uint-128 (cursor { bytes: (buff 4096), pos: uint }))
-    (let ((cursor-bytes (try! (read-buff-16 cursor))))
         (ok (merge cursor-bytes { value: (buff-to-uint-be (get value cursor-bytes)) }))))
 
 ;; Faster versions of above function
