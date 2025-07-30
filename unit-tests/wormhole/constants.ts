@@ -24,7 +24,7 @@ export class WormholeCore {
   static readonly DEPLOYMENT_STATE_DEPRECATED = 2;
 
   static readonly ERR_VAA_PARSING_VERSION = 1001;
-  static readonly ERR_VAA_PARSING_GUARDIAN_SET = 1002;
+  static readonly ERR_VAA_PARSING_GUARDIAN_SET_ID = 1002;
   static readonly ERR_VAA_PARSING_SIGNATURES_LEN = 1003;
   static readonly ERR_VAA_PARSING_SIGNATURES = 1004;
   static readonly ERR_VAA_PARSING_TIMESTAMP = 1005;

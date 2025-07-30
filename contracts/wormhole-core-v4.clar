@@ -31,9 +31,11 @@
 ;; VAA version not supported
 (define-constant ERR_VAA_PARSING_VERSION (err u1001))
 ;; Unable to extract the guardian set-id from the VAA
-(define-constant ERR_VAA_PARSING_GUARDIAN_SET (err u1002))
+(define-constant ERR_VAA_PARSING_GUARDIAN_SET_ID (err u1002))
 ;; Unable to extract the number of signatures from the VAA
 (define-constant ERR_VAA_PARSING_SIGNATURES_LEN (err u1003))
+;; Unable to extract the signatures from the VAA
+(define-constant ERR_VAA_PARSING_SIGNATURES (err u1004))
 ;; Unable to extract the timestamp from the VAA
 (define-constant ERR_VAA_PARSING_TIMESTAMP (err u1005))
 ;; Unable to extract the nonce from the VAA
@@ -595,20 +597,20 @@
   (let ((version (unwrap! (fast-read-uint-8 vaa-bytes u0)
           ERR_VAA_PARSING_VERSION))
         (guardian-set-id (unwrap! (fast-read-uint-32 vaa-bytes u1)
-          ERR_VAA_PARSING_GUARDIAN_SET))
+          ERR_VAA_PARSING_GUARDIAN_SET_ID))
         (signatures-len (unwrap! (fast-read-uint-8 vaa-bytes u5)
           ERR_VAA_PARSING_SIGNATURES_LEN))
         (check-signatures-len (asserts! (<= signatures-len GOV_MAX_GUARDIANS)
           ERR_GOV_MAX_GUARDIANS_EXCEEDED))
-        (cursor-signatures (fold batch-read-signatures
+        (result-signatures (fold batch-read-signatures
           EMPTY_LIST_MAX_GUARDIANS
           {
-              next: { bytes: vaa-bytes, pos: u6 },
+              bytes: (unwrap! (slice? vaa-bytes u6 (len vaa-bytes)) ERR_VAA_PARSING_SIGNATURES),
               value: (list),
               iter: signatures-len
           }))
-        (signatures (get value cursor-signatures))
-        (end-signatures (unwrap-panic (slice? vaa-bytes (get pos (get next cursor-signatures)) (len vaa-bytes))))
+        (signatures (get value result-signatures))
+        (end-signatures (get bytes result-signatures))
         (vaa-body-hash (keccak256 (keccak256 (unwrap! (fast-read-buff-4096-max end-signatures u0 none)
           ERR_VAA_HASHING_BODY))))
         (timestamp (unwrap! (fast-read-uint-32 end-signatures u0)
@@ -838,16 +840,17 @@
 ;; @desc Foldable function parsing a sequence of bytes into a list of { guardian-id: u8, signature: (buff 65) }
 (define-private (batch-read-signatures
       (entry uint)
-      (acc { next: { bytes: (buff 4096), pos: uint }, iter: uint, value: (list 30 { guardian-id: uint, signature: (buff 65) })}))
+      (acc { bytes: (buff 4096), iter: uint, value: (list 30 { guardian-id: uint, signature: (buff 65) })}))
   (if (is-eq (get iter acc) u0)
-    { iter: u0, next: (get next acc), value: (get value acc) }
-    (let ((cursor-guardian-id (unwrap-panic (read-uint-8 (get next acc))))
-          (cursor-signature (unwrap-panic (read-buff-65 (get next cursor-guardian-id)))))
+    acc
+    (let ((bytes (get bytes acc))
+          (guardian-id (unwrap-panic (fast-read-uint-8 bytes u0)))
+          (signature (unwrap-panic (fast-read-buff-65 bytes u1))))
       {
         iter: (- (get iter acc) u1),
-        next: (get next cursor-signature),
+        bytes: (unwrap-panic (slice? bytes u66 (len bytes))),
         value:
-          (unwrap-panic (as-max-len? (append (get value acc) { guardian-id: (get value cursor-guardian-id), signature: (get value cursor-signature) }) u30))
+          (unwrap-panic (as-max-len? (append (get value acc) { guardian-id: guardian-id, signature: signature }) u30))
       })))
 
 ;; @desc Convert an uncompressed public key (64 bytes) into a compressed public key (33 bytes)
