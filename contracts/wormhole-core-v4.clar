@@ -706,26 +706,26 @@
 ;;
 ;; @param vaa-payload: VAA `payload` as raw bytes
 (define-private (parse-set-message-fee-payload (vaa-payload (buff 4096)))
-  (let ((gov-payload (try! (parse-governance-payload-header GOV_ACTION_SET_MESSAGE_FEE vaa-payload)))
-        (cursor-fee-first-128-bits (unwrap! (read-buff-16 { bytes: (get payload gov-payload), pos: u0 })
+  (let ((gov-message (try! (parse-governance-payload-header GOV_ACTION_SET_MESSAGE_FEE vaa-payload)))
+        (gov-payload (get payload gov-message))
+        (fee-first-128-bits (unwrap! (fast-read-buff-16 gov-payload u0)
           ERR_SMF_PARSING_FEE_1))
-        (cursor-fee-second-128-bits (unwrap! (read-uint-128 (get next cursor-fee-first-128-bits))
-          ERR_SMF_PARSING_FEE_2))
-        (fee (get value cursor-fee-second-128-bits)))
+        (fee (unwrap! (fast-read-uint-128 gov-payload u16)
+          ERR_SMF_PARSING_FEE_2)))
 
     ;; --- Validate Message Data ---
     ;; Check no extra bytes in buffer
-    (asserts! (is-eq (get pos (get next cursor-fee-second-128-bits)) (len (get payload gov-payload)))
+    (asserts! (is-eq (len gov-payload) u32)
       ERR_SMF_CHECK_OVERLAY)
     ;; Check fee fits into `u128`, because that's the max value clarity can represent
-    (asserts! (is-eq (get value cursor-fee-first-128-bits) EMPTY_BUFFER_16)
+    (asserts! (is-eq fee-first-128-bits EMPTY_BUFFER_16)
       ERR_SMF_CHECK_FEE)
     ;; Check fee isn't below minimum
     (asserts! (>= fee MINIMUM_MESSAGE_FEE)
       ERR_SMF_CHECK_FEE)
 
     ;; --- Checks Passed, Return Parsed Payload ---
-    (ok (merge gov-payload {
+    (ok (merge gov-message {
       payload: {
         fee: fee
       }
