@@ -58,37 +58,25 @@
 ;; Guardian signature not comprised in guardian set specified
 (define-constant ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY (err u1103))
 
-;; Guardian Set Upgrade: error parsing `module`
-(define-constant ERR_GSU_PARSING_MODULE (err u1201))
-;; Guardian Set Upgrade: error parsing `action`
-(define-constant ERR_GSU_PARSING_ACTION (err u1202))
-;; Guardian Set Upgrade: error parsing `chain`
-(define-constant ERR_GSU_PARSING_CHAIN (err u1203))
 ;; Guardian Set Upgrade: error parsing `index`
-(define-constant ERR_GSU_PARSING_INDEX (err u1204))
+(define-constant ERR_GSU_PARSING_INDEX (err u1201))
 ;; Guardian Set Upgrade: error parsing `length`
-(define-constant ERR_GSU_PARSING_GUARDIAN_LEN (err u1205))
+(define-constant ERR_GSU_PARSING_GUARDIAN_LEN (err u1202))
 ;; Guardian Set Upgrade: guardians payload is malformed
-(define-constant ERR_GSU_PARSING_GUARDIANS_BYTES (err u1206))
+(define-constant ERR_GSU_PARSING_GUARDIANS_BYTES (err u1203))
 ;; Guardian Set Upgrade: error parsing pubkeys
-(define-constant ERR_GSU_UNCOMPRESSED_PUBLIC_KEYS (err u1207))
+(define-constant ERR_GSU_UNCOMPRESSED_PUBLIC_KEYS (err u1204))
 
-;; Guardian Set Upgrade: initiated by an unauthorized module
-(define-constant ERR_GSU_CHECK_MODULE (err u1301))
-;; Guardian Set Upgrade: initiated from an unauthorized module
-(define-constant ERR_GSU_CHECK_ACTION (err u1302))
-;; Guardian Set Upgrade: initiated from an unauthorized module
-(define-constant ERR_GSU_CHECK_CHAIN (err u1303))
 ;; Guardian Set Upgrade: new index invalid
-(define-constant ERR_GSU_CHECK_INDEX (err u1304))
+(define-constant ERR_GSU_CHECK_INDEX (err u1301))
 ;; Guardian Set Upgrade: caller invalid
-(define-constant ERR_GSU_CHECK_CALLER (err u1305))
+(define-constant ERR_GSU_CHECK_CALLER (err u1302))
 ;; Overlay present in vaa bytes
-(define-constant ERR_GSU_CHECK_OVERLAY (err u1307))
+(define-constant ERR_GSU_CHECK_OVERLAY (err u1303))
 ;; Empty guardian set
-(define-constant ERR_EMPTY_GUARDIAN_SET (err u1308))
+(define-constant ERR_GSU_EMPTY_GUARDIAN_SET (err u1304))
 ;; Guardian Set Upgrade: emission payload unauthorized
-(define-constant ERR_DUPLICATED_GUARDIAN_ADDRESSES (err u1309))
+(define-constant ERR_GSU_DUPLICATED_GUARDIAN_ADDRESSES (err u1305))
 ;; Unable to get stacks timestamp
 (define-constant ERR_STACKS_TIMESTAMP (err u1310))
 
@@ -164,7 +152,7 @@
 ;; Wormhole Governance: emitting address
 (define-constant GOV_EMITTING_ADDRESS 0x0000000000000000000000000000000000000000000000000000000000000004)
 ;; Wormhole Governance: Message intended for all chains
-(define-constant GOV_BROADCAST_CHAIN_ID u0)
+(define-constant GOV_BROADCAST_CHAIN_ID 0x0000)
 ;; Wormhole Governance: ContractUpgrade action
 (define-constant GOV_ACTION_CONTRACT_UPGRADE u1)
 ;; Wormhole Governance: GuardianSetUpgrade action
@@ -346,9 +334,10 @@
             (try! (parse-vaa guardian-set-vaa)))))
         (vaa (get vaa message))
         (hash (get vaa-body-hash message))
-        (cursor-guardians-data (try! (parse-and-verify-guardian-set-upgrade (get payload vaa))))
-        (set-id (get new-index cursor-guardians-data))
-        (eth-addresses (get guardians-eth-addresses cursor-guardians-data))
+        (governance-message (try! (parse-and-verify-guardian-set-upgrade (get payload vaa))))
+        (guardians-message (get payload governance-message))
+        (set-id (get new-index guardians-message))
+        (eth-addresses (get guardians-eth-addresses guardians-message))
         (consolidated-public-keys (fold check-and-consolidate-public-keys
           uncompressed-public-keys
           { cursor: u0, eth-addresses: eth-addresses, result: (list) }))
@@ -361,7 +350,7 @@
     ;; Check emitting address and chain
     (try! (check-emitter (get emitter-address vaa) (get emitter-chain vaa)))
     ;; ensure guardian set has atleast one member
-    (asserts! (>= (len result) u1) ERR_EMPTY_GUARDIAN_SET)
+    (asserts! (>= (len result) u1) ERR_GSU_EMPTY_GUARDIAN_SET)
     ;; Skip this check to minimize state growth
     ;; We already check that `setId` is incrementing, and that is sufficient to prevent replay
     ;;(try! (contract-call? .wormhole-core-state consume-governance-vaa hash))
@@ -684,8 +673,10 @@
     (asserts! (is-eq action gov-action)
       ERR_GOV_CHECK_ACTION)
     ;; Ensure that this message is addressed to this chain
-    (asserts! (is-eq chain WORMHOLE_STACKS_CHAIN_ID)
-      ERR_GOV_CHECK_CHAIN)
+    (if (is-eq gov-action GOV_ACTION_GUARDIAN_SET_UPDATE)
+      ;; Only allow broadcast for GuardianSetUpgrade
+      (asserts! (or (is-eq chain WORMHOLE_STACKS_CHAIN_ID) (is-eq chain GOV_BROADCAST_CHAIN_ID)) ERR_GOV_CHECK_CHAIN)
+      (asserts! (is-eq chain WORMHOLE_STACKS_CHAIN_ID) ERR_GOV_CHECK_CHAIN))
 
     ;; --- Checks Passed, Return Parsed Payload ---
     (ok {
@@ -883,51 +874,37 @@
   )))
 
 ;; @desc Parse and verify payload's VAA
-(define-private (parse-and-verify-guardian-set-upgrade (bytes (buff 4096)))
-  (let
-      ((cursor-module (unwrap! (read-buff-32 { bytes: bytes, pos: u0 })
-          ERR_GSU_PARSING_MODULE))
-      (cursor-action (unwrap! (read-uint-8 (get next cursor-module))
-          ERR_GSU_PARSING_ACTION))
-      (cursor-chain (unwrap! (read-uint-16 (get next cursor-action))
-          ERR_GSU_PARSING_CHAIN))
-      (cursor-new-index (unwrap! (read-uint-32 (get next cursor-chain))
+(define-private (parse-and-verify-guardian-set-upgrade (vaa-payload (buff 4096)))
+  (let ((gov-message (try! (parse-governance-payload-header GOV_ACTION_GUARDIAN_SET_UPDATE vaa-payload)))
+        (gov-payload (get payload gov-message))
+        (new-index (unwrap! (fast-read-uint-32 gov-payload u0)
           ERR_GSU_PARSING_INDEX))
-      (cursor-guardians-count (unwrap! (read-uint-8 (get next cursor-new-index))
+        (guardians-count (unwrap! (fast-read-uint-8 gov-payload u4)
           ERR_GSU_PARSING_GUARDIAN_LEN))
-      (guardians-count (get value cursor-guardians-count))
-      (check-guardians-count (asserts! (<= guardians-count GOV_MAX_GUARDIANS)
+        (check-guardians-count (asserts! (<= guardians-count GOV_MAX_GUARDIANS)
           ERR_GOV_MAX_GUARDIANS_EXCEEDED))
-      (guardians-bytes (unwrap! (read-buff-4096-max (get next cursor-guardians-count) (some (* guardians-count GUARDIAN_ETH_ADDRESS_SIZE)))
+        (guardians-len (* guardians-count GUARDIAN_ETH_ADDRESS_SIZE))
+        (guardians-bytes (unwrap! (fast-read-buff-4096-max gov-payload u5 (some guardians-len))
           ERR_GSU_PARSING_GUARDIANS_BYTES))
-      (guardians-cues (get result (fold is-guardian-cue (get value guardians-bytes) { cursor: u0, result: (list) })))
-      (eth-addresses (get result (fold parse-guardian guardians-cues { bytes: (get value guardians-bytes), result: (list) }))))
-    (asserts! (is-eq (get pos (get next guardians-bytes)) (len bytes)) ERR_GSU_CHECK_OVERLAY)
+        (guardians-cues (get result (fold is-guardian-cue guardians-bytes { cursor: u0, result: (list) })))
+        (eth-addresses (get result (fold parse-guardian guardians-cues { bytes: guardians-bytes, result: (list) }))))
+    (asserts! (is-eq (len gov-payload) (+ u5 guardians-len)) ERR_GSU_CHECK_OVERLAY)
     ;; Ensure there are no duplicated addresses
-    (asserts! (is-eq (len eth-addresses) guardians-count) ERR_DUPLICATED_GUARDIAN_ADDRESSES)
-    ;; Ensure that this message was emitted from authorized module
-    (asserts! (is-eq (get value cursor-module) CORE_STRING_MODULE)
-      ERR_GSU_CHECK_MODULE)
-    ;; Ensure that this message is matching the adequate action
-    (asserts! (is-eq (get value cursor-action) GOV_ACTION_GUARDIAN_SET_UPDATE)
-      ERR_GSU_CHECK_ACTION)
-    ;; Ensure that this message is matching the expected chain
-    (asserts! (or (is-eq (get value cursor-chain) (buff-to-uint-be WORMHOLE_STACKS_CHAIN_ID)) (is-eq (get value cursor-chain) GOV_BROADCAST_CHAIN_ID) ) ERR_GSU_CHECK_CHAIN)
+    (asserts! (is-eq (len eth-addresses) guardians-count) ERR_GSU_DUPLICATED_GUARDIAN_ADDRESSES)
     (if (var-get guardian-set-initialized)
       ;; Ensure that next index = current index + 1
-      (asserts! (is-eq (get value cursor-new-index) (+ u1 (var-get active-guardian-set-id))) ERR_GSU_CHECK_INDEX)
+      (asserts! (is-eq new-index (+ u1 (var-get active-guardian-set-id))) ERR_GSU_CHECK_INDEX)
       ;; Ensure that next index > current index
-      (asserts! (> (get value cursor-new-index) (var-get active-guardian-set-id)) ERR_GSU_CHECK_INDEX)
+      (asserts! (> new-index (var-get active-guardian-set-id)) ERR_GSU_CHECK_INDEX)
     )
 
     ;; Good to go!
-    (ok {
+    (ok (merge gov-message {
+      payload: {
         guardians-eth-addresses: eth-addresses,
-        module: (get value cursor-module),
-        action: (get value cursor-action),
-        chain: (get value cursor-chain),
-        new-index: (get value cursor-new-index)
-      })))
+        new-index: new-index
+      }
+    }))))
 
 (define-private (get-quorum (guardian-set-size uint))
   (+ (/ (* guardian-set-size u2) u3) u1))

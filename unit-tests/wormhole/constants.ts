@@ -40,23 +40,17 @@ export class WormholeCore {
   static readonly ERR_VAA_CHECKS_THRESHOLD_SIGNATURE = 1102;
   static readonly ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY = 1103;
 
-  static readonly ERR_GSU_PARSING_MODULE = 1201;
-  static readonly ERR_GSU_PARSING_ACTION = 1202;
-  static readonly ERR_GSU_PARSING_CHAIN = 1203;
-  static readonly ERR_GSU_PARSING_INDEX = 1204;
-  static readonly ERR_GSU_PARSING_GUARDIAN_LEN = 1205;
-  static readonly ERR_GSU_PARSING_GUARDIANS_BYTES = 1206;
-  static readonly ERR_GSU_UNCOMPRESSED_PUBLIC_KEYS = 1207;
+  static readonly ERR_GSU_PARSING_INDEX = 1201;
+  static readonly ERR_GSU_PARSING_GUARDIAN_LEN = 1202;
+  static readonly ERR_GSU_PARSING_GUARDIANS_BYTES = 1203;
+  static readonly ERR_GSU_UNCOMPRESSED_PUBLIC_KEYS = 1204;
 
-  static readonly ERR_GSU_CHECK_MODULE = 1301;
-  static readonly ERR_GSU_CHECK_ACTION = 1302;
-  static readonly ERR_GSU_CHECK_CHAIN = 1303;
-  static readonly ERR_GSU_CHECK_INDEX = 1304;
-  static readonly ERR_GSU_CHECK_CALLER = 1305;
-  static readonly ERR_GSU_CHECK_OVERLAY = 1307;
-  static readonly ERR_EMPTY_GUARDIAN_SET = 1308;
+  static readonly ERR_GSU_CHECK_INDEX = 1301;
+  static readonly ERR_GSU_CHECK_CALLER = 1302;
+  static readonly ERR_GSU_CHECK_OVERLAY = 1303;
+  static readonly ERR_GSU_EMPTY_GUARDIAN_SET = 1304;
+  static readonly ERR_GSU_DUPLICATED_GUARDIAN_ADDRESSES = 1305;
   static readonly ERR_DUPLICATED_GUARDIAN_ADDRESSES = 1309;
-  static readonly ERR_STACKS_TIMESTAMP = 1310;
 
   static readonly ERR_POST_OVERFLOW_CONSISTENCY_LEVEL = 1401;
   static readonly ERR_POST_OVERFLOW_NONCE = 1402;
