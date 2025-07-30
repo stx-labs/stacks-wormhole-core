@@ -863,12 +863,12 @@
 
 (define-private (parse-guardian (cue-position uint) (acc { bytes: (buff 4096), result: (list 30 (buff 20))}))
   (let (
-    (cursor-address-bytes (unwrap-panic (read-buff-20 { bytes: (get bytes acc), pos: cue-position })))
+    (address-bytes (unwrap-panic (fast-read-buff-20 (get bytes acc) cue-position )))
   )
-  (if (is-none (index-of? (get result acc) (get value cursor-address-bytes)))
+  (if (is-none (index-of? (get result acc) address-bytes))
     {
       bytes: (get bytes acc),
-      result: (unwrap-panic (as-max-len? (append (get result acc) (get value cursor-address-bytes)) u30))
+      result: (unwrap-panic (as-max-len? (append (get result acc) address-bytes) u30))
     }
     acc
   )))
@@ -1064,12 +1064,6 @@
     (ok {
         value: (unwrap! (as-max-len? (unwrap! (slice? (get bytes cursor) (get pos cursor) (+ (get pos cursor) u1)) (err u1)) u1) (err u1)),
         next: { bytes: (get bytes cursor), pos: (+ (get pos cursor) u1) }
-    }))
-
-(define-private (read-buff-20 (cursor { bytes: (buff 4096), pos: uint }))
-    (ok {
-        value: (unwrap! (as-max-len? (unwrap! (slice? (get bytes cursor) (get pos cursor) (+ (get pos cursor) u20)) (err u1)) u20) (err u1)),
-        next: { bytes: (get bytes cursor), pos: (+ (get pos cursor) u20) }
     }))
 
 (define-private (read-buff-65 (cursor { bytes: (buff 4096), pos: uint }))
