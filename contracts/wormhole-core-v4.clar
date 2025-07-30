@@ -778,19 +778,20 @@
 ;;
 ;; @param vaa-payload: VAA `payload` as raw bytes
 (define-private (parse-contract-upgrade-payload (vaa-payload (buff 4096)))
-  (let ((gov-payload (try! (parse-governance-payload-header GOV_ACTION_CONTRACT_UPGRADE vaa-payload)))
-        (contract (unwrap! (read-buff-32 { bytes: (get payload gov-payload), pos: u0 })
+  (let ((gov-message (try! (parse-governance-payload-header GOV_ACTION_CONTRACT_UPGRADE vaa-payload)))
+        (gov-payload (get payload gov-message))
+        (contract (unwrap! (fast-read-buff-32 gov-payload u0)
           ERR_UPG_PARSING_CONTRACT)))
 
     ;; --- Validate Message Data ---
     ;; Check no extra bytes in buffer
-    (asserts! (is-eq (get pos (get next contract)) (len (get payload gov-payload)))
+    (asserts! (is-eq (len gov-payload) u32)
       ERR_UPG_CHECK_OVERLAY)
 
     ;; --- Checks Passed, Return Parsed Payload ---
-    (ok (merge gov-payload {
+    (ok (merge gov-message {
       payload: {
-        contract: (get value contract),
+        contract: contract
       }
     }))))
 
