@@ -1089,7 +1089,7 @@
     (let ((max (match size
             value (+ value pos)
             (len bytes))))
-      (ok (unwrap-panic (as-max-len? (unwrap! (slice? bytes pos max) (err u1)) u4096)))))
+      (ok (unwrap! (slice? bytes pos max) (err u1)))))
 
 (define-private (read-uint-8 (bytes (buff 4096)) (pos uint))
   (ok (buff-to-uint-be (unwrap-panic (as-max-len? (unwrap! (slice? bytes pos (+ pos u1)) (err u1)) u1)))))
