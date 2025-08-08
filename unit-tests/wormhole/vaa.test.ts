@@ -100,7 +100,7 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade failures`, () => {
       [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
     );
-    expect(res.result).toBeErr(Cl.uint(1303));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_CHECK_CHAIN));
   });
 
   it("should fail if the action is invalid", () => {
@@ -133,7 +133,7 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade failures`, () => {
       [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
     );
-    expect(res.result).toBeErr(Cl.uint(1302));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_CHECK_ACTION));
   });
 
   it("should fail if the set id is invalid", () => {
@@ -166,7 +166,7 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade failures`, () => {
       [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
     );
-    expect(res.result).toBeErr(Cl.uint(1304));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_GSU_CHECK_INDEX));
   });
 
   it("should fail if the module is invalid", () => {
@@ -202,7 +202,7 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade failures`, () => {
       [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
       deployer,
     );
-    expect(res.result).toBeErr(Cl.uint(1301));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_CHECK_MODULE));
   });
 
   it("should fail if the emitter-address is invalid", () => {
@@ -448,7 +448,7 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade success`, () => {
         sender,
       ),
     ])[0].result;
-    expect(res).toBeErr(Cl.uint(1205));
+    expect(res).toBeErr(Cl.uint(WC.ERR_GSU_PARSING_GUARDIAN_LEN));
   });
 });
 
