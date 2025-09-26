@@ -13,7 +13,7 @@ export class MaxValue {
 export class WormholeCore {
   static readonly CONTRACT_NAME = "wormhole-core-v4";
   // Must match what is in `$(CONTRACT_NAME}.clar`
-  static readonly EXPECTED_CHAIN_ID = 0xc377; // Value for testnet/devnet/simnet
+  static readonly EXPECTED_CHAIN_ID = 0x003c; // Value for testnet/devnet/simnet
   static readonly DEFAULT_CONSISTENCY_LEVEL = 0;
   static readonly ACTION_CONTRACT_UPGRADE = 1;
   static readonly ACTION_SET_MESSAGE_FEE = 3;
