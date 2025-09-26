@@ -577,7 +577,7 @@
     (try! (check-emitter (get emitter-address vaa) (get emitter-chain vaa)))
 
     ;; Governance actions can only be performed by the most recent Guardian Set
-    (asserts! (is-eq (var-get active-guardian-set-id) (get guardian-set-id (get vaa message))) ERR_GOV_VAA_OLD_GUARDIAN_SET) ;; TODO - Max fix...
+    (asserts! (is-eq (var-get active-guardian-set-id) (get guardian-set-id (get vaa message))) ERR_GOV_VAA_OLD_GUARDIAN_SET)
 
     ;; Replace payload raw bytes with parsed payload
     (ok {
