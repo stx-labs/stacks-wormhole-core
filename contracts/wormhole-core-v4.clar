@@ -166,7 +166,7 @@
 ;; Wormhole Governance: Maximum number of Wormhole Guardians possible
 (define-constant GOV_MAX_GUARDIANS u30)
 ;; Stacks chain ID in Wormhole protocol
-(define-constant WORMHOLE_STACKS_CHAIN_ID (if is-in-mainnet 0xea86 0xc377))
+(define-constant WORMHOLE_STACKS_CHAIN_ID 0x003c)
 ;; Core string module
 (define-constant CORE_STRING_MODULE 0x00000000000000000000000000000000000000000000000000000000436f7265)
 ;; Guardian eth address size
