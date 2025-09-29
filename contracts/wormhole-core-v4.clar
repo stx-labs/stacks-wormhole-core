@@ -335,6 +335,7 @@
         (message (if (var-get guardian-set-initialized)
           (begin
             (let ((parsed-message (try! (parse-and-verify-vaa guardian-set-vaa))))
+              ;; If it's not the first guardian set, then the upgrade must come from the current Guardian Set.
               (asserts! (is-eq (var-get active-guardian-set-id) (get guardian-set-id (get vaa parsed-message))) ERR_GOV_VAA_OLD_GUARDIAN_SET)
               parsed-message))
           (begin
@@ -358,7 +359,6 @@
     ;; Check emitting address and chain
     (try! (check-emitter (get emitter-address vaa) (get emitter-chain vaa)))
 
-    ;; If it's not the first guardian set, then the upgrade must come from the current Guardian Set.
     (asserts! (or (is-eq (var-get active-guardian-set-id) (get guardian-set-id (get vaa message))) (is-eq (var-get guardian-set-initialized) false)) ERR_GOV_VAA_OLD_GUARDIAN_SET)
 
     ;; ensure guardian set has atleast one member
