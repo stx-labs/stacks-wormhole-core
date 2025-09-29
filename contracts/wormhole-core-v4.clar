@@ -359,8 +359,6 @@
     ;; Check emitting address and chain
     (try! (check-emitter (get emitter-address vaa) (get emitter-chain vaa)))
 
-    (asserts! (or (is-eq (var-get active-guardian-set-id) (get guardian-set-id (get vaa message))) (is-eq (var-get guardian-set-initialized) false)) ERR_GOV_VAA_OLD_GUARDIAN_SET)
-
     ;; ensure guardian set has atleast one member
     (asserts! (>= (len result) u1) ERR_GSU_EMPTY_GUARDIAN_SET)
 
