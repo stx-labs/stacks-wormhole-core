@@ -168,7 +168,7 @@
 ;; Wormhole Governance: Maximum number of Wormhole Guardians possible
 (define-constant GOV_MAX_GUARDIANS u30)
 ;; Stacks chain ID in Wormhole protocol
-(define-constant WORMHOLE_STACKS_CHAIN_ID 0x003c)
+(define-constant WORMHOLE_STACKS_CHAIN_ID (if is-in-mainnet 0xea86 0xc377))
 ;; Core string module
 (define-constant CORE_STRING_MODULE 0x00000000000000000000000000000000000000000000000000000000436f7265)
 ;; Guardian eth address size
@@ -302,29 +302,28 @@
 ;; @desc Parse and check the validity of a Verified Action Approval (VAA)
 ;; @param vaa-bytes: VAA as raw bytes
 (define-read-only (parse-and-verify-vaa (vaa-bytes (buff 8192)))
-    (begin
-      (try! (check-active-deployment))
-      (let ((message (try! (parse-vaa vaa-bytes)))
-            (guardian-set-id (get guardian-set-id (get vaa message))))
-        ;; Ensure that the guardian-set-id is the active one or unexpired previous one
-        (asserts! (try! (is-valid-guardian-set guardian-set-id)) ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY)
-        (let ((active-guardians (unwrap! (contract-call? .wormhole-core-state guardian-sets-get guardian-set-id) ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY))
-              (signatures-from-active-guardians (fold batch-check-active-public-keys (get recovered-public-keys message)
-                {
-                    active-guardians: active-guardians,
-                    result: (list)
-                })))
-          ;; Ensure that version is supported (v1 only)
-          (asserts! (is-eq (get version (get vaa message)) u1)
-            ERR_VAA_CHECKS_VERSION_UNSUPPORTED)
-          ;; Ensure that the count of valid signatures is >= 13
-          (asserts! (>= (len (get result signatures-from-active-guardians)) (get-quorum (len active-guardians)))
-            ERR_VAA_CHECKS_THRESHOLD_SIGNATURE)
-          ;; Good to go!
-          (ok {
-            vaa: (get vaa message),
-            vaa-body-hash: (get vaa-body-hash message)
-          }))))) 
+    (let ((message (try! (parse-vaa vaa-bytes)))
+          (guardian-set-id (get guardian-set-id (get vaa message)))
+          (active (try! (check-active-deployment))))
+      ;; Ensure that the guardian-set-id is the active one or unexpired previous one
+      (asserts! (try! (is-valid-guardian-set guardian-set-id)) ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY)
+      (let ((active-guardians (unwrap! (contract-call? .wormhole-core-state guardian-sets-get guardian-set-id) ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY))
+            (signatures-from-active-guardians (fold batch-check-active-public-keys (get recovered-public-keys message)
+              {
+                  active-guardians: active-guardians,
+                  result: (list)
+              })))
+        ;; Ensure that version is supported (v1 only)
+        (asserts! (is-eq (get version (get vaa message)) u1)
+          ERR_VAA_CHECKS_VERSION_UNSUPPORTED)
+        ;; Ensure that the count of valid signatures is >= 13
+        (asserts! (>= (len (get result signatures-from-active-guardians)) (get-quorum (len active-guardians)))
+          ERR_VAA_CHECKS_THRESHOLD_SIGNATURE)
+        ;; Good to go!
+        (ok {
+          vaa: (get vaa message),
+          vaa-body-hash: (get vaa-body-hash message)
+        }))))
 
 ;; @desc Update the active set of guardians
 ;; @param guardian-set-vaa: VAA embedding the Guardian Set Update information
@@ -334,7 +333,10 @@
 (define-public (guardian-set-upgrade (guardian-set-vaa (buff 8192)) (uncompressed-public-keys (list 30 (buff 64))))
   (let ((active (try! (check-active-deployment)))
         (message (if (var-get guardian-set-initialized)
-          (try! (parse-and-verify-vaa guardian-set-vaa))
+          (begin
+            (let ((parsed-message (try! (parse-and-verify-vaa guardian-set-vaa))))
+              (asserts! (is-eq (var-get active-guardian-set-id) (get guardian-set-id (get vaa parsed-message))) ERR_GOV_VAA_OLD_GUARDIAN_SET)
+              parsed-message))
           (begin
             (asserts! (is-eq contract-caller DEPLOYER) ERR_GSU_CHECK_CALLER)
             (try! (parse-vaa guardian-set-vaa)))))
