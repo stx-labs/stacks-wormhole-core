@@ -305,8 +305,7 @@
 ;; @param vaa-bytes: VAA as raw bytes
 (define-read-only (parse-and-verify-vaa (vaa-bytes (buff 8192)))
     (let ((message (try! (parse-vaa vaa-bytes)))
-          (guardian-set-id (get guardian-set-id (get vaa message)))
-          (active (try! (check-active-deployment))))
+          (guardian-set-id (get guardian-set-id (get vaa message))))
       ;; Ensure that the guardian-set-id is the active one or unexpired previous one
       (asserts! (try! (is-valid-guardian-set guardian-set-id)) ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY)
       (let ((active-guardians (unwrap! (contract-call? .wormhole-core-state guardian-sets-get guardian-set-id) ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY))
@@ -333,8 +332,7 @@
 ;; the addresses embedded in the VAA. `secp256k1-verify` returns a compressed
 ;; public key, and uncompressing the key in clarity would be inefficient and expensive.
 (define-public (guardian-set-upgrade (guardian-set-vaa (buff 8192)) (uncompressed-public-keys (list 30 (buff 64))))
-  (let ((active (try! (check-active-deployment)))
-        (active-set-id (var-get active-guardian-set-id))
+  (let ((active-set-id (var-get active-guardian-set-id))
         (message (match active-set-id
           ;; We have a guardian set, so check VAA signatures
           set-id (let ((verified-message (try! (parse-and-verify-vaa guardian-set-vaa))))
@@ -430,8 +428,7 @@
 ;;
 ;; @param vaa-bytes: VAA as raw bytes
 (define-public (set-message-fee (vaa-bytes (buff 8192)))
-  (let ((active (try! (check-active-deployment)))
-        (message (try! (parse-and-verify-set-message-fee vaa-bytes)))
+  (let ((message (try! (parse-and-verify-set-message-fee vaa-bytes)))
         (vaa (get vaa message))
         (hash (get vaa-body-hash message))
         (gov-payload (get payload (get payload vaa)))
@@ -482,8 +479,7 @@
 ;;
 ;; @param vaa-bytes: VAA as raw bytes
 (define-public (transfer-fees (vaa-bytes (buff 8192)))
-  (let ((active (try! (check-active-deployment)))
-        (message (try! (parse-and-verify-transfer-fees vaa-bytes)))
+  (let ((message (try! (parse-and-verify-transfer-fees vaa-bytes)))
         (vaa (get vaa message))
         (hash (get vaa-body-hash message))
         (gov-payload (get payload (get payload vaa)))
@@ -539,8 +535,7 @@
 ;;
 ;; @param vaa-bytes: VAA as raw bytes
 (define-public (contract-upgrade (vaa-bytes (buff 8192)))
-  (let ((active (try! (check-active-deployment)))
-        (message (try! (parse-and-verify-contract-upgrade vaa-bytes)))
+  (let ((message (try! (parse-and-verify-contract-upgrade vaa-bytes)))
         (vaa (get vaa message))
         (hash (get vaa-body-hash message))
         (gov-payload (get payload (get payload vaa)))
@@ -619,7 +614,8 @@
 ;;
 ;; @param vaa-bytes: VAA as raw bytes
 (define-private (parse-vaa (vaa-bytes (buff 8192)))
-  (let ((version (unwrap! (read-uint-8 vaa-bytes u0)
+  (let ((active (try! (check-active-deployment)))
+        (version (unwrap! (read-uint-8 vaa-bytes u0)
           ERR_VAA_PARSING_VERSION))
         (guardian-set-id (unwrap! (read-uint-32 vaa-bytes u1)
           ERR_VAA_PARSING_GUARDIAN_SET_ID))
