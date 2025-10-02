@@ -7,10 +7,16 @@ import { hexToBytes } from "@noble/hashes/utils";
 import { WormholeCore as WC } from "./constants";
 
 const verbosity = 0;
+const accounts = simnet.getAccounts();
+const deployer = accounts.get("deployer")!;
+const sender = accounts.get("wallet_1")!;
+
+beforeEach(async () => {
+  let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
+  expect(res.result).toBeOk(Cl.bool(true));
+});
 
 describe(`${WC.CONTRACT_NAME}::parse-vaa success`, () => {
-  const accounts = simnet.getAccounts();
-  const sender = accounts.get("wallet_1")!;
   const keychain = wormhole.generateGuardianSetKeychain(19);
 
   it("should succeed if the vaa is valid", () => {
@@ -61,14 +67,7 @@ describe(`${WC.CONTRACT_NAME}::parse-vaa success`, () => {
 });
 
 describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade failures`, () => {
-  const accounts = simnet.getAccounts();
-  const deployer = accounts.get("deployer")!;
   const keychain = wormhole.generateGuardianSetKeychain(19);
-
-  beforeEach(async () => {
-    let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
-    expect(res.result).toBeOk(Cl.bool(true));
-  });
 
   it("should fail if the chain is invalid", () => {
     // Before performing this test, we need to setup the guardian set
@@ -134,39 +133,6 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade failures`, () => {
       deployer,
     );
     expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_CHECK_ACTION));
-  });
-
-  it("should fail if the set id is invalid", () => {
-    // Before performing this test, we need to setup the guardian set
-    let guardianRotationPayload =
-      wormhole.serializeGuardianUpdateVaaPayloadToBuffer(
-        keychain,
-        2,
-        0,
-        0,
-        wormhole.validGuardianRotationModule,
-      );
-    let body = wormhole.buildValidVaaBodySpecs({
-      payload: Uint8Array.from(guardianRotationPayload),
-      emitter: wormhole.GovernanceUpdateEmitter,
-    });
-    let header = wormhole.buildValidVaaHeader(keychain, body, {
-      version: 1,
-      guardianSetId: 0,
-      signatures: [],
-    });
-    let vaa = wormhole.serializeVaaToBuffer(header, body);
-    let uncompressedPublicKey = [];
-    for (let guardian of keychain) {
-      uncompressedPublicKey.push(Cl.buffer(guardian.uncompressedPublicKey));
-    }
-    const res = simnet.callPublicFn(
-      WC.CONTRACT_NAME,
-      `guardian-set-upgrade`,
-      [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
-      deployer,
-    );
-    expect(res.result).toBeErr(Cl.uint(WC.ERR_GSU_CHECK_INDEX));
   });
 
   it("should fail if the module is invalid", () => {
@@ -283,17 +249,9 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade failures`, () => {
 });
 
 describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade success`, () => {
-  const accounts = simnet.getAccounts();
-  const deployer = accounts.get("deployer")!;
-  const sender = accounts.get("wallet_1")!;
   const guardianSet1Keys = wormhole.generateGuardianSetKeychain(19);
   const guardianSet2Keys = wormhole.generateGuardianSetKeychain(19);
   let guardianSet1 = Cl.tuple({});
-
-  beforeEach(async () => {
-    let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
-    expect(res.result).toBeOk(Cl.bool(true));
-  });
 
   // Before starting the test suite, we have to setup the guardian set.
   beforeEach(async () => {
@@ -418,6 +376,7 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade success`, () => {
 
   it("should reject subsequent update if there is a eth address / uncompressed public keys mismatch", () => {
     let guardianSet2KeysSubset = guardianSet2Keys.splice(0, 12);
+
     // Before performing this test, we need to setup the guardian set
     const guardianRotationPayload =
       wormhole.serializeGuardianUpdateVaaPayloadToBuffer(
@@ -453,24 +412,35 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade success`, () => {
 });
 
 describe(`${WC.CONTRACT_NAME}::parse-and-verify-vaa success`, () => {
-  const accounts = simnet.getAccounts();
-  const deployer = accounts.get("deployer")!;
-  const sender = accounts.get("wallet_1")!;
   const guardianSet1Keys = wormhole.generateGuardianSetKeychain(19);
   // const guardianSet2Keys = wormhole.generateGuardianSetKeychain(19);
 
-  beforeEach(async () => {
-    let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
-    expect(res.result).toBeOk(Cl.bool(true));
-  });
-
   // Before starting the test suite, we have to setup the guardian set.
   beforeEach(async () => {
-    wormhole.applyGuardianSetUpdate(
+    let [result, vaaHeader, vaaBody] = wormhole.applyGuardianSetUpdate(
       guardianSet1Keys,
       1,
       deployer,
       WC.CONTRACT_NAME,
+    );
+    let [serializeVaaToClarityValue, _] = wormhole.serializeVaaToClarityValue(
+      vaaHeader as wormhole.VaaHeader,
+      vaaBody as wormhole.VaaBody,
+      guardianSet1Keys,
+    );
+
+    expect(result).toBeOk(
+      Cl.tuple({
+        result: Cl.tuple({
+          "guardians-eth-addresses": Cl.list(
+            guardianSet1Keys.map((g) => Cl.buffer(g.ethereumAddress)),
+          ),
+          "guardians-public-keys": Cl.list(
+            guardianSet1Keys.map((g) => Cl.buffer(g.uncompressedPublicKey)),
+          ),
+        }),
+        vaa: serializeVaaToClarityValue,
+      }),
     );
   });
 
@@ -556,15 +526,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-vaa success`, () => {
 });
 
 describe(`${WC.CONTRACT_NAME}::parse-and-verify-vaa failures`, () => {
-  const accounts = simnet.getAccounts();
-  const deployer = accounts.get("deployer")!;
-  const sender = accounts.get("wallet_1")!;
   const guardianSet1Keys = wormhole.generateGuardianSetKeychain(19);
-
-  beforeEach(async () => {
-    let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
-    expect(res.result).toBeOk(Cl.bool(true));
-  });
 
   // Before starting the test suite, we have to setup the guardian set.
   beforeEach(async () => {
@@ -704,15 +666,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-vaa failures`, () => {
 });
 
 describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade mainnet guardian rotations`, () => {
-  const accounts = simnet.getAccounts();
-  const deployer = accounts.get("deployer")!;
-  const sender = accounts.get("wallet_1")!;
   let block: ParsedTransactionResult[] | undefined = undefined;
-
-  beforeEach(async () => {
-    let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
-    expect(res.result).toBeOk(Cl.bool(true));
-  });
 
   // Before starting the test suite, we have to setup the guardian set.
   beforeEach(async () => {

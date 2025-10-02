@@ -182,7 +182,7 @@ export namespace wormhole {
 
       // Guardian set id
       const guardianSetId =
-        opts && opts.guardianSetId
+        opts && typeof opts.guardianSetId === "number"
           ? fc.constant(opts.guardianSetId)
           : fc.nat(255);
 
@@ -620,9 +620,10 @@ export namespace wormhole {
       payload: Uint8Array.from(guardianRotationPayload),
       emitter: wormhole.GovernanceUpdateEmitter,
     });
+    const previousGuardianSetId = guardianSetId == 0 ? 0 : guardianSetId - 1;
     let vaaHeader = wormhole.buildValidVaaHeader(keychain, vaaBody, {
       version: 1,
-      guardianSetId: guardianSetId - 1,
+      guardianSetId: previousGuardianSetId,
     });
     let vaa = wormhole.serializeVaaToBuffer(vaaHeader, vaaBody);
     let uncompressedPublicKey = [];

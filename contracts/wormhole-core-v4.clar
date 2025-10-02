@@ -79,8 +79,6 @@
 (define-constant ERR_GSU_EMPTY_GUARDIAN_SET (err u1304))
 ;; Guardian Set Upgrade: emission payload unauthorized
 (define-constant ERR_GSU_DUPLICATED_GUARDIAN_ADDRESSES (err u1305))
-;; Unable to get stacks timestamp
-(define-constant ERR_STACKS_TIMESTAMP (err u1310))
 
 ;; Post Message: Consistency level is too large
 (define-constant ERR_POST_OVERFLOW_CONSISTENCY_LEVEL (err u1401))
@@ -148,8 +146,15 @@
 ;; Deployment State: Tried to initialize new contract more than once
 (define-constant ERR_DEPLOYMENT_STATE_ALREADY_INITIALIZED (err u1902))
 
-;; Proxy: Call not from allowed proxy contract
+;; Misc. errors
+;; Call not from allowed proxy contract
 (define-constant ERR_PROXY_UNAUTHORIZED (err u2001))
+;; Unable to get stacks timestamp
+(define-constant ERR_STACKS_TIMESTAMP (err u2002))
+;; Guardian set has not been initialized
+(define-constant ERR_NO_GUARDIAN_SET (err u2003))
+;; No guardians found for guardian set
+(define-constant ERR_NO_GUARDIANS (err u2004))
 
 ;; Wormhole Governance: emitting chain
 (define-constant GOV_EMITTING_CHAIN u1)
@@ -203,12 +208,10 @@
 
 ;; ----- DATA VARS BELOW THIS LINE MUST BE EXPORTED IN `get-exported-vars`! -----
 
-;; Guardian Set Update uncompressed public keys invalid
-(define-data-var guardian-set-initialized bool false)
 ;; Keep track of the active guardian set-id
-(define-data-var active-guardian-set-id uint u0)
+(define-data-var active-guardian-set-id (optional uint) none)
 ;; Keep track of exiting guardian set
-(define-data-var previous-guardian-set {set-id: uint, expires-at: uint} {set-id: u0, expires-at: u0})
+(define-data-var previous-guardian-set (optional {set-id: uint, expires-at: uint}) none)
 ;; Fee to post message to Wormhole guardians
 (define-constant MINIMUM_MESSAGE_FEE u1)
 (define-data-var message-fee uint MINIMUM_MESSAGE_FEE)
@@ -252,7 +255,6 @@
 ;; @desc Get state stored in *this* contract that can be exported during contract upgrade.
 ;;       THIS DOES NOT EXPORT STATE FROM `wormhole-core-state` CONTRACT!
 (define-read-only (get-exported-vars) {
-  guardian-set-initialized: (var-get guardian-set-initialized),
   active-guardian-set-id: (var-get active-guardian-set-id),
   previous-guardian-set: (var-get previous-guardian-set),
   message-fee: (var-get message-fee)})
@@ -332,12 +334,14 @@
 ;; public key, and uncompressing the key in clarity would be inefficient and expensive.
 (define-public (guardian-set-upgrade (guardian-set-vaa (buff 8192)) (uncompressed-public-keys (list 30 (buff 64))))
   (let ((active (try! (check-active-deployment)))
-        (message (if (var-get guardian-set-initialized)
-          (begin
-            (let ((parsed-message (try! (parse-and-verify-vaa guardian-set-vaa))))
-              ;; If it's not the first guardian set, then the upgrade must come from the current Guardian Set.
-              (asserts! (is-eq (var-get active-guardian-set-id) (get guardian-set-id (get vaa parsed-message))) ERR_GOV_VAA_OLD_GUARDIAN_SET)
-              parsed-message))
+        (active-set-id (var-get active-guardian-set-id))
+        (message (match active-set-id
+          ;; We have a guardian set, so check VAA signatures
+          set-id (let ((verified-message (try! (parse-and-verify-vaa guardian-set-vaa))))
+            ;; If it's not the first guardian set, then the upgrade must come from the current Guardian Set.
+            (asserts! (is-eq set-id (get guardian-set-id (get vaa verified-message))) ERR_GOV_VAA_OLD_GUARDIAN_SET)
+            verified-message)
+          ;; This is initial guardian set, so we can't check signatures
           (begin
             (asserts! (is-eq contract-caller DEPLOYER) ERR_GSU_CHECK_CALLER)
             (try! (parse-vaa guardian-set-vaa)))))
@@ -345,38 +349,40 @@
         (hash (get vaa-body-hash message))
         (governance-message (try! (parse-and-verify-guardian-set-upgrade (get payload vaa))))
         (guardians-message (get payload governance-message))
-        (set-id (get new-index guardians-message))
+        (new-set-id (get new-index guardians-message))
         (eth-addresses (get guardians-eth-addresses guardians-message))
         (consolidated-public-keys (fold check-and-consolidate-public-keys
           uncompressed-public-keys
           { cursor: u0, eth-addresses: eth-addresses, result: (list) }))
-        (result (get result consolidated-public-keys))
-        )
+        (result (get result consolidated-public-keys)))
+
     ;; Ensure that enough uncompressed-public-keys were provided
     (try! (fold is-valid-guardian-entry result (ok true)))
     (asserts! (is-eq (len uncompressed-public-keys) (len eth-addresses))
       ERR_GSU_UNCOMPRESSED_PUBLIC_KEYS)
     ;; Check emitting address and chain
     (try! (check-emitter (get emitter-address vaa) (get emitter-chain vaa)))
-
     ;; ensure guardian set has atleast one member
     (asserts! (>= (len result) u1) ERR_GSU_EMPTY_GUARDIAN_SET)
-
     ;; Replay protection for Governance VAAs.
     ;; Theoretically, the increasing Guardian Set index should be sufficient for protection. 
     (try! (contract-call? .wormhole-core-state consume-governance-vaa hash))
 
     ;; Update storage
-    (try! (contract-call? .wormhole-core-state guardian-sets-set set-id result))
-    (try! (set-new-guardian-set-id set-id))
-    (var-set guardian-set-initialized true)
+    (match active-set-id
+      ;; Check that id is incremented by exactly 1
+      id (asserts! (is-eq new-set-id (+ u1 id)) ERR_GSU_CHECK_INDEX)
+      ;; Initial guardian set, allow any value
+      true)
+    (try! (contract-call? .wormhole-core-state guardian-sets-set new-set-id result))
+    (try! (set-new-guardian-set-id new-set-id))
     ;; Emit Event
     (print {
       event: "governance-action",
       action: "GuardianSetUpgrade",
       hash: hash,
       data: {
-        id: set-id,
+        id: new-set-id,
         guardians: {
           eth-addresses: eth-addresses,
           public-keys: uncompressed-public-keys,
@@ -392,12 +398,12 @@
     })))
 
 (define-read-only (get-active-guardian-set)
-  (let ((set-id (var-get active-guardian-set-id))
-        (guardians (unwrap-panic (contract-call? .wormhole-core-state guardian-sets-get set-id))))
-      (ok {
-        set-id: set-id,
-        guardians: guardians
-      })))
+  (match (var-get active-guardian-set-id)
+    id (ok {
+      set-id: id,
+      guardians: (unwrap! (contract-call? .wormhole-core-state guardian-sets-get id) ERR_NO_GUARDIANS)
+    })
+    ERR_NO_GUARDIAN_SET))
 
 ;; @desc Post message for Wormhole Guardians from our proxy contract
 ;;       Allows caller to set `emitter`, so ONLY allow calls from trusted proxy contract
@@ -461,7 +467,7 @@
     (try! (check-emitter (get emitter-address vaa) (get emitter-chain vaa)))
 
     ;; Governance actions can only be performed by the most recent Guardian Set
-    (asserts! (is-eq (var-get active-guardian-set-id) (get guardian-set-id (get vaa message))) ERR_GOV_VAA_OLD_GUARDIAN_SET)
+    (try! (check-governance-vaa-guardian-set-id (get guardian-set-id (get vaa message))))
 
     ;; Replace payload raw bytes with parsed payload
     (ok {
@@ -518,7 +524,7 @@
     (try! (check-emitter (get emitter-address vaa) (get emitter-chain vaa)))
 
     ;; Governance actions can only be performed by the most recent Guardian Set
-    (asserts! (is-eq (var-get active-guardian-set-id) (get guardian-set-id (get vaa message))) ERR_GOV_VAA_OLD_GUARDIAN_SET)
+    (try! (check-governance-vaa-guardian-set-id (get guardian-set-id (get vaa message))))
 
     ;; Replace payload raw bytes with parsed payload
     (ok {
@@ -577,7 +583,7 @@
     (try! (check-emitter (get emitter-address vaa) (get emitter-chain vaa)))
 
     ;; Governance actions can only be performed by the most recent Guardian Set
-    (asserts! (is-eq (var-get active-guardian-set-id) (get guardian-set-id (get vaa message))) ERR_GOV_VAA_OLD_GUARDIAN_SET)
+    (try! (check-governance-vaa-guardian-set-id (get guardian-set-id (get vaa message))))
 
     ;; Replace payload raw bytes with parsed payload
     (ok {
@@ -913,12 +919,6 @@
     (asserts! (is-eq (len gov-payload) (+ u5 guardians-len)) ERR_GSU_CHECK_OVERLAY)
     ;; Ensure there are no duplicated addresses
     (asserts! (is-eq (len eth-addresses) guardians-count) ERR_GSU_DUPLICATED_GUARDIAN_ADDRESSES)
-    (if (var-get guardian-set-initialized)
-      ;; Ensure that next index = current index + 1
-      (asserts! (is-eq new-index (+ u1 (var-get active-guardian-set-id))) ERR_GSU_CHECK_INDEX)
-      ;; Ensure that next index > current index
-      (asserts! (> new-index (var-get active-guardian-set-id)) ERR_GSU_CHECK_INDEX)
-    )
 
     ;; Good to go!
     (ok (merge gov-message {
@@ -956,34 +956,35 @@
   )
 )
 
+(define-private (get-latest-stacks-timestamp)
+  (ok (unwrap! (get-stacks-block-info? time (- stacks-block-height u1)) ERR_STACKS_TIMESTAMP)))
+
 (define-private (set-new-guardian-set-id (new-set-id uint))
-  (if (var-get guardian-set-initialized)
-    (let (
-        (latest-stacks-timestamp (unwrap! (get-stacks-block-info? time (- stacks-block-height u1)) ERR_STACKS_TIMESTAMP))
-        (previous-set-expires-at (+ TWENTY_FOUR_HOURS latest-stacks-timestamp))
-      )
-      (var-set previous-guardian-set {
-          set-id: (var-get active-guardian-set-id),
-          expires-at: previous-set-expires-at
-        })
-      (var-set active-guardian-set-id new-set-id)
-      (ok true)
-    )
-    (begin (var-set active-guardian-set-id new-set-id) (ok true))
-  )
-)
+  (begin
+    (match (var-get active-guardian-set-id)
+      set-id (var-set previous-guardian-set (some {
+        set-id: set-id,
+        expires-at: (+ TWENTY_FOUR_HOURS (try! (get-latest-stacks-timestamp)))
+      }))
+      true)
+    (ok (var-set active-guardian-set-id (some new-set-id)))))
 
 (define-private (is-valid-guardian-set (set-id uint))
-  (if (is-eq (var-get active-guardian-set-id) set-id)
-    (ok true)
-    (let (
-      (prev-guardian-set (var-get previous-guardian-set))
-      (prev-guardian-set-id (get set-id prev-guardian-set))
-      (prev-guardian-set-expires-at (get expires-at prev-guardian-set))
-      (latest-stacks-timestamp (unwrap! (get-stacks-block-info? time (- stacks-block-height u1)) ERR_STACKS_TIMESTAMP))
-    ) (ok (and (is-eq prev-guardian-set-id set-id) (>= prev-guardian-set-expires-at latest-stacks-timestamp))))
-  )
-)
+  (match (var-get active-guardian-set-id)
+    active-set-id (if (is-eq active-set-id set-id)
+      (ok true)
+      (match (var-get previous-guardian-set)
+        prev-set (let ((prev-set-valid (>= (get expires-at prev-set) (try! (get-latest-stacks-timestamp)))))
+          (ok (and prev-set-valid (is-eq set-id (get set-id prev-set)))))
+        (ok false)))
+    (ok false)))
+
+;; @desc Check if `set-id` is valid for a governance VAA
+;;       Governance actions can only be performed by the most recent Guardian Set
+(define-private (check-governance-vaa-guardian-set-id (set-id uint))
+  (match (var-get active-guardian-set-id)
+    active-set-id (ok (asserts! (is-eq set-id active-set-id) ERR_GOV_VAA_OLD_GUARDIAN_SET))
+    ERR_NO_GUARDIAN_SET))
 
 ;; Get this contract's principal
 (define-private (get-contract-principal)
@@ -1023,7 +1024,6 @@
       ;; Finalize ownership transfer of state contract
       (try! (contract-call? .wormhole-core-state finalize-ownership-transfer))
       ;; Import state from previous contract
-      (var-set guardian-set-initialized (get guardian-set-initialized previous-state))
       (var-set active-guardian-set-id (get active-guardian-set-id previous-state))
       (var-set previous-guardian-set (get previous-guardian-set previous-state))
       (var-set message-fee (get message-fee previous-state))

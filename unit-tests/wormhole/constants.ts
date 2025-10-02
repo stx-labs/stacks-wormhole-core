@@ -88,6 +88,9 @@ export class WormholeCore {
   static readonly ERR_DEPLOYMENT_STATE_ALREADY_INITIALIZED = 1902;
 
   static readonly ERR_PROXY_UNAUTHORIZED = 2001;
+  static readonly ERR_STACKS_TIMESTAMP = 2002;
+  static readonly ERR_NO_GUARDIAN_SET = 2003;
+  static readonly ERR_NO_GUARDIANS = 2004;
 
   static readonly GOV_EMITTING_CHAIN = 1;
   static readonly GOV_EMITTING_ADDRESS =
