@@ -105,6 +105,8 @@
 (define-constant ERR_GOV_CHECK_EMITTER (err u1508))
 ;; Wormhole Governance: Tried to use more than max number of guardians allowed
 (define-constant ERR_GOV_MAX_GUARDIANS_EXCEEDED (err u1509))
+;; Governance VAA not signed by the most recent Guardian Set on VAA
+(define-constant ERR_GOV_VAA_OLD_GUARDIAN_SET (err u1510))
 
 ;; Set Message Fee: error parsing first 128 bits of `fee`
 (define-constant ERR_SMF_PARSING_FEE_1 (err u1601))
@@ -301,7 +303,8 @@
 ;; @param vaa-bytes: VAA as raw bytes
 (define-read-only (parse-and-verify-vaa (vaa-bytes (buff 8192)))
     (let ((message (try! (parse-vaa vaa-bytes)))
-          (guardian-set-id (get guardian-set-id (get vaa message))))
+          (guardian-set-id (get guardian-set-id (get vaa message)))
+          (active (try! (check-active-deployment))))
       ;; Ensure that the guardian-set-id is the active one or unexpired previous one
       (asserts! (try! (is-valid-guardian-set guardian-set-id)) ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY)
       (let ((active-guardians (unwrap! (contract-call? .wormhole-core-state guardian-sets-get guardian-set-id) ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY))
@@ -330,7 +333,11 @@
 (define-public (guardian-set-upgrade (guardian-set-vaa (buff 8192)) (uncompressed-public-keys (list 30 (buff 64))))
   (let ((active (try! (check-active-deployment)))
         (message (if (var-get guardian-set-initialized)
-          (try! (parse-and-verify-vaa guardian-set-vaa))
+          (begin
+            (let ((parsed-message (try! (parse-and-verify-vaa guardian-set-vaa))))
+              ;; If it's not the first guardian set, then the upgrade must come from the current Guardian Set.
+              (asserts! (is-eq (var-get active-guardian-set-id) (get guardian-set-id (get vaa parsed-message))) ERR_GOV_VAA_OLD_GUARDIAN_SET)
+              parsed-message))
           (begin
             (asserts! (is-eq contract-caller DEPLOYER) ERR_GSU_CHECK_CALLER)
             (try! (parse-vaa guardian-set-vaa)))))
@@ -351,11 +358,14 @@
       ERR_GSU_UNCOMPRESSED_PUBLIC_KEYS)
     ;; Check emitting address and chain
     (try! (check-emitter (get emitter-address vaa) (get emitter-chain vaa)))
+
     ;; ensure guardian set has atleast one member
     (asserts! (>= (len result) u1) ERR_GSU_EMPTY_GUARDIAN_SET)
-    ;; Skip this check to minimize state growth
-    ;; We already check that `setId` is incrementing, and that is sufficient to prevent replay
-    ;;(try! (contract-call? .wormhole-core-state consume-governance-vaa hash))
+
+    ;; Replay protection for Governance VAAs.
+    ;; Theoretically, the increasing Guardian Set index should be sufficient for protection. 
+    (try! (contract-call? .wormhole-core-state consume-governance-vaa hash))
+
     ;; Update storage
     (try! (contract-call? .wormhole-core-state guardian-sets-set set-id result))
     (try! (set-new-guardian-set-id set-id))
@@ -450,6 +460,9 @@
     ;; Check emitting address and chain
     (try! (check-emitter (get emitter-address vaa) (get emitter-chain vaa)))
 
+    ;; Governance actions can only be performed by the most recent Guardian Set
+    (asserts! (is-eq (var-get active-guardian-set-id) (get guardian-set-id (get vaa message))) ERR_GOV_VAA_OLD_GUARDIAN_SET)
+
     ;; Replace payload raw bytes with parsed payload
     (ok {
       vaa: (merge vaa {
@@ -503,6 +516,9 @@
 
     ;; Check emitting address and chain
     (try! (check-emitter (get emitter-address vaa) (get emitter-chain vaa)))
+
+    ;; Governance actions can only be performed by the most recent Guardian Set
+    (asserts! (is-eq (var-get active-guardian-set-id) (get guardian-set-id (get vaa message))) ERR_GOV_VAA_OLD_GUARDIAN_SET)
 
     ;; Replace payload raw bytes with parsed payload
     (ok {
@@ -559,6 +575,9 @@
 
     ;; Check emitting address and chain
     (try! (check-emitter (get emitter-address vaa) (get emitter-chain vaa)))
+
+    ;; Governance actions can only be performed by the most recent Guardian Set
+    (asserts! (is-eq (var-get active-guardian-set-id) (get guardian-set-id (get vaa message))) ERR_GOV_VAA_OLD_GUARDIAN_SET)
 
     ;; Replace payload raw bytes with parsed payload
     (ok {
