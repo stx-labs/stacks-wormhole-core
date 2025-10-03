@@ -398,12 +398,12 @@
     })))
 
 (define-read-only (get-active-guardian-set)
-  (match (var-get active-guardian-set-id)
-    id (ok {
-      set-id: id,
-      guardians: (unwrap! (contract-call? .wormhole-core-state guardian-sets-get id) ERR_NO_GUARDIANS)
-    })
-    ERR_NO_GUARDIAN_SET))
+  (let ((set-id (unwrap! (var-get active-guardian-set-id) ERR_NO_GUARDIAN_SET))
+        (guardians (unwrap! (contract-call? .wormhole-core-state guardian-sets-get set-id) ERR_NO_GUARDIANS)))
+    (ok {
+      set-id: set-id,
+      guardians: guardians
+    })))
 
 ;; @desc Post message for Wormhole Guardians from our proxy contract
 ;;       Allows caller to set `emitter`, so ONLY allow calls from trusted proxy contract
@@ -970,21 +970,19 @@
     (ok (var-set active-guardian-set-id (some new-set-id)))))
 
 (define-private (is-valid-guardian-set (set-id uint))
-  (match (var-get active-guardian-set-id)
-    active-set-id (if (is-eq active-set-id set-id)
+  (let ((active-set-id (unwrap! (var-get active-guardian-set-id) (ok false))))
+    (if (is-eq active-set-id set-id)
       (ok true)
-      (match (var-get previous-guardian-set)
-        prev-set (let ((prev-set-valid (>= (get expires-at prev-set) (try! (get-latest-stacks-timestamp)))))
-          (ok (and prev-set-valid (is-eq set-id (get set-id prev-set)))))
-        (ok false)))
-    (ok false)))
+      (let ((prev-set (unwrap! (var-get previous-guardian-set) (ok false)))
+            (prev-set-valid (>= (get expires-at prev-set) (try! (get-latest-stacks-timestamp)))))
+        (ok (and prev-set-valid (is-eq set-id (get set-id prev-set))))))))
 
 ;; @desc Check if `set-id` is valid for a governance VAA
 ;;       Governance actions can only be performed by the most recent Guardian Set
 (define-private (check-governance-vaa-guardian-set-id (set-id uint))
-  (match (var-get active-guardian-set-id)
-    active-set-id (ok (asserts! (is-eq set-id active-set-id) ERR_GOV_VAA_OLD_GUARDIAN_SET))
-    ERR_NO_GUARDIAN_SET))
+  (let ((active-set-id (unwrap! (var-get active-guardian-set-id) ERR_NO_GUARDIAN_SET)))
+    (asserts! (is-eq set-id active-set-id) ERR_GOV_VAA_OLD_GUARDIAN_SET)
+    (ok true)))
 
 ;; Get this contract's principal
 (define-private (get-contract-principal)
