@@ -5,12 +5,11 @@
     ;; Returns current state of `wormhole-core` and deactivates contract
     ;; Fails if caller is not successor contract
     (export-state () (response {
-      guardian-set-initialized: bool,
-      active-guardian-set-id: uint,
-      previous-guardian-set: {
+      active-guardian-set-id: (optional uint),
+      previous-guardian-set: (optional {
         set-id: uint,
         expires-at: uint
-      },
+      }),
       message-fee: uint,
     } uint))
   )
