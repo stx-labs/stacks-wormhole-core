@@ -28,6 +28,14 @@
 (define-read-only (lookup (addr32 (buff 32)))
   (map-get? registry addr32))
 
+;; @desc Lookup to see if Stacks principal is registered
+(define-read-only (reverse-lookup (p principal))
+  (let ((addr32 (hash p)))
+    {
+      registered: (is-some (map-get? registry addr32)),
+      addr32: addr32
+    }))
+
 ;; TODO: Replace with `to-string` in Clarity 4
 (define-private (principal-to-string (p principal))
   (contract-call? 'SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC.self-listing-helper-v3 principal-to-string p))
