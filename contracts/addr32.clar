@@ -1,0 +1,46 @@
+;; Title: addr32
+;; Version: final
+;; THIS CONTRACT CANNOT BE UPDATED
+
+;; This contract provides 32-byte addressing for the Stacks blockchain
+;; A Stacks contract principal can be longer than 32 bytes, and some protocols can't handle that
+;; We can generate a unique 32-byte address for any Stacks principal by hashing it
+;; This allows us to use existing protocols unmodified
+
+(define-constant ERR_INVALID_ADDRESS (err u901))
+
+;; Registered principals
+(define-map registry
+  (buff 32)  ;; keccak256(principal)
+  principal  ;; Stacks principal
+)
+
+;; @desc Get or register 32-byte address
+(define-public (register (p principal))
+  (let ((valid (asserts! (is-standard p) ERR_INVALID_ADDRESS)))
+    (inner-register p)))
+
+;; @desc Hash a Stacks principal to generate addr32
+(define-read-only (hash (p principal))
+  (keccak256 (string-ascii-to-buff (principal-to-string p))))
+
+;; @desc Lookup Stacks principal for given addr32
+(define-read-only (lookup (addr32 (buff 32)))
+  (map-get? registry addr32))
+
+;; TODO: Replace with `to-string` in Clarity 4
+(define-private (principal-to-string (p principal))
+  (contract-call? 'SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC.self-listing-helper-v3 principal-to-string p))
+
+(define-private (string-ascii-to-buff (s (string-ascii 256)))
+  (let ((cb (unwrap-panic (to-consensus-buff? s))))
+    (unwrap-panic (slice? cb u5 (len cb)))))
+
+;; @desc Bypass checks, used in unit tests
+(define-private (inner-register (p principal))
+  (let ((addr32 (hash p))
+        (created (map-insert registry addr32 p)))
+    (ok {
+      created: created,
+      addr32: addr32
+    })))
