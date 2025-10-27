@@ -1,6 +1,5 @@
 ;; Title: addr32
-;; Version: final
-;; THIS CONTRACT CANNOT BE UPDATED
+;; Version: final (CANNOT BE UPDATED)
 
 ;; This contract provides 32-byte addressing for the Stacks blockchain
 ;; A Stacks contract principal can be longer than 32 bytes, and some protocols can't handle that
