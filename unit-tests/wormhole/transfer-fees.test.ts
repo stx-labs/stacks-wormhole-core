@@ -6,6 +6,7 @@ import { hexToBytes } from "@noble/hashes/utils";
 import {
   WormholeCore as WC,
   WormholeCoreState as WCS,
+  Addr32,
   MaxValue,
 } from "./constants";
 import { keccak_256 } from "@noble/hashes/sha3";
@@ -23,15 +24,15 @@ const contractPrinciple = `${deployer}.${WC.CONTRACT_NAME}`;
 function registerWormholeAddress(stacksAddress: string) {
   const hash = keccak_256(stacksAddress);
   const res = simnet.callPublicFn(
-    WC.CONTRACT_NAME,
-    "get-wormhole-address",
+    Addr32.CONTRACT_NAME,
+    "register",
     [Cl.principal(stacksAddress)],
     sender,
   );
   expect(res.result).toBeOk(
     Cl.tuple({
       created: Cl.bool(true),
-      "wormhole-address": Cl.buffer(hash),
+      addr32: Cl.buffer(hash),
     }),
   );
 }
