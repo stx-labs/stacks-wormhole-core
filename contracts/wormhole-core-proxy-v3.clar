@@ -1,5 +1,5 @@
-;; title: wormhole-core-proxy-v2
-;; version: v2
+;; title: wormhole-core-proxy
+;; version: v3
 ;; summary: Checks that `core` trait passed is valid and is active core contract
 ;; description:
 ;;
@@ -27,7 +27,7 @@
 ;; -----------------------------
 ;; 2. Third-party contract using Wormhole
 ;; -----------------------------
-;;   The third-party contract must accept the trait as a function argument and pass it through to this contract (`wormhole-core-proxy-v2`)
+;;   The third-party contract must accept the trait as a function argument and pass it through to this contract (`wormhole-core-proxy-v3`)
 ;;   It is not necessary to check the trait argument here
 ;;
 ;; -----------------------------
@@ -44,7 +44,7 @@
 
 ;;;; traits
 
-(use-trait core-trait .wormhole-trait-core-v2.core-trait)
+(use-trait core-trait .wormhole-trait-core-v3.core-trait)
 
 ;;;; constants
 

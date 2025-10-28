@@ -173,14 +173,14 @@ plan:
             path: contracts/wormhole-core-state.clar
             clarity-version: 3
         - emulated-contract-publish:
-            contract-name: wormhole-trait-core-v2
+            contract-name: wormhole-trait-core-v3
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
-            path: contracts/wormhole-trait-core-v2.clar
+            path: contracts/wormhole-trait-core-v3.clar
             clarity-version: 3
         - emulated-contract-publish:
-            contract-name: wormhole-core-proxy-v2
+            contract-name: wormhole-core-proxy-v3
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
-            path: contracts/wormhole-core-proxy-v2.clar
+            path: contracts/wormhole-core-proxy-v3.clar
             clarity-version: 3
         - emulated-contract-publish:
             contract-name: wormhole-trait-export-v1
@@ -193,8 +193,8 @@ plan:
             path: contracts/wormhole-trait-governance-v1.clar
             clarity-version: 3
         - emulated-contract-publish:
-            contract-name: wormhole-core-v4
+            contract-name: wormhole-core-v5
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
-            path: contracts/wormhole-core-v4.clar
+            path: contracts/wormhole-core-v5.clar
             clarity-version: 3
       epoch: "3.1"

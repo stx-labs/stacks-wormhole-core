@@ -17,8 +17,8 @@ contract_id = 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-merkle-tree-keccak16
 [[project.requirements]]
 contract_id = 'SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC.self-listing-helper-v3'
 
-[contracts.wormhole-core-proxy-v2]
-path = 'contracts/wormhole-core-proxy-v2.clar'
+[contracts.wormhole-core-proxy-v3]
+path = 'contracts/wormhole-core-proxy-v3.clar'
 clarity_version = 3
 epoch = 3.1
 
@@ -32,13 +32,13 @@ path = 'contracts/addr32.clar'
 clarity_version = 3
 epoch = 3.1
 
-[contracts.wormhole-core-v4]
-path = 'contracts/wormhole-core-v4.clar'
+[contracts.wormhole-core-v5]
+path = 'contracts/wormhole-core-v5.clar'
 clarity_version = 3
 epoch = 3.1
 
-[contracts.wormhole-trait-core-v2]
-path = 'contracts/wormhole-trait-core-v2.clar'
+[contracts.wormhole-trait-core-v3]
+path = 'contracts/wormhole-trait-core-v3.clar'
 clarity_version = 3
 epoch = 3.1
 
