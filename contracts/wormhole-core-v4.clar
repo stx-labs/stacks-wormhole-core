@@ -203,8 +203,8 @@
 ;; The state of this particular deployment of the core contract
 (define-data-var deployment-state uint DEPLOYMENT_STATE_UNITIALIZED)
 ;; If we have recieved a ContractUpgrade VAA, this is the contract we are upgrading to
-;; We receive the hash of the address in the VAA. Store it this way so we don't have to register the sucessor contract manually with `get-wormhole-address`
-(define-data-var successor-contract (optional { wormhole-address: (buff 32), set-at-burn-block: uint }) none)
+;; We receive the hash of the address in the VAA. Store it this way so we don't have to register the sucessor contract manually with `addr32`
+(define-data-var successor-contract (optional { addr32: (buff 32), set-at-burn-block: uint }) none)
 
 ;; ----- DATA VARS BELOW THIS LINE MUST BE EXPORTED IN `get-exported-vars`! -----
 
@@ -286,12 +286,12 @@
         (stx-balance (stx-get-balance contract-principal))
         (caller contract-caller)
         (caller-parts (unwrap! (principal-destruct? caller) ERR_UPG_CHECK_CONTRACT_ADDRESS))
-        (wormhole-address (get wormhole-address (try! (contract-call? .wormhole-core-state get-wormhole-address caller))))
-        (new-wormhole-address (get wormhole-address (unwrap! (get-successor-contract) ERR_UPG_UNAUTHORIZED))))
+        (addr32 (get addr32 (try! (contract-call? .addr32 register caller))))
+        (new-addr32 (get addr32 (unwrap! (get-successor-contract) ERR_UPG_UNAUTHORIZED))))
     ;; Check we have a contract principal and not a standard principal
     (asserts! (is-some (get name caller-parts)) ERR_UPG_CHECK_CONTRACT_ADDRESS)
     ;; Only the contract set by the ContractUpgrade VAA is allowed to call this function
-    (asserts! (is-eq wormhole-address new-wormhole-address) ERR_UPG_UNAUTHORIZED)
+    (asserts! (is-eq addr32 new-addr32) ERR_UPG_UNAUTHORIZED)
     ;; Transfer ownership of state contract
     (try! (contract-call? .wormhole-core-state start-ownership-transfer caller))
     ;; If we have an STX balance, transfer to new contract
@@ -551,7 +551,7 @@
     ;; This verifies new contract actually exists before this one becomes unusable
     ;; Also keep track of when this was set
     (var-set successor-contract (some {
-      wormhole-address: contract,
+      addr32: contract,
       set-at-burn-block: burn-block-height
     }))
 
@@ -587,11 +587,6 @@
       }),
       vaa-body-hash: (get vaa-body-hash message)
     })))
-
-;; @desc Get or generate new "Wormhole address" for a Stacks `prrincipal` that can be used in Wormhole messages
-;;       Addresses in the Wormhole protocol are limited to 32 bytes, but a Stacks `principal` can be longer than this
-(define-public (get-wormhole-address (p principal))
-  (contract-call? .wormhole-core-state get-wormhole-address p))
 
 ;;;; Private functions
 
@@ -749,7 +744,7 @@
 ;; Expected message format for TransferFees payload:
 ;;   [35]byte   header     Governance payload header
 ;;   u256       amount     Amount to transfer (in uSTX)
-;;   [32]byte   recipient  Hash of recipient address (MUST HAVE BEEN REGISTERED WITH `get-wormhole-address`!!)
+;;   [32]byte   recipient  Hash of recipient address (MUST HAVE BEEN REGISTERED WITH `addr32` CONTRACT!!)
 ;;
 ;; @param vaa-payload: VAA `payload` as raw bytes
 (define-private (parse-transfer-fees-payload (vaa-payload (buff 8192)))
@@ -759,9 +754,9 @@
           ERR_TXF_PARSING_AMOUNT_1))
         (amount (unwrap! (read-uint-128 gov-payload u16)
           ERR_TXF_PARSING_AMOUNT_2))
-        (recipient-hash (unwrap! (read-buff-32 gov-payload u32)
+        (recipient-addr32 (unwrap! (read-buff-32 gov-payload u32)
           ERR_TXF_PARSING_RECIPIENT))
-        (recipient (unwrap! (contract-call? .wormhole-core-state wormhole-to-stacks-get recipient-hash)
+        (recipient (unwrap! (contract-call? .addr32 lookup recipient-addr32)
           ERR_TXF_LOOKUP_RECIPIENT_ADDRESS)))
 
     ;; --- Validate Message Data ---

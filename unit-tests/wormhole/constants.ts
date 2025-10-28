@@ -126,3 +126,10 @@ export class WormholeCoreProxy {
   static readonly ERR_TRAIT_CHECK_NO_ACTIVE_CONTRACT = 20001;
   static readonly ERR_TRAIT_CHECK_CONTRACT_MISMATCH = 20002;
 }
+
+// Constants from `wormhole-core-state` Clarity contract
+export class Addr32 {
+  static readonly CONTRACT_NAME = "addr32";
+  // Must match what is in `$(CONTRACT_NAME}.clar`
+  static readonly ERR_INVALID_ADDRESS = 901;
+}

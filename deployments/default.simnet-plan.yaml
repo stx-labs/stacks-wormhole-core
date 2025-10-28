@@ -163,6 +163,11 @@ plan:
             path: "./.cache/requirements/SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC.self-listing-helper-v3.clar"
             clarity-version: 3
         - emulated-contract-publish:
+            contract-name: addr32
+            emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
+            path: contracts/addr32.clar
+            clarity-version: 3
+        - emulated-contract-publish:
             contract-name: wormhole-core-state
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
             path: contracts/wormhole-core-state.clar
