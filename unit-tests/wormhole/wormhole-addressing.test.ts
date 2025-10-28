@@ -1,11 +1,10 @@
 import { Cl } from "@stacks/transactions";
-import { expect, describe, beforeEach } from "vitest";
+import { expect, describe } from "vitest";
 import { it } from "@fast-check/vitest";
 import { keccak_256 } from "@noble/hashes/sha3";
 import { Addr32 } from "./constants";
 
 const accounts = simnet.getAccounts();
-const deployer = accounts.get("deployer")!;
 const sender = accounts.get("wallet_1")!;
 
 describe(`principal-to-string success`, () => {

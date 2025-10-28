@@ -16,7 +16,8 @@
 
 ;; @desc Get or register 32-byte address
 (define-public (register (p principal))
-  (let ((valid (asserts! (is-standard p) ERR_INVALID_ADDRESS)))
+  (begin
+    (asserts! (is-standard p) ERR_INVALID_ADDRESS)
     (inner-register p)))
 
 ;; @desc Hash a Stacks principal to generate addr32
@@ -35,7 +36,7 @@
       addr32: addr32
     }))
 
-;; TODO: Replace with `to-string` in Clarity 4
+;; TODO: Replace with `to-ascii?` in Clarity 4
 (define-private (principal-to-string (p principal))
   (contract-call? 'SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC.self-listing-helper-v3 principal-to-string p))
 
@@ -45,9 +46,8 @@
 
 ;; @desc Bypass checks, used in unit tests
 (define-private (inner-register (p principal))
-  (let ((addr32 (hash p))
-        (created (map-insert registry addr32 p)))
+  (let ((addr32 (hash p)))
     (ok {
-      created: created,
+      created: (map-insert registry addr32 p),
       addr32: addr32
     })))
