@@ -1,4 +1,4 @@
-;; Title: wormhole-core-state-01
+;; Title: wormhole-core-state
 ;; Version: final
 ;; Check for latest version: https://github.com/hirosystems/stacks-wormhole-core#latest-version
 ;; Report an issue: https://github.com/hirosystems/stacks-wormhole-core/issues

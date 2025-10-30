@@ -13,12 +13,12 @@
 
 ;; The contract that is allowed to act as a proxy and specify `emitter` to `post-message`
 ;; This can be a constant because it will not change as long as the contract is active
-(define-constant PRINCIPAL_PROXY_CONTRACT .wormhole-core-proxy-v2)
+(define-constant PRINCIPAL_PROXY_CONTRACT .wormhole-core-proxy-v3)
 
 ;;;; Traits
 
 ;; Implements trait specified in wormhole-core-trait contract
-(impl-trait .wormhole-trait-core-v2.core-trait)
+(impl-trait .wormhole-trait-core-v3.core-trait)
 (impl-trait .wormhole-trait-governance-v1.governance-trait)
 (impl-trait .wormhole-trait-export-v1.export-trait)
 

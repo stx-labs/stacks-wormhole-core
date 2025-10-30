@@ -11,7 +11,7 @@ export class MaxValue {
 
 // Constants from `wormhole-core` Clarity contract
 export class WormholeCore {
-  static readonly CONTRACT_NAME = "wormhole-core-v4";
+  static readonly CONTRACT_NAME = "wormhole-core-v5";
   // Must match what is in `$(CONTRACT_NAME}.clar`
   static readonly EXPECTED_CHAIN_ID = 0x003c; // Value for testnet/devnet/simnet
   static readonly DEFAULT_CONSISTENCY_LEVEL = 0;
@@ -121,7 +121,7 @@ export class WormholeCoreState {
 
 // Constants from `wormhole-core-state` Clarity contract
 export class WormholeCoreProxy {
-  static readonly CONTRACT_NAME = "wormhole-core-proxy-v2";
+  static readonly CONTRACT_NAME = "wormhole-core-proxy-v3";
   // Must match what is in `$(CONTRACT_NAME}.clar`
   static readonly ERR_TRAIT_CHECK_NO_ACTIVE_CONTRACT = 20001;
   static readonly ERR_TRAIT_CHECK_CONTRACT_MISMATCH = 20002;
