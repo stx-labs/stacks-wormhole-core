@@ -16,9 +16,17 @@
 
 ;; @desc Get or register 32-byte address
 (define-public (register (p principal))
-  (begin
-    (asserts! (is-standard p) ERR_INVALID_ADDRESS)
-    (inner-register p)))
+  (if (is-standard p)
+    ;; Address matches network, this is expected
+    (inner-register p)
+    ;; Address does not match network, need to support for unit tests
+    (let ((addr32 (hash p)))
+      (match (lookup addr32)
+        val (ok {
+          created: false,
+          addr32: addr32
+        })
+        ERR_INVALID_ADDRESS))))
 
 ;; @desc Hash a Stacks principal to generate addr32
 (define-read-only (hash (p principal))
