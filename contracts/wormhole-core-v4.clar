@@ -492,7 +492,7 @@
 
     ;; --- Execute Action ---
     (try! (as-contract? ((with-all-assets-unsafe))
-      (try! (stx-transfer? amount tx-sender recipient))))
+      (try! (stx-transfer? amount current-contract recipient))))
 
     ;; Emit event
     (print {
