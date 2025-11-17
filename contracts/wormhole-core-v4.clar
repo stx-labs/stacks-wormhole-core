@@ -296,7 +296,7 @@
     ;; If we have an STX balance, transfer to new contract
     (if (> stx-balance u0)
       (try! (as-contract? ((with-stx stx-balance))
-        (try! (stx-transfer? stx-balance tx-sender caller))))
+        (try! (stx-transfer? stx-balance current-contract caller))))
       true)
     (var-set deployment-state DEPLOYMENT_STATE_DEPRECATED)
     (ok (get-exported-vars))))
