@@ -1,5 +1,5 @@
 import { fc } from "@fast-check/vitest";
-import { tx } from "@hirosystems/clarinet-sdk";
+import { tx } from "@stacks/clarinet-sdk";
 import { Cl, ClarityValue } from "@stacks/transactions";
 import { bigintToBuffer } from "../utils/helpers";
 import * as secp from "@noble/secp256k1";
