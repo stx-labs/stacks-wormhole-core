@@ -14,9 +14,6 @@ contract_id = 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-ecc-v1'
 [[project.requirements]]
 contract_id = 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-merkle-tree-keccak160-v1'
 
-[[project.requirements]]
-contract_id = 'SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC.self-listing-helper-v3'
-
 [contracts.wormhole-core-proxy-v2]
 path = 'contracts/wormhole-core-proxy-v2.clar'
 clarity_version = 4
