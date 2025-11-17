@@ -30,7 +30,8 @@
 
 ;; @desc Hash a Stacks principal to generate addr32
 (define-read-only (hash (p principal))
-  (keccak256 (string-ascii-to-buff (principal-to-string p))))
+  ;; `to-ascii?` cannot return errors for `principal` types
+  (keccak256 (string-ascii-to-buff (unwrap-panic (to-ascii? p)))))
 
 ;; @desc Lookup Stacks principal for given addr32
 (define-read-only (lookup (addr32 (buff 32)))
@@ -43,10 +44,6 @@
       registered: (is-some (map-get? registry addr32)),
       addr32: addr32
     }))
-
-;; TODO: Replace with `to-ascii?` in Clarity 4
-(define-private (principal-to-string (p principal))
-  (contract-call? 'SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC.self-listing-helper-v3 principal-to-string p))
 
 (define-private (string-ascii-to-buff (s (string-ascii 256)))
   (let ((cb (unwrap-panic (to-consensus-buff? s))))
