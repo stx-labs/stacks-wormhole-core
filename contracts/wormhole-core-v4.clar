@@ -491,7 +491,7 @@
     (try! (contract-call? .wormhole-core-state consume-governance-vaa hash))
 
     ;; --- Execute Action ---
-    (try! (as-contract? ((with-all-assets-unsafe))
+    (try! (as-contract? ((with-stx amount))
       (try! (stx-transfer? amount current-contract recipient))))
 
     ;; Emit event
