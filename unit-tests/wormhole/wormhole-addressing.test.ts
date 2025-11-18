@@ -7,21 +7,6 @@ import { Addr32 } from "./constants";
 const accounts = simnet.getAccounts();
 const sender = accounts.get("wallet_1")!;
 
-describe(`principal-to-string success`, () => {
-  // Test `principal-to-string` from `SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC.self-listing-helper-v3`
-  // NOTE: This is tested much more thoroughly in a separate repo: https://github.com/hirosystems/principal-to-string-tests
-  it("Works for mainnet singlesig address", () => {
-    const addr = "SPJAX2AWN7HGWHYNZQFNVJV69D156A7WYC3GZSM9";
-    const res = simnet.callReadOnlyFn(
-      "SP1E0XBN9T4B10E9QMR7XMFJPMA19D77WY3KP2QKC.self-listing-helper-v3",
-      "principal-to-string",
-      [Cl.principal(addr)],
-      sender,
-    );
-    expect(res.result).toBeAscii(addr);
-  });
-});
-
 describe(`${Addr32.CONTRACT_NAME}::register success`, () => {
   it("should generate Wormhole Address on first call", () => {
     const stacksAddresses = [

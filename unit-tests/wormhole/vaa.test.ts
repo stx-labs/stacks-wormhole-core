@@ -2,7 +2,7 @@ import { Cl, ClarityType } from "@stacks/transactions";
 import { expect, describe, beforeEach } from "vitest";
 import { it, fc } from "@fast-check/vitest";
 import { wormhole } from "./helpers";
-import { ParsedTransactionResult, tx } from "@hirosystems/clarinet-sdk";
+import { ParsedTransactionResult, tx } from "@stacks/clarinet-sdk";
 import { hexToBytes } from "@noble/hashes/utils";
 import { WormholeCore as WC } from "./constants";
 

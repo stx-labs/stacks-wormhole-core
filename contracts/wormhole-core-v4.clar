@@ -282,8 +282,7 @@
 ;; NOTE: In future versions of this contract, `export-state` may require newer version of `export-trait` than `import-state`
 (define-public (export-state)
   (let ((active (try! (check-active-deployment)))
-        (contract-principal (get-contract-principal))
-        (stx-balance (stx-get-balance contract-principal))
+        (stx-balance (stx-get-balance current-contract))
         (caller contract-caller)
         (caller-parts (unwrap! (principal-destruct? caller) ERR_UPG_CHECK_CONTRACT_ADDRESS))
         (addr32 (get addr32 (try! (contract-call? .addr32 register caller))))
@@ -296,7 +295,8 @@
     (try! (contract-call? .wormhole-core-state start-ownership-transfer caller))
     ;; If we have an STX balance, transfer to new contract
     (if (> stx-balance u0)
-      (try! (as-contract (stx-transfer? stx-balance tx-sender caller)))
+      (try! (as-contract? ((with-stx stx-balance))
+        (try! (stx-transfer? stx-balance current-contract caller))))
       true)
     (var-set deployment-state DEPLOYMENT_STATE_DEPRECATED)
     (ok (get-exported-vars))))
@@ -491,7 +491,8 @@
     (try! (contract-call? .wormhole-core-state consume-governance-vaa hash))
 
     ;; --- Execute Action ---
-    (try! (as-contract (stx-transfer? amount tx-sender recipient)))
+    (try! (as-contract? ((with-stx amount))
+      (try! (stx-transfer? amount current-contract recipient))))
 
     ;; Emit event
     (print {
@@ -975,10 +976,6 @@
     (asserts! (is-eq set-id active-set-id) ERR_GOV_VAA_OLD_GUARDIAN_SET)
     (ok true)))
 
-;; Get this contract's principal
-(define-private (get-contract-principal)
-  (as-contract tx-sender))
-
 ;; @desc Initialize all Wormhole contracts (this one and the state contract)
 ;;       Only needs to be called once, when Wormhole contracts are first deployed
 ;;
@@ -987,7 +984,7 @@
 ;;  - (err ...):  Already initialized or permissions error
 (define-private (initialize-wormhole)
   (begin
-    (try! (contract-call? .wormhole-core-state initialize (get-contract-principal)))
+    (try! (contract-call? .wormhole-core-state initialize current-contract))
     ;; This is the initial deployment of `wormhole-core`
     (var-set deployment-state DEPLOYMENT_STATE_ACTIVE)
 
@@ -1037,7 +1034,7 @@
   (let ((fee (var-get message-fee)))
     ;; If a fee has been set, collect it
     (if (> fee u0)
-      (try! (stx-transfer? fee tx-sender (get-contract-principal)))
+      (try! (stx-transfer? fee tx-sender current-contract))
       true
     )
     (ok true)))

@@ -21,12 +21,12 @@ Stacks is a Bitcoin layer that enables decentralized apps and smart contracts.
 
 ## Setup and and run the tests
 
-The contracts are developed in Clarity and use [clarinet-sdk](https://www.npmjs.com/package/@hirosystems/clarinet-sdk) for its test harnessing.
+The contracts are developed in Clarity and use [clarinet-sdk](https://www.npmjs.com/package/@stacks/clarinet-sdk) for its test harnessing.
 
 Git clone and compile **stacks-wormhole-core**
 
 ```bash
-$ git clone https://github.com/hirosystems/stacks-wormhole-core.git
+$ git clone https://github.com/stx-labs/stacks-wormhole-core.git
 $ cd stacks-wormhole-core
 $ npm install
 $ npm test
@@ -34,7 +34,7 @@ $ npm test
 
 ## Status
 
-This repository was forked from the Wormhole contracts in https://github.com/Trust-Machines/stacks-pyth-bridge/tree/clarity-v3/
+This repository was forked from the Wormhole contracts in https://github.com/stx-labs/stacks-pyth-bridge/tree/clarity-v3/
 
 This project aims to implement a `wormhole-core` contract.
 The core contract by itself cannot bridge assets to/from other chains.

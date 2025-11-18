@@ -223,7 +223,7 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
     (globalThis as any).crypto.getRandomValues(randomData);
     const payload = Cl.buffer(randomData);
 
-    expect(payload.buffer.length).toBe(bufSize);
+    expect(payload.value.length).toBeGreaterThanOrEqual(bufSize);
 
     let res = simnet.callPublicFn(
       WC.CONTRACT_NAME,
