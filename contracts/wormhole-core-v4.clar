@@ -838,6 +838,8 @@
     }))
 
 ;; @desc Foldable function evaluating signatures from a list of { guardian-id: u8, signature: (buff 65) }, returning a list of recovered public-keys
+;;
+;; NOTE: Since ECDSA signatures are malleable (both the high-s and low-s variants are valid), we need to check for unique public keys, not unique signatures
 (define-private (batch-check-active-public-keys
       (entry { recovered-compressed-public-key: (buff 33), guardian-id: uint })
       (acc {
