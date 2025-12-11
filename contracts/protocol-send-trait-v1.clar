@@ -11,6 +11,6 @@
         (optional (string-ascii 128)) ;; Destination contract address (Axelar)
 		    (optional uint)               ;; Nonce (Wormhole)
 		    (optional uint))              ;; Consistency level (Wormhole)
-	  (response bool uint))
+	  (response uint uint))
   )
 )

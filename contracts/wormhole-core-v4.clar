@@ -603,9 +603,9 @@
     (nonce-opt (optional uint))
     (consistency-level-opt (optional uint)))
   (let ((payload (unwrap! (as-max-len? payload-64000 u8192) ERR_PAS_PAYLOAD_LEN))
-        (nonce (unwrap! nonce-opt ERR_PAS_NO_NONCE)))
-    (try! (post-message payload nonce consistency-level-opt))
-    (ok true)))
+        (nonce (unwrap! nonce-opt ERR_PAS_NO_NONCE))
+        (result (try! (post-message payload nonce consistency-level-opt))))
+    (ok (get sequence result))))
 
 ;;;; Private functions
 
