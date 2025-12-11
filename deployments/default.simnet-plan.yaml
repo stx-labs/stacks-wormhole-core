@@ -73,9 +73,9 @@ plan:
             path: contracts/addr32.clar
             clarity-version: 4
         - emulated-contract-publish:
-            contract-name: protocol-agnostic-send-trait-v1
+            contract-name: protocol-send-trait-v1
             emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
-            path: contracts/protocol-agnostic-send-trait-v1.clar
+            path: contracts/protocol-send-trait-v1.clar
             clarity-version: 4
         - emulated-contract-publish:
             contract-name: wormhole-core-state

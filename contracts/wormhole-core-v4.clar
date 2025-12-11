@@ -21,7 +21,7 @@
 (impl-trait .wormhole-trait-core-v2.core-trait)
 (impl-trait .wormhole-trait-governance-v1.governance-trait)
 (impl-trait .wormhole-trait-export-v1.export-trait)
-(impl-trait .protocol-agnostic-send-trait-v1.send-trait)
+(impl-trait .protocol-send-trait-v1.send-trait)
 
 ;; Export trait used previous contract that we are importing from
 ;; May not match the version of `export-trait` this contract implements
