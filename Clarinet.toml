@@ -5,15 +5,6 @@ authors = []
 telemetry = false
 cache_dir = './.cache'
 
-[[project.requirements]]
-contract_id = 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2'
-
-[[project.requirements]]
-contract_id = 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-ecc-v1'
-
-[[project.requirements]]
-contract_id = 'SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-merkle-tree-keccak160-v1'
-
 [contracts.wormhole-core-proxy-v2]
 path = 'contracts/wormhole-core-proxy-v2.clar'
 clarity_version = 4
