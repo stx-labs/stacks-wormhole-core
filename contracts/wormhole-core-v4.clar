@@ -21,6 +21,7 @@
 (impl-trait .wormhole-trait-core-v2.core-trait)
 (impl-trait .wormhole-trait-governance-v1.governance-trait)
 (impl-trait .wormhole-trait-export-v1.export-trait)
+(impl-trait .protocol-agnostic-send-trait-v1.send-trait)
 
 ;; Export trait used previous contract that we are importing from
 ;; May not match the version of `export-trait` this contract implements
@@ -155,6 +156,11 @@
 (define-constant ERR_NO_GUARDIAN_SET (err u2003))
 ;; No guardians found for guardian set
 (define-constant ERR_NO_GUARDIANS (err u2004))
+
+;; Protocol Agnostic Send: Payload exceeds max len for Wormhole
+(define-constant ERR_PAS_PAYLOAD_LEN (err u2101))
+;; Protocol Agnostic Send: No nonce given
+(define-constant ERR_PAS_NO_NONCE (err u2102))
 
 ;; Wormhole Governance: emitting chain
 (define-constant GOV_EMITTING_CHAIN u1)
@@ -588,6 +594,18 @@
       }),
       vaa-body-hash: (get vaa-body-hash message)
     })))
+
+;; @desc Used by NTT contracts to send messages in a protocol-agnostic way
+(define-public (protocol-agnostic-send
+    (payload-64000 (buff 64000))
+    (unused1 (optional (string-ascii 20)))
+    (unused2 (optional (string-ascii 128)))
+    (nonce-opt (optional uint))
+    (consistency-level-opt (optional uint)))
+  (let ((payload (unwrap! (as-max-len? payload-64000 u8192) ERR_PAS_PAYLOAD_LEN))
+        (nonce (unwrap! nonce-opt ERR_PAS_NO_NONCE)))
+    (try! (post-message payload nonce consistency-level-opt))
+    (ok true)))
 
 ;;;; Private functions
 

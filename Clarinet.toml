@@ -48,6 +48,12 @@ epoch = 3.3
 path = 'contracts/wormhole-trait-governance-v1.clar'
 clarity_version = 4
 epoch = 3.3
+
+[contracts.protocol-agnostic-send-trait-v1]
+path = 'contracts/protocol-agnostic-send-trait-v1.clar'
+clarity_version = 4
+epoch = 3.3
+
 [repl.analysis]
 passes = []
 

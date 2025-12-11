@@ -92,6 +92,9 @@ export class WormholeCore {
   static readonly ERR_NO_GUARDIAN_SET = 2003;
   static readonly ERR_NO_GUARDIANS = 2004;
 
+  static readonly ERR_PAS_PAYLOAD_LEN = 2101;
+  static readonly ERR_PAS_NO_NONCE = 2102;
+
   static readonly GOV_EMITTING_CHAIN = 1;
   static readonly GOV_EMITTING_ADDRESS =
     "0x0000000000000000000000000000000000000000000000000000000000000004";
