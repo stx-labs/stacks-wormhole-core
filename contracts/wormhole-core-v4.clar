@@ -838,6 +838,8 @@
     }))
 
 ;; @desc Foldable function evaluating signatures from a list of { guardian-id: u8, signature: (buff 65) }, returning a list of recovered public-keys
+;;
+;; NOTE: Since ECDSA signatures are malleable (both the high-s and low-s variants are valid), we need to check for unique public keys, not unique signatures
 (define-private (batch-check-active-public-keys
       (entry { recovered-compressed-public-key: (buff 33), guardian-id: uint })
       (acc {
@@ -1066,17 +1068,8 @@
 ;; Based on functions from `SP2J933XB2CP2JQ1A4FGN8JA968BBG3NK3EKZ7Q9F.hk-cursor-v2`
 ;; Modified for better performance
 
-(define-private (read-buff-1 (bytes (buff 8192)) (pos uint))
-  (ok (unwrap-panic (as-max-len? (unwrap! (slice? bytes pos (+ pos u1)) (err u1)) u1))))
-
 (define-private (read-buff-2 (bytes (buff 8192)) (pos uint))
   (ok (unwrap-panic (as-max-len? (unwrap! (slice? bytes pos (+ pos u2)) (err u1)) u2))))
-
-(define-private (read-buff-4 (bytes (buff 8192)) (pos uint))
-  (ok (unwrap-panic (as-max-len? (unwrap! (slice? bytes pos (+ pos u4)) (err u1)) u4))))
-
-(define-private (read-buff-8 (bytes (buff 8192)) (pos uint))
-  (ok (unwrap-panic (as-max-len? (unwrap! (slice? bytes pos (+ pos u8)) (err u1)) u8))))
 
 (define-private (read-buff-16 (bytes (buff 8192)) (pos uint))
   (ok (unwrap-panic (as-max-len? (unwrap! (slice? bytes pos (+ pos u16)) (err u1)) u16))))

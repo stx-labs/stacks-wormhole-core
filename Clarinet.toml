@@ -57,6 +57,9 @@ trusted_sender = false
 trusted_caller = false
 callee_filter = false
 
+[repl.analysis.lint_groups]
+all = true
+
 [repl.remote_data]
 enabled = false
 api_url = 'https://api.hiro.so'
