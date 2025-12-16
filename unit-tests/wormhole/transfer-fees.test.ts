@@ -1,7 +1,4 @@
-import { Cl } from "@stacks/transactions";
-import { expect, describe, beforeEach } from "vitest";
 import { it, fc } from "@fast-check/vitest";
-import { wormhole } from "./helpers";
 import { hexToBytes } from "@noble/hashes/utils";
 import {
   WormholeCore as WC,
@@ -10,6 +7,11 @@ import {
   MaxValue,
 } from "./constants";
 import { keccak_256 } from "@noble/hashes/sha3";
+import { Cl } from "@stacks/transactions";
+import { default as objectHash } from "object-hash";
+import { expect, describe, beforeEach } from "vitest";
+
+import { wormhole } from "./helpers";
 
 const accounts = simnet.getAccounts();
 const action = WC.ACTION_TRANSFER_FEES;
@@ -330,6 +332,9 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
     let stxBalances = simnet.getAssetsMap().get("STX")!;
     const initialContractBalance = stxBalances.get(contractPrinciple)!;
 
+    // Using same parameters more than once will result in identical VAA and cause failure
+    // In this case, we should expect that `transfer-fees` fails
+    const usedParams = new Set();
     let totalAmountTransferred = 0n;
     fc.assert(
       fc.property(
@@ -358,9 +363,15 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
             [Cl.buffer(Uint8Array.from(vaa))],
             sender,
           );
-          // NOTE: It's possible that FastCheck reuses parameters and this call fails with ERR_STATE_VAA_REPLAYED
-          //       This is fine and does not indicate a problem
-          // TODO: Detect this in the test and adjust `expect()` accordingly
+
+          // Detect reused params (which result in identical VAA) and expect error
+          const params = objectHash({ amount, sequence });
+          if (usedParams.has(params)) {
+            expect(res.result).toBeErr(Cl.uint(WCS.ERR_STATE_VAA_REPLAYED));
+            return;
+          }
+
+          // Params are unique, so expect transfer to have succeeded
           expect(res.result).toBeOk(
             Cl.tuple({
               amount: Cl.uint(amount),
@@ -368,6 +379,7 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
             }),
           );
           totalAmountTransferred += amount;
+          usedParams.add(params);
         },
       ),
     );
