@@ -257,7 +257,7 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
     )!;
 
     expect(contractBalance).toEqual(postMessageFee);
-    expect(successorContractBalance).toBeUndefined;
+    expect(successorContractBalance).toBeUndefined();
   });
 
   it("should upgrade to new contract and disable old contract", async () => {
@@ -341,8 +341,8 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
       Cl.some(Cl.principal(successorContract.principal())),
     );
 
-    // Check we can use new contract: Set message fee to 0
-    const fee = 0n;
+    // Check we can use new contract: Set message fee to minimum
+    const fee = BigInt(WC.MINIMUM_MESSAGE_FEE);
     res = wormhole.setMessageFee(
       keychain,
       1,
@@ -351,6 +351,7 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
       successorContract.name,
       sender,
     );
+    expect(res.result).toBeOk(Cl.uint(fee));
 
     // Check we can use new contract: Post a message and check sequence number
     const nonce = Cl.uint(0);
