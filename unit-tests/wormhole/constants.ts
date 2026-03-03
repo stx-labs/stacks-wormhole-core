@@ -50,7 +50,6 @@ export class WormholeCore {
   static readonly ERR_GSU_CHECK_OVERLAY = 1303;
   static readonly ERR_GSU_EMPTY_GUARDIAN_SET = 1304;
   static readonly ERR_GSU_DUPLICATED_GUARDIAN_ADDRESSES = 1305;
-  static readonly ERR_DUPLICATED_GUARDIAN_ADDRESSES = 1309;
 
   static readonly ERR_POST_OVERFLOW_CONSISTENCY_LEVEL = 1401;
   static readonly ERR_POST_OVERFLOW_NONCE = 1402;
@@ -64,6 +63,7 @@ export class WormholeCore {
   static readonly ERR_GOV_CHECK_CHAIN = 1507;
   static readonly ERR_GOV_CHECK_EMITTER = 1508;
   static readonly ERR_GOV_MAX_GUARDIANS_EXCEEDED = 1509;
+  static readonly ERR_GOV_VAA_OLD_GUARDIAN_SET = 1510;
 
   static readonly ERR_SMF_PARSING_FEE_1 = 1601;
   static readonly ERR_SMF_PARSING_FEE_2 = 1602;
@@ -120,6 +120,7 @@ export class WormholeCoreState {
   static readonly ERR_STATE_INVALID_VALUE = 10004;
   static readonly ERR_STATE_VAA_REPLAYED = 10005;
   static readonly ERR_STATE_XFER_NOT_IN_PROGRESS = 10006;
+  static readonly ERR_STATE_OVERFLOW_SEQUENCE = 10007;
 }
 
 // Constants from `wormhole-core-state` Clarity contract
