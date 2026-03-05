@@ -120,6 +120,7 @@ export class WormholeCoreState {
   static readonly ERR_STATE_INVALID_VALUE = 10004;
   static readonly ERR_STATE_VAA_REPLAYED = 10005;
   static readonly ERR_STATE_XFER_NOT_IN_PROGRESS = 10006;
+  static readonly ERR_STATE_OVERFLOW_SEQUENCE = 10007;
 }
 
 // Constants from `wormhole-core-state` Clarity contract
