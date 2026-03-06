@@ -493,7 +493,7 @@ export namespace wormhole {
   // Wire format reminder:
   // ===========================
   // [32]byte    module     (Module, should be "Core")
-  // u8          action     (Action type, `4` for TransferFees)
+  // u8          action     (Action type, `1` for ContractUpgrade)
   // u16         chain      (Blockchain ID which this message is intended for)
   // principal   contract   (Successor contract)
   //

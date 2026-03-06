@@ -375,7 +375,7 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade success`, () => {
   });
 
   it("should reject subsequent update if there is a eth address / uncompressed public keys mismatch", () => {
-    let guardianSet2KeysSubset = guardianSet2Keys.splice(0, 12);
+    let guardianSet2KeysSubset = guardianSet2Keys.slice(0, 12);
 
     // Before performing this test, we need to setup the guardian set
     const guardianRotationPayload =
@@ -395,10 +395,11 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade success`, () => {
       guardianSetId: 1,
     });
     const vaa = wormhole.serializeVaaToBuffer(header, body);
-    const uncompressedPublicKey = [];
-    for (let guardian of guardianSet2Keys) {
-      uncompressedPublicKey.push(Cl.buffer(guardian.uncompressedPublicKey));
-    }
+    // Pass 7 uncompressed public keys (indices 12-18) that don't match the 12 eth addresses
+    // in the payload (from indices 0-11), causing an eth address / public key mismatch
+    const uncompressedPublicKey = guardianSet2Keys
+      .slice(12)
+      .map((g) => Cl.buffer(g.uncompressedPublicKey));
     let res = simnet.mineBlock([
       tx.callPublicFn(
         WC.CONTRACT_NAME,
@@ -495,7 +496,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-vaa success`, () => {
   it("should succeed if quorum is just met", () => {
     // Before performing this test, we need to setup the guardian set
     let cutoff = 13;
-    let guardianSet1KeysSubset = guardianSet1Keys.splice(0, cutoff);
+    let guardianSet1KeysSubset = guardianSet1Keys.slice(0, cutoff);
     let body = wormhole.buildValidVaaBodySpecs({
       emitter: wormhole.GovernanceUpdateEmitter,
     });
@@ -558,7 +559,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-vaa failures`, () => {
       [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(1101));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_VAA_CHECKS_VERSION_UNSUPPORTED));
   });
 
   it("should fail if the guardianSetId is invalid", () => {
@@ -581,7 +582,9 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-vaa failures`, () => {
       [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(1103));
+    expect(res.result).toBeErr(
+      Cl.uint(WC.ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY),
+    );
   });
 
   it("should fail if one key is being used multiple times", () => {
@@ -608,7 +611,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-vaa failures`, () => {
       [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(1102));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_VAA_CHECKS_THRESHOLD_SIGNATURE));
   });
 
   it("should fail if too few signatures are being sent", () => {
@@ -633,7 +636,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-vaa failures`, () => {
       [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(1102));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_VAA_CHECKS_THRESHOLD_SIGNATURE));
   });
 
   it("should fail if quorum is not met", () => {
@@ -661,7 +664,7 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-vaa failures`, () => {
       [Cl.buffer(Uint8Array.from(vaa))],
       sender,
     );
-    expect(res.result).toBeErr(Cl.uint(1102));
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_VAA_CHECKS_THRESHOLD_SIGNATURE));
   });
 });
 
