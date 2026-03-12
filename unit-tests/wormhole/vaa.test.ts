@@ -692,3 +692,304 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade mainnet guardian rotations`,
     });
   });
 });
+
+describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade initial caller check`, () => {
+  const keychain = wormhole.generateGuardianSetKeychain(19);
+
+  it("should fail if non-deployer calls initial guardian set upgrade (ERR_GSU_CHECK_CALLER)", () => {
+    const guardianRotationPayload =
+      wormhole.serializeGuardianUpdateVaaPayloadToBuffer(
+        keychain,
+        2,
+        0,
+        1,
+        wormhole.validGuardianRotationModule,
+      );
+    const body = wormhole.buildValidVaaBodySpecs({
+      payload: Uint8Array.from(guardianRotationPayload),
+      emitter: wormhole.GovernanceUpdateEmitter,
+    });
+    const header = wormhole.buildValidVaaHeader(keychain, body, {
+      version: 1,
+      guardianSetId: 0,
+      signatures: [],
+    });
+    const vaa = wormhole.serializeVaaToBuffer(header, body);
+    const uncompressedPublicKey = keychain.map((g) =>
+      Cl.buffer(g.uncompressedPublicKey),
+    );
+
+    // `sender` (wallet_1) is NOT the deployer
+    const res = simnet.callPublicFn(
+      WC.CONTRACT_NAME,
+      "guardian-set-upgrade",
+      [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
+      sender, // Not deployer!
+    );
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_GSU_CHECK_CALLER));
+  });
+});
+
+describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade index check`, () => {
+  const guardianSet1Keys = wormhole.generateGuardianSetKeychain(19);
+  const guardianSet2Keys = wormhole.generateGuardianSetKeychain(19);
+
+  beforeEach(async () => {
+    wormhole.applyGuardianSetUpdate(
+      guardianSet1Keys,
+      1,
+      deployer,
+      WC.CONTRACT_NAME,
+    );
+  });
+
+  it("should fail if new guardian set index is not current + 1 (ERR_GSU_CHECK_INDEX)", () => {
+    // Try to upgrade from set 1 to set 3 (skipping 2)
+    const guardianRotationPayload =
+      wormhole.serializeGuardianUpdateVaaPayloadToBuffer(
+        guardianSet2Keys,
+        2,
+        0,
+        3, // Should be 2, not 3
+        wormhole.validGuardianRotationModule,
+      );
+    const body = wormhole.buildValidVaaBodySpecs({
+      payload: Uint8Array.from(guardianRotationPayload),
+      emitter: wormhole.GovernanceUpdateEmitter,
+    });
+    const header = wormhole.buildValidVaaHeader(guardianSet1Keys, body, {
+      version: 1,
+      guardianSetId: 1,
+    });
+    const vaa = wormhole.serializeVaaToBuffer(header, body);
+    const uncompressedPublicKey = guardianSet2Keys.map((g) =>
+      Cl.buffer(g.uncompressedPublicKey),
+    );
+
+    const res = simnet.mineBlock([
+      tx.callPublicFn(
+        WC.CONTRACT_NAME,
+        "guardian-set-upgrade",
+        [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
+        sender,
+      ),
+    ])[0].result;
+    expect(res).toBeErr(Cl.uint(WC.ERR_GSU_CHECK_INDEX));
+  });
+});
+
+describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade empty set`, () => {
+  const keychain = wormhole.generateGuardianSetKeychain(19);
+
+  beforeEach(async () => {
+    wormhole.applyGuardianSetUpdate(keychain, 1, deployer, WC.CONTRACT_NAME);
+  });
+
+  it("should fail if new guardian set is empty (ERR_GSU_PARSING_GUARDIANS_BYTES)", () => {
+    // With 0 guardians, the payload parsing fails at `read-buff-8192-max` because
+    // `(slice? buf u5 u5)` on a 5-byte buffer returns `none` in Clarity.
+    // This means `ERR_GSU_EMPTY_GUARDIAN_SET` is unreachable via normal parsing;
+    // the parsing error catches empty sets first.
+    const emptyKeychain: wormhole.Guardian[] = [];
+    const guardianRotationPayload =
+      wormhole.serializeGuardianUpdateVaaPayloadToBuffer(
+        emptyKeychain,
+        2,
+        0,
+        2,
+        wormhole.validGuardianRotationModule,
+      );
+    const body = wormhole.buildValidVaaBodySpecs({
+      payload: Uint8Array.from(guardianRotationPayload),
+      emitter: wormhole.GovernanceUpdateEmitter,
+    });
+    const header = wormhole.buildValidVaaHeader(keychain, body, {
+      version: 1,
+      guardianSetId: 1,
+    });
+    const vaa = wormhole.serializeVaaToBuffer(header, body);
+
+    const res = simnet.mineBlock([
+      tx.callPublicFn(
+        WC.CONTRACT_NAME,
+        "guardian-set-upgrade",
+        [Cl.buffer(Uint8Array.from(vaa)), Cl.list([])],
+        sender,
+      ),
+    ])[0].result;
+    expect(res).toBeErr(Cl.uint(WC.ERR_GSU_PARSING_GUARDIANS_BYTES));
+  });
+});
+
+describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade overlay`, () => {
+  const keychain = wormhole.generateGuardianSetKeychain(19);
+  const newKeychain = wormhole.generateGuardianSetKeychain(5);
+
+  beforeEach(async () => {
+    wormhole.applyGuardianSetUpdate(keychain, 1, deployer, WC.CONTRACT_NAME);
+  });
+
+  it("should fail if guardian set upgrade payload has extra bytes (ERR_GSU_CHECK_OVERLAY)", () => {
+    // Build a valid payload then append extra bytes
+    let guardianRotationPayload =
+      wormhole.serializeGuardianUpdateVaaPayloadToBuffer(
+        newKeychain,
+        2,
+        0,
+        2,
+        wormhole.validGuardianRotationModule,
+      );
+    // Append extra byte
+    guardianRotationPayload = Buffer.concat([
+      Uint8Array.from(guardianRotationPayload),
+      new Uint8Array(1),
+    ]);
+
+    const body = wormhole.buildValidVaaBodySpecs({
+      payload: Uint8Array.from(guardianRotationPayload),
+      emitter: wormhole.GovernanceUpdateEmitter,
+    });
+    const header = wormhole.buildValidVaaHeader(keychain, body, {
+      version: 1,
+      guardianSetId: 1,
+    });
+    const vaa = wormhole.serializeVaaToBuffer(header, body);
+    const uncompressedPublicKey = newKeychain.map((g) =>
+      Cl.buffer(g.uncompressedPublicKey),
+    );
+
+    const res = simnet.mineBlock([
+      tx.callPublicFn(
+        WC.CONTRACT_NAME,
+        "guardian-set-upgrade",
+        [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
+        sender,
+      ),
+    ])[0].result;
+    expect(res).toBeErr(Cl.uint(WC.ERR_GSU_CHECK_OVERLAY));
+  });
+});
+
+describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade with broadcast chain`, () => {
+  const keychain = wormhole.generateGuardianSetKeychain(19);
+  const newKeychain = wormhole.generateGuardianSetKeychain(19);
+
+  beforeEach(async () => {
+    wormhole.applyGuardianSetUpdate(keychain, 1, deployer, WC.CONTRACT_NAME);
+  });
+
+  it("should succeed with broadcast chain ID (0x0000) for guardian set upgrade", () => {
+    // Use chain=0 (broadcast) instead of specific chain ID
+    const guardianRotationPayload =
+      wormhole.serializeGuardianUpdateVaaPayloadToBuffer(
+        newKeychain,
+        2,
+        0, // broadcast chain ID
+        2,
+        wormhole.validGuardianRotationModule,
+      );
+    const body = wormhole.buildValidVaaBodySpecs({
+      payload: Uint8Array.from(guardianRotationPayload),
+      emitter: wormhole.GovernanceUpdateEmitter,
+    });
+    const header = wormhole.buildValidVaaHeader(keychain, body, {
+      version: 1,
+      guardianSetId: 1,
+    });
+    const vaa = wormhole.serializeVaaToBuffer(header, body);
+    const uncompressedPublicKey = newKeychain.map((g) =>
+      Cl.buffer(g.uncompressedPublicKey),
+    );
+
+    const res = simnet.mineBlock([
+      tx.callPublicFn(
+        WC.CONTRACT_NAME,
+        "guardian-set-upgrade",
+        [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
+        sender,
+      ),
+    ])[0].result;
+    expect(res).toHaveClarityType(ClarityType.ResponseOk);
+  });
+});
+
+describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade with old guardian set`, () => {
+  const guardianSet1Keys = wormhole.generateGuardianSetKeychain(19);
+  const guardianSet2Keys = wormhole.generateGuardianSetKeychain(19);
+
+  beforeEach(async () => {
+    // Setup guardian set 1
+    wormhole.applyGuardianSetUpdate(
+      guardianSet1Keys,
+      1,
+      deployer,
+      WC.CONTRACT_NAME,
+    );
+
+    // Upgrade to guardian set 2
+    const guardianRotationPayload =
+      wormhole.serializeGuardianUpdateVaaPayloadToBuffer(
+        guardianSet2Keys,
+        2,
+        0,
+        2,
+        wormhole.validGuardianRotationModule,
+      );
+    const body = wormhole.buildValidVaaBodySpecs({
+      payload: Uint8Array.from(guardianRotationPayload),
+      emitter: wormhole.GovernanceUpdateEmitter,
+    });
+    const header = wormhole.buildValidVaaHeader(guardianSet1Keys, body, {
+      version: 1,
+      guardianSetId: 1,
+    });
+    const vaa = wormhole.serializeVaaToBuffer(header, body);
+    const uncompressedPublicKey = guardianSet2Keys.map((g) =>
+      Cl.buffer(g.uncompressedPublicKey),
+    );
+    simnet.mineBlock([
+      tx.callPublicFn(
+        WC.CONTRACT_NAME,
+        "guardian-set-upgrade",
+        [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
+        sender,
+      ),
+    ]);
+  });
+
+  it("should fail guardian-set-upgrade if signed by old guardian set (ERR_GOV_VAA_OLD_GUARDIAN_SET)", () => {
+    const guardianSet3Keys = wormhole.generateGuardianSetKeychain(19);
+    const guardianRotationPayload =
+      wormhole.serializeGuardianUpdateVaaPayloadToBuffer(
+        guardianSet3Keys,
+        2,
+        0,
+        3,
+        wormhole.validGuardianRotationModule,
+      );
+    const body = wormhole.buildValidVaaBodySpecs({
+      payload: Uint8Array.from(guardianRotationPayload),
+      emitter: wormhole.GovernanceUpdateEmitter,
+      sequence: 99n,
+    });
+    // Sign with old guardian set 1 keys
+    const header = wormhole.buildValidVaaHeader(guardianSet1Keys, body, {
+      version: 1,
+      guardianSetId: 1,
+    });
+    const vaa = wormhole.serializeVaaToBuffer(header, body);
+    const uncompressedPublicKey = guardianSet3Keys.map((g) =>
+      Cl.buffer(g.uncompressedPublicKey),
+    );
+
+    const res = simnet.mineBlock([
+      tx.callPublicFn(
+        WC.CONTRACT_NAME,
+        "guardian-set-upgrade",
+        [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
+        sender,
+      ),
+    ])[0].result;
+    expect(res).toBeErr(Cl.uint(WC.ERR_GOV_VAA_OLD_GUARDIAN_SET));
+  });
+});

@@ -2,6 +2,7 @@ import { Cl } from "@stacks/transactions";
 import { expect, describe, beforeEach } from "vitest";
 import { it, fc } from "@fast-check/vitest";
 import { wormhole } from "./helpers";
+import { tx } from "@stacks/clarinet-sdk";
 import { hexToBytes } from "@noble/hashes/utils";
 import {
   WormholeCore as WC,
@@ -389,5 +390,111 @@ describe(`${WC.CONTRACT_NAME}::set-message-fee`, () => {
       sender,
     );
     expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_CHECK_EMITTER));
+  });
+
+  it("should fail set-message-fee with broadcast chain ID (0x0000)", () => {
+    const fee = 100;
+    // Use chain=0 (broadcast) which is NOT allowed for set-message-fee
+    const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
+      WC.ACTION_SET_MESSAGE_FEE,
+      0, // broadcast chain ID
+      fee,
+    );
+    const body = wormhole.buildValidVaaBodySpecs({
+      payload: Uint8Array.from(payload),
+      emitter: wormhole.GovernanceUpdateEmitter,
+    });
+    const header = wormhole.buildValidVaaHeader(keychain, body, {
+      version: 1,
+      guardianSetId: 1,
+    });
+    const vaa = wormhole.serializeVaaToBuffer(header, body);
+
+    const res = simnet.callPublicFn(
+      WC.CONTRACT_NAME,
+      `set-message-fee`,
+      [Cl.buffer(Uint8Array.from(vaa))],
+      sender,
+    );
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_CHECK_CHAIN));
+  });
+});
+
+describe(`${WC.CONTRACT_NAME}::set-message-fee with old guardian set`, () => {
+  const accounts = simnet.getAccounts();
+  const deployer = accounts.get("deployer")!;
+  const sender = accounts.get("wallet_1")!;
+  const guardianSet1Keys = wormhole.generateGuardianSetKeychain(19);
+  const guardianSet2Keys = wormhole.generateGuardianSetKeychain(19);
+
+  beforeEach(async () => {
+    let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
+    expect(res.result).toBeOk(Cl.bool(true));
+
+    // Setup guardian set 1
+    wormhole.applyGuardianSetUpdate(
+      guardianSet1Keys,
+      1,
+      deployer,
+      WC.CONTRACT_NAME,
+    );
+
+    // Upgrade to guardian set 2
+    const guardianRotationPayload =
+      wormhole.serializeGuardianUpdateVaaPayloadToBuffer(
+        guardianSet2Keys,
+        2,
+        0,
+        2,
+        wormhole.validGuardianRotationModule,
+      );
+    const body = wormhole.buildValidVaaBodySpecs({
+      payload: Uint8Array.from(guardianRotationPayload),
+      emitter: wormhole.GovernanceUpdateEmitter,
+    });
+    const header = wormhole.buildValidVaaHeader(guardianSet1Keys, body, {
+      version: 1,
+      guardianSetId: 1,
+    });
+    const vaa = wormhole.serializeVaaToBuffer(header, body);
+    const uncompressedPublicKey = guardianSet2Keys.map((g) =>
+      Cl.buffer(g.uncompressedPublicKey),
+    );
+    simnet.mineBlock([
+      tx.callPublicFn(
+        WC.CONTRACT_NAME,
+        "guardian-set-upgrade",
+        [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
+        sender,
+      ),
+    ]);
+  });
+
+  it("should fail set-message-fee if signed by old guardian set (ERR_GOV_VAA_OLD_GUARDIAN_SET)", () => {
+    const fee = 100;
+    const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
+      WC.ACTION_SET_MESSAGE_FEE,
+      WC.EXPECTED_CHAIN_ID,
+      fee,
+    );
+    const body = wormhole.buildValidVaaBodySpecs({
+      payload: Uint8Array.from(payload),
+      emitter: wormhole.GovernanceUpdateEmitter,
+      sequence: 99n,
+    });
+    // Sign with old keys and old guardianSetId
+    const header = wormhole.buildValidVaaHeader(guardianSet1Keys, body, {
+      version: 1,
+      guardianSetId: 1,
+    });
+    const vaa = wormhole.serializeVaaToBuffer(header, body);
+
+    const res = simnet.callPublicFn(
+      WC.CONTRACT_NAME,
+      "set-message-fee",
+      [Cl.buffer(Uint8Array.from(vaa))],
+      sender,
+    );
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_VAA_OLD_GUARDIAN_SET));
   });
 });

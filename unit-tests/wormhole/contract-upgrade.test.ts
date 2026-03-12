@@ -1,7 +1,8 @@
-import { Cl } from "@stacks/transactions";
+import { Cl, ClarityType } from "@stacks/transactions";
 import { expect, describe, beforeEach } from "vitest";
 import { it } from "@fast-check/vitest";
 import { wormhole } from "./helpers";
+import { tx } from "@stacks/clarinet-sdk";
 import { hexToBytes } from "@noble/hashes/utils";
 import {
   WormholeCore as WC,
@@ -567,5 +568,315 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
       sender,
     );
     expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_CHECK_EMITTER));
+  });
+});
+
+describe(`${WC.CONTRACT_NAME}::contract-upgrade with old guardian set`, () => {
+  const guardianSet1Keys = wormhole.generateGuardianSetKeychain(19);
+  const guardianSet2Keys = wormhole.generateGuardianSetKeychain(19);
+
+  beforeEach(async () => {
+    let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
+    expect(res.result).toBeOk(Cl.bool(true));
+
+    // Setup guardian set 1
+    wormhole.applyGuardianSetUpdate(
+      guardianSet1Keys,
+      1,
+      deployer,
+      WC.CONTRACT_NAME,
+    );
+
+    // Upgrade to guardian set 2
+    const guardianRotationPayload =
+      wormhole.serializeGuardianUpdateVaaPayloadToBuffer(
+        guardianSet2Keys,
+        2,
+        0,
+        2,
+        wormhole.validGuardianRotationModule,
+      );
+    const body = wormhole.buildValidVaaBodySpecs({
+      payload: Uint8Array.from(guardianRotationPayload),
+      emitter: wormhole.GovernanceUpdateEmitter,
+    });
+    const header = wormhole.buildValidVaaHeader(guardianSet1Keys, body, {
+      version: 1,
+      guardianSetId: 1,
+    });
+    const vaa = wormhole.serializeVaaToBuffer(header, body);
+    const uncompressedPublicKey = guardianSet2Keys.map((g) =>
+      Cl.buffer(g.uncompressedPublicKey),
+    );
+    simnet.mineBlock([
+      tx.callPublicFn(
+        WC.CONTRACT_NAME,
+        "guardian-set-upgrade",
+        [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
+        sender,
+      ),
+    ]);
+  });
+
+  it("should fail contract-upgrade if signed by old guardian set (ERR_GOV_VAA_OLD_GUARDIAN_SET)", () => {
+    const successor = `${deployer}.wormhole-core-v999`;
+    const payload = wormhole.serializeContractUpgradeVaaPayloadToBuffer(
+      WC.ACTION_CONTRACT_UPGRADE,
+      WC.EXPECTED_CHAIN_ID,
+      successor,
+    );
+    const body = wormhole.buildValidVaaBodySpecs({
+      payload: Uint8Array.from(payload),
+      emitter: wormhole.GovernanceUpdateEmitter,
+      sequence: 99n,
+    });
+    const header = wormhole.buildValidVaaHeader(guardianSet1Keys, body, {
+      version: 1,
+      guardianSetId: 1,
+    });
+    const vaa = wormhole.serializeVaaToBuffer(header, body);
+
+    const res = simnet.callPublicFn(
+      WC.CONTRACT_NAME,
+      "contract-upgrade",
+      [Cl.buffer(Uint8Array.from(vaa))],
+      sender,
+    );
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_GOV_VAA_OLD_GUARDIAN_SET));
+  });
+});
+
+describe(`${WC.CONTRACT_NAME}::operations blocked after contract upgrade`, () => {
+  const keychain = wormhole.generateGuardianSetKeychain(19);
+  const contractPrinciple = `${deployer}.${WC.CONTRACT_NAME}`;
+  const postMessageFee = 1_000_000n;
+
+  const successorContract = {
+    name: "wormhole-core-successor-2",
+    async code() {
+      const fs = require("fs/promises");
+      return await fs.readFile(`contracts/${WC.CONTRACT_NAME}.clar`, "utf8");
+    },
+    principal() {
+      return `${deployer}.wormhole-core-successor-2`;
+    },
+    wormholeAddress() {
+      return keccak_256(this.principal());
+    },
+  };
+
+  beforeEach(async () => {
+    // Initialize state
+    let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
+    expect(res.result).toBeOk(Cl.bool(true));
+
+    // Setup guardians
+    wormhole.applyGuardianSetUpdate(keychain, 1, deployer, WC.CONTRACT_NAME);
+
+    // Set message fee
+    res = wormhole.setMessageFee(
+      keychain,
+      1,
+      postMessageFee,
+      WC.EXPECTED_CHAIN_ID,
+      WC.CONTRACT_NAME,
+      deployer,
+    );
+    expect(res.result).toBeOk(Cl.uint(postMessageFee));
+
+    // Post a message to fund the contract
+    res = simnet.callPublicFn(
+      WC.CONTRACT_NAME,
+      "post-message",
+      [Cl.buffer(new Uint8Array(32)), Cl.uint(0), Cl.none()],
+      sender,
+    );
+    expect(res.result).toHaveClarityType(ClarityType.ResponseOk);
+
+    // Deploy and upgrade to successor
+    res = simnet.deployContract(
+      successorContract.name,
+      await successorContract.code(),
+      null,
+      deployer,
+    );
+    expect(res.result).toBeBool(true);
+
+    // Send ContractUpgrade VAA
+    const payload = wormhole.serializeContractUpgradeVaaPayloadToBuffer(
+      WC.ACTION_CONTRACT_UPGRADE,
+      WC.EXPECTED_CHAIN_ID,
+      successorContract.principal(),
+    );
+    const body = wormhole.buildValidVaaBodySpecs({
+      payload: Uint8Array.from(payload),
+      emitter: wormhole.GovernanceUpdateEmitter,
+    });
+    const header = wormhole.buildValidVaaHeader(keychain, body, {
+      version: 1,
+      guardianSetId: 1,
+    });
+    const vaa = wormhole.serializeVaaToBuffer(header, body);
+    res = simnet.callPublicFn(
+      WC.CONTRACT_NAME,
+      "contract-upgrade",
+      [Cl.buffer(Uint8Array.from(vaa))],
+      sender,
+    );
+    expect(res.result).toBeOk(Cl.buffer(successorContract.wormholeAddress()));
+
+    // Finalize upgrade
+    res = simnet.callPublicFn(
+      successorContract.name,
+      "initialize",
+      [Cl.some(Cl.principal(contractPrinciple))],
+      sender,
+    );
+    expect(res.result).toBeOk(Cl.bool(true));
+  });
+
+  it("should fail set-message-fee on deprecated contract", () => {
+    const fee = 500n;
+    const payload = wormhole.serializeSetMessageFeeVaaPayloadToBuffer(
+      WC.ACTION_SET_MESSAGE_FEE,
+      WC.EXPECTED_CHAIN_ID,
+      fee,
+    );
+    const body = wormhole.buildValidVaaBodySpecs({
+      payload: Uint8Array.from(payload),
+      emitter: wormhole.GovernanceUpdateEmitter,
+      sequence: 50n,
+    });
+    const header = wormhole.buildValidVaaHeader(keychain, body, {
+      version: 1,
+      guardianSetId: 1,
+    });
+    const vaa = wormhole.serializeVaaToBuffer(header, body);
+
+    const res = simnet.callPublicFn(
+      WC.CONTRACT_NAME,
+      "set-message-fee",
+      [Cl.buffer(Uint8Array.from(vaa))],
+      sender,
+    );
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_DEPLOYMENT_STATE_NOT_ACTIVE));
+  });
+
+  it("should fail transfer-fees on deprecated contract", () => {
+    const recipient = accounts.get("wallet_2")!;
+    const recipientHash = keccak_256(recipient);
+
+    // Register recipient on successor since it's now the owner
+    simnet.callPublicFn(
+      "addr32",
+      "register",
+      [Cl.principal(recipient)],
+      sender,
+    );
+
+    const payload = wormhole.serializeTransferFeesVaaPayloadToBuffer(
+      WC.ACTION_TRANSFER_FEES,
+      WC.EXPECTED_CHAIN_ID,
+      100,
+      recipientHash,
+    );
+    const body = wormhole.buildValidVaaBodySpecs({
+      payload: Uint8Array.from(payload),
+      emitter: wormhole.GovernanceUpdateEmitter,
+      sequence: 50n,
+    });
+    const header = wormhole.buildValidVaaHeader(keychain, body, {
+      version: 1,
+      guardianSetId: 1,
+    });
+    const vaa = wormhole.serializeVaaToBuffer(header, body);
+
+    const res = simnet.callPublicFn(
+      WC.CONTRACT_NAME,
+      "transfer-fees",
+      [Cl.buffer(Uint8Array.from(vaa))],
+      sender,
+    );
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_DEPLOYMENT_STATE_NOT_ACTIVE));
+  });
+
+  it("should fail guardian-set-upgrade on deprecated contract", () => {
+    const newKeychain = wormhole.generateGuardianSetKeychain(19);
+    const guardianRotationPayload =
+      wormhole.serializeGuardianUpdateVaaPayloadToBuffer(
+        newKeychain,
+        2,
+        0,
+        2,
+        wormhole.validGuardianRotationModule,
+      );
+    const body = wormhole.buildValidVaaBodySpecs({
+      payload: Uint8Array.from(guardianRotationPayload),
+      emitter: wormhole.GovernanceUpdateEmitter,
+      sequence: 50n,
+    });
+    const header = wormhole.buildValidVaaHeader(keychain, body, {
+      version: 1,
+      guardianSetId: 1,
+    });
+    const vaa = wormhole.serializeVaaToBuffer(header, body);
+    const uncompressedPublicKey = newKeychain.map((g) =>
+      Cl.buffer(g.uncompressedPublicKey),
+    );
+
+    const res = simnet.mineBlock([
+      tx.callPublicFn(
+        WC.CONTRACT_NAME,
+        "guardian-set-upgrade",
+        [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
+        sender,
+      ),
+    ])[0].result;
+    expect(res).toBeErr(Cl.uint(WC.ERR_DEPLOYMENT_STATE_NOT_ACTIVE));
+  });
+
+  it("should fail contract-upgrade on deprecated contract", () => {
+    const successor2 = `${deployer}.wormhole-core-v9999`;
+    const payload = wormhole.serializeContractUpgradeVaaPayloadToBuffer(
+      WC.ACTION_CONTRACT_UPGRADE,
+      WC.EXPECTED_CHAIN_ID,
+      successor2,
+    );
+    const body = wormhole.buildValidVaaBodySpecs({
+      payload: Uint8Array.from(payload),
+      emitter: wormhole.GovernanceUpdateEmitter,
+      sequence: 50n,
+    });
+    const header = wormhole.buildValidVaaHeader(keychain, body, {
+      version: 1,
+      guardianSetId: 1,
+    });
+    const vaa = wormhole.serializeVaaToBuffer(header, body);
+
+    const res = simnet.callPublicFn(
+      WC.CONTRACT_NAME,
+      "contract-upgrade",
+      [Cl.buffer(Uint8Array.from(vaa))],
+      sender,
+    );
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_DEPLOYMENT_STATE_NOT_ACTIVE));
+  });
+
+  it("should fail protocol-agnostic-send on deprecated contract", () => {
+    const payload = new Uint8Array(32);
+
+    const res = simnet.callPublicFn(
+      WC.CONTRACT_NAME,
+      "protocol-agnostic-send",
+      [
+        Cl.buffer(payload),
+        Cl.none(),
+        Cl.none(),
+        Cl.some(Cl.uint(1)),
+        Cl.none(),
+      ],
+      sender,
+    );
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_DEPLOYMENT_STATE_NOT_ACTIVE));
   });
 });
