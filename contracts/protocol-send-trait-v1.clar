@@ -6,11 +6,11 @@
     ;; The params to this function are a combination of Axelar's `call-contract` and Wormhole's `post-message`
     ;; Additional params can be supported if needed on other networks by encoding them in the byte buffer
     (protocol-agnostic-send (
-		    (buff 64000)                  ;; Payload (all protocols)
+        (buff 64000)                  ;; Payload (all protocols)
         (optional (string-ascii 20))  ;; Destination chain (Axelar)
         (optional (string-ascii 128)) ;; Destination contract address (Axelar)
-		    (optional uint)               ;; Nonce (Wormhole)
-		    (optional uint))              ;; Consistency level (Wormhole)
-	  (response uint uint))
+        (optional uint)               ;; Nonce (Wormhole)
+        (optional uint))              ;; Consistency level (Wormhole)
+      (response uint uint))
   )
 )
