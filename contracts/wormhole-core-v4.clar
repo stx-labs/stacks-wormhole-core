@@ -314,7 +314,7 @@
           (guardian-set-id (get guardian-set-id (get vaa message))))
       ;; Ensure that the guardian-set-id is the active one or unexpired previous one
       (asserts! (try! (is-valid-guardian-set guardian-set-id)) ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY)
-      (let ((active-guardians (unwrap! (contract-call? .wormhole-core-state guardian-sets-get guardian-set-id) ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY))
+      (let ((active-guardians (unwrap! (contract-call? .wormhole-core-state guardian-set-keys-get guardian-set-id) ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY))
             (signatures-from-active-guardians (fold batch-check-active-public-keys (get recovered-public-keys message)
               {
                   active-guardians: active-guardians,
@@ -378,7 +378,9 @@
       id (asserts! (is-eq new-set-id (+ u1 id)) ERR_GSU_CHECK_INDEX)
       ;; Initial guardian set, allow any value
       true)
-    (try! (contract-call? .wormhole-core-state guardian-sets-set new-set-id result))
+    (try! (contract-call? .wormhole-core-state guardian-set-keys-set new-set-id result))
+    ;; Stored for future core versions; not used here
+    (try! (contract-call? .wormhole-core-state guardian-set-addrs-set new-set-id eth-addresses))
     (try! (set-new-guardian-set-id new-set-id))
     ;; Emit Event
     (print {
@@ -403,7 +405,7 @@
 
 (define-read-only (get-active-guardian-set)
   (let ((set-id (unwrap! (var-get active-guardian-set-id) ERR_NO_GUARDIAN_SET))
-        (guardians (unwrap! (contract-call? .wormhole-core-state guardian-sets-get set-id) ERR_NO_GUARDIANS)))
+        (guardians (unwrap! (contract-call? .wormhole-core-state guardian-set-keys-get set-id) ERR_NO_GUARDIANS)))
     (ok {
       set-id: set-id,
       guardians: guardians

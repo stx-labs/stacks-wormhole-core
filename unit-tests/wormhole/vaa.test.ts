@@ -4,12 +4,32 @@ import { it, fc } from "@fast-check/vitest";
 import { wormhole } from "./helpers";
 import { ParsedTransactionResult, tx } from "@stacks/clarinet-sdk";
 import { hexToBytes } from "@noble/hashes/utils";
-import { WormholeCore as WC } from "./constants";
+import { keccak_256 } from "@noble/hashes/sha3";
+import { WormholeCore as WC, WormholeCoreState as WCS } from "./constants";
+import { gsuMainnetVaas } from "./fixtures";
 
 const verbosity = 0;
 const accounts = simnet.getAccounts();
 const deployer = accounts.get("deployer")!;
 const sender = accounts.get("wallet_1")!;
+
+// Reads `guardian-set-addrs` from the state contract and asserts it equals the
+// expected list of ETH addresses. Used to verify v4 populates the new map alongside
+// the existing pubkey map during `guardian-set-upgrade`.
+const expectGuardianSetAddrs = (
+  setId: number,
+  expectedEthAddresses: Uint8Array[],
+) => {
+  const res = simnet.callReadOnlyFn(
+    WCS.CONTRACT_NAME,
+    "guardian-set-addrs-get",
+    [Cl.uint(setId)],
+    sender,
+  ).result;
+  expect(res).toStrictEqual(
+    Cl.some(Cl.list(expectedEthAddresses.map((a) => Cl.buffer(a)))),
+  );
+};
 
 beforeEach(async () => {
   let res = wormhole.initializeStateContract(WC.CONTRACT_NAME, deployer);
@@ -292,6 +312,12 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade success`, () => {
         vaa: serializeVaaToClarityValue,
       }),
     );
+
+    // Verify v4 also populated the new `guardian-set-addrs` map in the state contract
+    expectGuardianSetAddrs(
+      1,
+      guardianSet1Keys.map((g) => g.ethereumAddress),
+    );
   });
 
   it("should return the set 1 as active", () => {
@@ -372,6 +398,16 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade success`, () => {
       sender,
     ).result;
     expect(res).toBeOk(guardianSet2);
+
+    // Verify v4 populated `guardian-set-addrs` for set 2 as well as set 1
+    expectGuardianSetAddrs(
+      1,
+      guardianSet1Keys.map((g) => g.ethereumAddress),
+    );
+    expectGuardianSetAddrs(
+      2,
+      guardianSet2Keys.map((g) => g.ethereumAddress),
+    );
   });
 
   it("should reject subsequent update if there is a eth address / uncompressed public keys mismatch", () => {
@@ -682,6 +718,15 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade mainnet guardian rotations`,
       expect(b.result).toHaveClarityType(ClarityType.ResponseOk);
     });
 
+    // Derive expected eth addresses from the fixture pubkeys (last 20 bytes of keccak256).
+    // Mainnet rotations 1 and 2 in the fixture set guardian-set IDs 3 and 4 respectively
+    // (real Wormhole mainnet history).
+    const ethAddrsFromFixture = (idx: number): Uint8Array[] =>
+      gsuMainnetVaas[idx].keys.map((k) =>
+        keccak_256(hexToBytes(k)).slice(12, 32),
+      );
+    expectGuardianSetAddrs(3, ethAddrsFromFixture(0));
+
     const newUpdateBlock = wormhole.applyNextMainnetGuardianSetUpdates(
       sender,
       WC.CONTRACT_NAME,
@@ -690,6 +735,7 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade mainnet guardian rotations`,
     newUpdateBlock!.forEach((b: ParsedTransactionResult) => {
       expect(b.result).toHaveClarityType(ClarityType.ResponseOk);
     });
+    expectGuardianSetAddrs(4, ethAddrsFromFixture(1));
   });
 });
 
