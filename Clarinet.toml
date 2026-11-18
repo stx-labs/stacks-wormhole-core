@@ -7,43 +7,43 @@ cache_dir = './.cache'
 
 [contracts.wormhole-core-proxy-v2]
 path = 'contracts/wormhole-core-proxy-v2.clar'
-clarity_version = 5
-epoch = 3.4
+clarity_version = 6
+epoch = 4.0
 
 [contracts.wormhole-core-state]
 path = 'contracts/wormhole-core-state.clar'
-clarity_version = 5
-epoch = 3.4
+clarity_version = 6
+epoch = 4.0
 
 [contracts.addr32]
 path = 'contracts/addr32.clar'
-clarity_version = 5
-epoch = 3.4
+clarity_version = 6
+epoch = 4.0
 
 [contracts.wormhole-core-v4]
 path = 'contracts/wormhole-core-v4.clar'
-clarity_version = 5
-epoch = 3.4
+clarity_version = 6
+epoch = 4.0
 
 [contracts.wormhole-trait-core-v2]
 path = 'contracts/wormhole-trait-core-v2.clar'
-clarity_version = 5
-epoch = 3.4
+clarity_version = 6
+epoch = 4.0
 
 [contracts.wormhole-trait-export-v1]
 path = 'contracts/wormhole-trait-export-v1.clar'
-clarity_version = 5
-epoch = 3.4
+clarity_version = 6
+epoch = 4.0
 
 [contracts.wormhole-trait-governance-v1]
 path = 'contracts/wormhole-trait-governance-v1.clar'
-clarity_version = 5
-epoch = 3.4
+clarity_version = 6
+epoch = 4.0
 
 [contracts.protocol-send-trait-v1]
 path = 'contracts/protocol-send-trait-v1.clar'
-clarity_version = 5
-epoch = 3.4
+clarity_version = 6
+epoch = 4.0
 
 [repl.analysis]
 passes = []
