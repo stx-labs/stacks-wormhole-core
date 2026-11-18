@@ -192,7 +192,7 @@ describe(`${WC.CONTRACT_NAME}::post-message success`, () => {
     );
 
     // Check contract was published ok
-    expect(res.result).toBeBool(true);
+    expect(res.result).toBeOk(Cl.bool(true));
 
     // Check that `emitter` is the proxy contract and `sequence` is 0
     res = simnet.callPublicFn(

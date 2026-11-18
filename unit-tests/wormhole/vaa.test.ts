@@ -1,7 +1,7 @@
 import { Cl, ClarityType } from "@stacks/transactions";
 import { expect, describe, beforeEach } from "vitest";
 import { it, fc } from "@fast-check/vitest";
-import { wormhole } from "./helpers";
+import { mineBlock, wormhole } from "./helpers";
 import { ParsedTransactionResult, tx } from "@stacks/clarinet-sdk";
 import { hexToBytes } from "@noble/hashes/utils";
 import { keccak_256 } from "@noble/hashes/sha3";
@@ -369,7 +369,7 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade success`, () => {
       body,
       guardianSet1Keys,
     );
-    let res = simnet.mineBlock([
+    let res = mineBlock([
       tx.callPublicFn(
         WC.CONTRACT_NAME,
         `guardian-set-upgrade`,
@@ -436,7 +436,7 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade success`, () => {
     const uncompressedPublicKey = guardianSet2Keys
       .slice(12)
       .map((g) => Cl.buffer(g.uncompressedPublicKey));
-    let res = simnet.mineBlock([
+    let res = mineBlock([
       tx.callPublicFn(
         WC.CONTRACT_NAME,
         `guardian-set-upgrade`,
@@ -812,7 +812,7 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade index check`, () => {
       Cl.buffer(g.uncompressedPublicKey),
     );
 
-    const res = simnet.mineBlock([
+    const res = mineBlock([
       tx.callPublicFn(
         WC.CONTRACT_NAME,
         "guardian-set-upgrade",
@@ -855,7 +855,7 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade empty set`, () => {
     });
     const vaa = wormhole.serializeVaaToBuffer(header, body);
 
-    const res = simnet.mineBlock([
+    const res = mineBlock([
       tx.callPublicFn(
         WC.CONTRACT_NAME,
         "guardian-set-upgrade",
@@ -904,7 +904,7 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade overlay`, () => {
       Cl.buffer(g.uncompressedPublicKey),
     );
 
-    const res = simnet.mineBlock([
+    const res = mineBlock([
       tx.callPublicFn(
         WC.CONTRACT_NAME,
         "guardian-set-upgrade",
@@ -947,7 +947,7 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade with broadcast chain`, () =>
       Cl.buffer(g.uncompressedPublicKey),
     );
 
-    const res = simnet.mineBlock([
+    const res = mineBlock([
       tx.callPublicFn(
         WC.CONTRACT_NAME,
         "guardian-set-upgrade",
@@ -1028,7 +1028,7 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade with old guardian set`, () =
       Cl.buffer(g.uncompressedPublicKey),
     );
 
-    const res = simnet.mineBlock([
+    const res = mineBlock([
       tx.callPublicFn(
         WC.CONTRACT_NAME,
         "guardian-set-upgrade",

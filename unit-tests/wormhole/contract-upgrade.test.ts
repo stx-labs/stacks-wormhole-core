@@ -1,7 +1,7 @@
 import { Cl, ClarityType } from "@stacks/transactions";
 import { expect, describe, beforeEach } from "vitest";
 import { it } from "@fast-check/vitest";
-import { wormhole } from "./helpers";
+import { mineBlock, wormhole } from "./helpers";
 import { tx } from "@stacks/clarinet-sdk";
 import { hexToBytes } from "@noble/hashes/utils";
 import {
@@ -269,7 +269,7 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
       null,
       deployer,
     );
-    expect(res.result).toBeBool(true);
+    expect(res.result).toBeOk(Cl.bool(true));
 
     // Construct and send ContractUpgrade VAA
     const payload = wormhole.serializeContractUpgradeVaaPayloadToBuffer(
@@ -416,7 +416,7 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
       null,
       deployer,
     );
-    expect(res.result).toBeBool(true);
+    expect(res.result).toBeOk(Cl.bool(true));
 
     // Construct and send ContractUpgrade VAA
     const payload = wormhole.serializeContractUpgradeVaaPayloadToBuffer(
@@ -477,7 +477,7 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
       null,
       deployer,
     );
-    expect(res.result).toBeBool(true);
+    expect(res.result).toBeOk(Cl.bool(true));
 
     // Construct and send ContractUpgrade VAA
     const payload = wormhole.serializeContractUpgradeVaaPayloadToBuffer(
@@ -700,7 +700,7 @@ describe(`${WC.CONTRACT_NAME}::operations blocked after contract upgrade`, () =>
       null,
       deployer,
     );
-    expect(res.result).toBeBool(true);
+    expect(res.result).toBeOk(Cl.bool(true));
 
     // Send ContractUpgrade VAA
     const payload = wormhole.serializeContractUpgradeVaaPayloadToBuffer(
@@ -824,7 +824,7 @@ describe(`${WC.CONTRACT_NAME}::operations blocked after contract upgrade`, () =>
       Cl.buffer(g.uncompressedPublicKey),
     );
 
-    const res = simnet.mineBlock([
+    const res = mineBlock([
       tx.callPublicFn(
         WC.CONTRACT_NAME,
         "guardian-set-upgrade",

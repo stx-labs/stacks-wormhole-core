@@ -1,5 +1,5 @@
 import { fc } from "@fast-check/vitest";
-import { tx } from "@stacks/clarinet-sdk";
+import { tx, type Tx } from "@stacks/clarinet-sdk";
 import { Cl, ClarityValue } from "@stacks/transactions";
 import { bigintToBuffer } from "../utils/helpers";
 import * as secp from "@noble/secp256k1";
@@ -22,6 +22,15 @@ const initialGovernanceDataSource = {
 
 secp.etc.hmacSha256Sync = (k, ...m) =>
   hmac(sha256, k, secp.etc.concatBytes(...m));
+
+export function mineBlock(transactions: Tx[]) {
+  return simnet.mineBlock(transactions).map((receipt) => {
+    if (receipt.status === "rejected") {
+      throw new Error(receipt.error);
+    }
+    return receipt.execution;
+  });
+}
 
 export namespace wormhole {
   export interface Guardian {
@@ -630,7 +639,7 @@ export namespace wormhole {
     for (let guardian of keychain) {
       uncompressedPublicKey.push(Cl.buffer(guardian.uncompressedPublicKey));
     }
-    let result = simnet.mineBlock([
+    let result = mineBlock([
       tx.callPublicFn(
         contractName,
         `guardian-set-upgrade`,
@@ -648,7 +657,7 @@ export namespace wormhole {
     const vaaRotation1 = Cl.bufferFromHex(gsuMainnetVaas[0].vaa);
     let publicKeysRotation1 = gsuMainnetVaas[0].keys.map(Cl.bufferFromHex);
 
-    const block = simnet.mineBlock([
+    const block = mineBlock([
       tx.callPublicFn(
         contractName,
         "guardian-set-upgrade",
@@ -666,7 +675,7 @@ export namespace wormhole {
     const vaaRotation2 = Cl.bufferFromHex(gsuMainnetVaas[1].vaa);
     let publicKeysRotation2 = gsuMainnetVaas[1].keys.map(Cl.bufferFromHex);
 
-    const block = simnet.mineBlock([
+    const block = mineBlock([
       tx.callPublicFn(
         contractName,
         "guardian-set-upgrade",

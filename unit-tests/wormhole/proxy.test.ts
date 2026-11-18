@@ -31,7 +31,7 @@ describe(`${WCP.CONTRACT_NAME}::proxy with wrong contract`, () => {
       null,
       deployer,
     );
-    expect(deployRes.result).toBeBool(true);
+    expect(deployRes.result).toBeOk(Cl.bool(true));
 
     const fakeContractPrincipal = `${deployer}.${fakeContractName}`;
     const payload = Cl.buffer(new Uint8Array(32));
