@@ -287,7 +287,7 @@
 ;;
 ;; NOTE: In future versions of this contract, `export-state` may require newer version of `export-trait` than `import-state`
 (define-public (export-state)
-  (let ((active (try! (check-active-deployment)))
+  (let ((active_ (try! (check-active-deployment)))
         (stx-balance (stx-get-balance current-contract))
         (caller contract-caller)
         (caller-parts (unwrap! (principal-destruct? caller) ERR_UPG_CHECK_CONTRACT_ADDRESS))
@@ -600,8 +600,8 @@
 ;; @desc Used by NTT contracts to send messages in a protocol-agnostic way
 (define-public (protocol-agnostic-send
     (payload-64000 (buff 64000))
-    (unused1 (optional (string-ascii 20)))
-    (unused2 (optional (string-ascii 128)))
+    (unused1_ (optional (string-ascii 20)))
+    (unused2_ (optional (string-ascii 128)))
     (nonce-opt (optional uint))
     (consistency-level-opt (optional uint)))
   (let ((payload (unwrap! (as-max-len? payload-64000 u8192) ERR_PAS_PAYLOAD_LEN))
@@ -630,14 +630,14 @@
 ;;
 ;; @param vaa-bytes: VAA as raw bytes
 (define-private (parse-vaa (vaa-bytes (buff 8192)))
-  (let ((active (try! (check-active-deployment)))
+  (let ((active_ (try! (check-active-deployment)))
         (version (unwrap! (read-uint-8 vaa-bytes u0)
           ERR_VAA_PARSING_VERSION))
         (guardian-set-id (unwrap! (read-uint-32 vaa-bytes u1)
           ERR_VAA_PARSING_GUARDIAN_SET_ID))
         (signatures-len (unwrap! (read-uint-8 vaa-bytes u5)
           ERR_VAA_PARSING_SIGNATURES_LEN))
-        (check-signatures-len (asserts! (<= signatures-len GOV_MAX_GUARDIANS)
+        (check-signatures-len_ (asserts! (<= signatures-len GOV_MAX_GUARDIANS)
           ERR_GOV_MAX_GUARDIANS_EXCEEDED))
         (result-signatures (fold batch-read-signatures
           EMPTY_LIST_MAX_GUARDIANS
@@ -878,7 +878,7 @@
 
 ;; @desc Foldable function parsing a sequence of bytes into a list of { guardian-id: u8, signature: (buff 65) }
 (define-private (batch-read-signatures
-      (entry uint)
+      (entry_ uint)
       (acc { bytes: (buff 8192), iter: uint, value: (list 30 { guardian-id: uint, signature: (buff 65) })}))
   (if (is-eq (get iter acc) u0)
     acc
@@ -923,7 +923,7 @@
           ERR_GSU_PARSING_INDEX))
         (guardians-count (unwrap! (read-uint-8 gov-payload u4)
           ERR_GSU_PARSING_GUARDIAN_LEN))
-        (check-guardians-count (asserts! (<= guardians-count GOV_MAX_GUARDIANS)
+        (check-guardians-count_ (asserts! (<= guardians-count GOV_MAX_GUARDIANS)
           ERR_GOV_MAX_GUARDIANS_EXCEEDED))
         (guardians-len (* guardians-count GUARDIAN_ETH_ADDRESS_SIZE))
         (guardians-bytes (unwrap! (read-buff-8192-max gov-payload u5 (some guardians-len))
@@ -945,7 +945,7 @@
 (define-private (get-quorum (guardian-set-size uint))
   (+ (/ (* guardian-set-size u2) u3) u1))
 
-(define-private (is-guardian-cue (byte (buff 1)) (acc { cursor: uint, result: (list 30 uint) }))
+(define-private (is-guardian-cue (byte_ (buff 1)) (acc { cursor: uint, result: (list 30 uint) }))
   (if (is-eq u0 (mod (get cursor acc) GUARDIAN_ETH_ADDRESS_SIZE))
     {
       cursor: (+ u1 (get cursor acc)),
@@ -1065,9 +1065,8 @@
 ;;       See those functions for further details
 ;;       Those functions will set and/or check `emitter`, this one assumes `emiiter` is valid
 (define-private (inner-post-message (payload (buff 8192)) (nonce uint) (consistency-level-opt (optional uint)) (emitter principal))
-  (let ((active (try! (check-active-deployment)))
-        (consistency-level (default-to DEFAULT_CONSISTENCY_LEVEL consistency-level-opt))
-        (fee (var-get message-fee)))
+  (let ((active_ (try! (check-active-deployment)))
+        (consistency-level (default-to DEFAULT_CONSISTENCY_LEVEL consistency-level-opt)))
     ;; `consistency-level` must fit into `u8` type
     (asserts! (<= consistency-level MAX_VALUE_U8) ERR_POST_OVERFLOW_CONSISTENCY_LEVEL)
     ;; `nonce` must fit into `u32` type
