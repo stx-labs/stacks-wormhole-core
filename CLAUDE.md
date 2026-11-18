@@ -22,7 +22,7 @@ There is no separate build step. Clarity contracts are compiled and deployed int
 ### Contract Layer (Clarity 6, Epoch 4.0)
 
 **Permanent state contract (never upgraded):**
-- `wormhole-core-state.clar` — Stores guardian sets, emitter sequences, consumed governance VAAs, and a key/value store. Only the active core contract (tracked via ownership) can write. Uses 2-step ownership transfer for upgrades.
+- `wormhole-core-state.clar` — Stores ordered guardian Ethereum addresses by set ID, emitter sequences, consumed governance VAAs, and a key/value store. Only the active core contract (tracked via ownership) can write. Uses 2-step ownership transfer for upgrades.
 
 **Upgradeable core contract:**
 - `wormhole-core-v4.clar` — Main logic: VAA parsing/verification, guardian set upgrades, message posting, fee management, contract upgrades via governance VAAs. Has a deployment state machine: UNINITIALIZED → ACTIVE → DEPRECATED.
@@ -42,7 +42,7 @@ There is no separate build step. Clarity contracts are compiled and deployed int
 ### Key Design Patterns
 
 - **Upgradeable core + permanent state:** New core contract versions are deployed, state is exported/imported, and ownership is transferred in the state contract. The state contract itself is never replaced.
-- **Governance via VAA:** All administrative operations (guardian set updates, fee changes, upgrades) require signed VAAs from the guardian network.
+- **Governance via VAA:** The deployer bootstraps the first guardian set from a VAA. Subsequent guardian rotations, fee changes, and upgrades require a VAA signed by a quorum of the current set.
 - **Wormhole chain ID for Stacks:** `0x003c` (60 decimal).
 
 ## Test Structure

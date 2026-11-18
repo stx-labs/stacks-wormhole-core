@@ -808,7 +808,7 @@
       }
     }))))
 
-;; @desc Foldable function admitting an guardian input and their signature as an input, producing a record { recovered-compressed-public-key }
+;; Recover each signer's compressed key and retain its guardian index for address verification.
 (define-private (batch-recover-public-keys
       (entry { guardian-id: uint, signature: (buff 65) })
       (acc { message-hash: (buff 32), value: (list 30 { recovered-compressed-public-key: (buff 33), guardian-id: uint }) }))

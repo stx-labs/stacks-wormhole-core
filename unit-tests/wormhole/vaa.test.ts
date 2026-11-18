@@ -355,7 +355,7 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade success`, () => {
     ).result;
     expect(res).toBeOk(guardianSet2);
 
-    // Verify v4 populated `guardian-set-addrs` for set 2 as well as set 1
+    // Both sets remain available by ID after rotation.
     expectGuardianSetAddrs(
       1,
       guardianSet1Keys.map((g) => g.ethereumAddress),
@@ -398,7 +398,6 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade success`, () => {
 
 describe(`${WC.CONTRACT_NAME}::parse-and-verify-vaa success`, () => {
   const guardianSet1Keys = wormhole.generateGuardianSetKeychain(19);
-  // const guardianSet2Keys = wormhole.generateGuardianSetKeychain(19);
 
   // Before starting the test suite, we have to setup the guardian set.
   beforeEach(async () => {
