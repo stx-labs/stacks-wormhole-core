@@ -210,9 +210,6 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
           "guardians-eth-addresses": Cl.list(
             keychain.map((g) => Cl.buffer(g.ethereumAddress)),
           ),
-          "guardians-public-keys": Cl.list(
-            keychain.map((g) => Cl.buffer(g.uncompressedPublicKey)),
-          ),
         }),
         vaa: serializeVaaToClarityValue,
       }),
@@ -605,14 +602,11 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade with old guardian set`, () => {
       guardianSetId: 1,
     });
     const vaa = wormhole.serializeVaaToBuffer(header, body);
-    const uncompressedPublicKey = guardianSet2Keys.map((g) =>
-      Cl.buffer(g.uncompressedPublicKey),
-    );
     simnet.mineBlock([
       tx.callPublicFn(
         WC.CONTRACT_NAME,
         "guardian-set-upgrade",
-        [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
+        [Cl.buffer(Uint8Array.from(vaa))],
         sender,
       ),
     ]);
@@ -820,15 +814,12 @@ describe(`${WC.CONTRACT_NAME}::operations blocked after contract upgrade`, () =>
       guardianSetId: 1,
     });
     const vaa = wormhole.serializeVaaToBuffer(header, body);
-    const uncompressedPublicKey = newKeychain.map((g) =>
-      Cl.buffer(g.uncompressedPublicKey),
-    );
 
     const res = mineBlock([
       tx.callPublicFn(
         WC.CONTRACT_NAME,
         "guardian-set-upgrade",
-        [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
+        [Cl.buffer(Uint8Array.from(vaa))],
         sender,
       ),
     ])[0].result;

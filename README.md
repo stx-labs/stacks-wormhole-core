@@ -42,7 +42,7 @@ Rather, it implements the Wormhole protocol, managing Wormhole governance and pr
 The scope of this contract is outlined [here](https://wormhole.com/docs/learn/infrastructure/core-contracts/), and includes:
 
 - Setting list of up to 30 (currently 19) Wormhole Guardians that can sign VAAs (Verifiable Action Approval)
-- Parsing and validating VAAs against Guardian's public keys
+- Verifying VAA signatures against the guardian set’s ordered Ethereum addresses
 - Formatting and emmitting event messages for Guardians to observe and send VAAs to other blockchains
 - Collecting and transferring fees for emitting messages
 - Updating the core contract via governance VAA
@@ -60,7 +60,7 @@ If there is no existing Wormhole state (in either the core or state contract) th
 
 1. Deploy **all** contracts in `./contracts`
 2. Call `wormhole-core-v4::initialize` with argument `(none)`
-3. Relayer must pass GuardianSetUpgrade VAA to `guardian-set-upgrade` to set the initial Guardian Set
+3. The deployer calls `guardian-set-upgrade` with the initial GuardianSetUpgrade VAA as its sole argument. The contract stores the 20-byte Ethereum addresses in payload order. For subsequent rotations, anyone can submit an update VAA signed by a quorum of the current set.
 
 ### Future Updates
 

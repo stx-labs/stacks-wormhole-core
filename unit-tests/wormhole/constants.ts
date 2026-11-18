@@ -43,7 +43,6 @@ export class WormholeCore {
   static readonly ERR_GSU_PARSING_INDEX = 1201;
   static readonly ERR_GSU_PARSING_GUARDIAN_LEN = 1202;
   static readonly ERR_GSU_PARSING_GUARDIANS_BYTES = 1203;
-  static readonly ERR_GSU_UNCOMPRESSED_PUBLIC_KEYS = 1204;
 
   static readonly ERR_GSU_CHECK_INDEX = 1301;
   static readonly ERR_GSU_CHECK_CALLER = 1302;

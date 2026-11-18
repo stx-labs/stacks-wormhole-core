@@ -6,7 +6,7 @@
     ;; Handle governance action #1: ContractUpgrade
     (contract-upgrade ((buff 8192)) (response (buff 32) uint))
     ;; Handle governance action #2: GuardianSetUpgrade
-    (guardian-set-upgrade ((buff 8192) (list 30 (buff 64))) (response {
+    (guardian-set-upgrade ((buff 8192)) (response {
       vaa: {
         version: uint,
         guardian-set-id: uint,
@@ -21,8 +21,7 @@
         payload: (buff 8192),
       },
       result: {
-        guardians-eth-addresses: (list 30 (buff 64)),
-        guardians-public-keys: (list 30 (buff 64))
+        guardians-eth-addresses: (list 30 (buff 20))
       }
     } uint))
     ;; Handle governance action #3: SetMessageFee

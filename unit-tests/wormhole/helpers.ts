@@ -37,7 +37,6 @@ export namespace wormhole {
     guardianId: number;
     secretKey: Uint8Array;
     compressedPublicKey: Uint8Array;
-    uncompressedPublicKey: Uint8Array;
     ethereumAddress: Uint8Array;
   }
 
@@ -52,7 +51,6 @@ export namespace wormhole {
       keychain.push({
         guardianId: i,
         secretKey,
-        uncompressedPublicKey,
         ethereumAddress,
         compressedPublicKey: secp.getPublicKey(secretKey, true),
       });
@@ -635,15 +633,11 @@ export namespace wormhole {
       guardianSetId: previousGuardianSetId,
     });
     let vaa = wormhole.serializeVaaToBuffer(vaaHeader, vaaBody);
-    let uncompressedPublicKey = [];
-    for (let guardian of keychain) {
-      uncompressedPublicKey.push(Cl.buffer(guardian.uncompressedPublicKey));
-    }
     let result = mineBlock([
       tx.callPublicFn(
         contractName,
         `guardian-set-upgrade`,
-        [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
+        [Cl.buffer(Uint8Array.from(vaa))],
         txSenderAddress,
       ),
     ])[0].result;
@@ -655,13 +649,12 @@ export namespace wormhole {
     contractName: string,
   ) {
     const vaaRotation1 = Cl.bufferFromHex(gsuMainnetVaas[0].vaa);
-    let publicKeysRotation1 = gsuMainnetVaas[0].keys.map(Cl.bufferFromHex);
 
     const block = mineBlock([
       tx.callPublicFn(
         contractName,
         "guardian-set-upgrade",
-        [vaaRotation1, Cl.list(publicKeysRotation1)],
+        [vaaRotation1],
         txSenderAddress,
       ),
     ]);
@@ -673,13 +666,12 @@ export namespace wormhole {
     contractName: string,
   ) {
     const vaaRotation2 = Cl.bufferFromHex(gsuMainnetVaas[1].vaa);
-    let publicKeysRotation2 = gsuMainnetVaas[1].keys.map(Cl.bufferFromHex);
 
     const block = mineBlock([
       tx.callPublicFn(
         contractName,
         "guardian-set-upgrade",
-        [vaaRotation2, Cl.list(publicKeysRotation2)],
+        [vaaRotation2],
         txSenderAddress,
       ),
     ]);

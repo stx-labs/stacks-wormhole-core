@@ -70,8 +70,6 @@
 (define-constant ERR_GSU_PARSING_GUARDIAN_LEN (err u1202))
 ;; Guardian Set Upgrade: guardians payload is malformed
 (define-constant ERR_GSU_PARSING_GUARDIANS_BYTES (err u1203))
-;; Guardian Set Upgrade: error parsing pubkeys
-(define-constant ERR_GSU_UNCOMPRESSED_PUBLIC_KEYS (err u1204))
 
 ;; Guardian Set Upgrade: new index invalid
 (define-constant ERR_GSU_CHECK_INDEX (err u1301))
@@ -317,17 +315,15 @@
           (guardian-set-id (get guardian-set-id (get vaa message))))
       ;; Ensure that the guardian-set-id is the active one or unexpired previous one
       (asserts! (try! (is-valid-guardian-set guardian-set-id)) ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY)
-      (let ((active-guardians (unwrap! (contract-call? .wormhole-core-state guardian-set-keys-get guardian-set-id) ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY))
-            (signatures-from-active-guardians (fold batch-check-active-public-keys (get recovered-public-keys message)
-              {
-                  active-guardians: active-guardians,
-                  result: (list)
-              })))
+      (let ((active-guardians (unwrap! (contract-call? .wormhole-core-state guardian-set-addrs-get guardian-set-id) ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY))
+            (verified (unwrap! (fold check-guardian-signature (get recovered-public-keys message)
+              (some { guardians: active-guardians, signers: (list) }))
+              ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY)))
         ;; Ensure that version is supported (v1 only)
         (asserts! (is-eq (get version (get vaa message)) u1)
           ERR_VAA_CHECKS_VERSION_UNSUPPORTED)
-        ;; Ensure that the count of valid signatures is >= 13
-        (asserts! (>= (len (get result signatures-from-active-guardians)) (get-quorum (len active-guardians)))
+        ;; Count each guardian only once toward quorum
+        (asserts! (>= (len (get signers verified)) (get-quorum (len active-guardians)))
           ERR_VAA_CHECKS_THRESHOLD_SIGNATURE)
         ;; Good to go!
         (ok {
@@ -337,10 +333,7 @@
 
 ;; @desc Update the active set of guardians
 ;; @param guardian-set-vaa: VAA embedding the Guardian Set Update information
-;; @param uncompressed-public-keys: uncompressed public keys, used for recomputing
-;; the addresses embedded in the VAA. `secp256k1-verify` returns a compressed
-;; public key, and uncompressing the key in clarity would be inefficient and expensive.
-(define-public (guardian-set-upgrade (guardian-set-vaa (buff 8192)) (uncompressed-public-keys (list 30 (buff 64))))
+(define-public (guardian-set-upgrade (guardian-set-vaa (buff 8192)))
   (let ((active-set-id (var-get active-guardian-set-id))
         (message (match active-set-id
           ;; We have a guardian set, so check VAA signatures
@@ -357,20 +350,11 @@
         (governance-message (try! (parse-and-verify-guardian-set-upgrade (get payload vaa))))
         (guardians-message (get payload governance-message))
         (new-set-id (get new-index guardians-message))
-        (eth-addresses (get guardians-eth-addresses guardians-message))
-        (consolidated-public-keys (fold check-and-consolidate-public-keys
-          uncompressed-public-keys
-          { cursor: u0, eth-addresses: eth-addresses, result: (list) }))
-        (result (get result consolidated-public-keys)))
-
-    ;; Ensure that enough uncompressed-public-keys were provided
-    (try! (fold is-valid-guardian-entry result (ok true)))
-    (asserts! (is-eq (len uncompressed-public-keys) (len eth-addresses))
-      ERR_GSU_UNCOMPRESSED_PUBLIC_KEYS)
+        (eth-addresses (get guardians-eth-addresses guardians-message)))
     ;; Check emitting address and chain
     (try! (check-emitter (get emitter-address vaa) (get emitter-chain vaa)))
     ;; ensure guardian set has atleast one member
-    (asserts! (>= (len result) u1) ERR_GSU_EMPTY_GUARDIAN_SET)
+    (asserts! (>= (len eth-addresses) u1) ERR_GSU_EMPTY_GUARDIAN_SET)
     ;; Replay protection for Governance VAAs.
     ;; Theoretically, the increasing Guardian Set index should be sufficient for protection. 
     (try! (contract-call? PRINCIPAL_STATE_CONTRACT consume-governance-vaa hash))
@@ -381,8 +365,6 @@
       id (asserts! (is-eq new-set-id (+ u1 id)) ERR_GSU_CHECK_INDEX)
       ;; Initial guardian set, allow any value
       true)
-    (try! (contract-call? PRINCIPAL_STATE_CONTRACT guardian-set-keys-set new-set-id result))
-    ;; Stored for future core versions; not used here
     (try! (contract-call? PRINCIPAL_STATE_CONTRACT guardian-set-addrs-set new-set-id eth-addresses))
     (try! (set-new-guardian-set-id new-set-id))
     ;; Emit Event
@@ -394,21 +376,19 @@
         id: new-set-id,
         guardians: {
           eth-addresses: eth-addresses,
-          public-keys: uncompressed-public-keys,
         }
       }
     })
     (ok {
       vaa: vaa,
       result: {
-        guardians-eth-addresses: eth-addresses,
-        guardians-public-keys: uncompressed-public-keys
+        guardians-eth-addresses: eth-addresses
       }
     })))
 
 (define-read-only (get-active-guardian-set)
   (let ((set-id (unwrap! (var-get active-guardian-set-id) ERR_NO_GUARDIAN_SET))
-        (guardians (unwrap! (contract-call? .wormhole-core-state guardian-set-keys-get set-id) ERR_NO_GUARDIANS)))
+        (guardians (unwrap! (contract-call? .wormhole-core-state guardian-set-addrs-get set-id) ERR_NO_GUARDIANS)))
     (ok {
       set-id: set-id,
       guardians: guardians
@@ -828,25 +808,6 @@
       }
     }))))
 
-;; @desc Foldable function admitting an uncompressed 64 bytes public key as an input, producing a record { uncompressed-public-key, compressed-public-key }
-(define-private (check-and-consolidate-public-keys
-      (uncompressed-public-key (buff 64))
-      (acc {
-        cursor: uint,
-        eth-addresses: (list 30 (buff 20)),
-        result: (list 30 { compressed-public-key: (buff 33), uncompressed-public-key: (buff 64)})
-      }))
-  (let ((eth-address (unwrap-panic (element-at? (get eth-addresses acc) (get cursor acc))))
-        (compressed-public-key (compress-public-key uncompressed-public-key))
-        (entry (if (is-eth-address-matching-public-key uncompressed-public-key eth-address)
-            { compressed-public-key: compressed-public-key, uncompressed-public-key: uncompressed-public-key }
-            { compressed-public-key: 0x, uncompressed-public-key: 0x })))
-    {
-      cursor: (+ u1 (get cursor acc)),
-      eth-addresses: (get eth-addresses acc),
-      result: (unwrap-panic (as-max-len? (append (get result acc) entry) u30)),
-    }))
-
 ;; @desc Foldable function admitting an guardian input and their signature as an input, producing a record { recovered-compressed-public-key }
 (define-private (batch-recover-public-keys
       (entry { guardian-id: uint, signature: (buff 65) })
@@ -860,24 +821,21 @@
       value: (unwrap-panic (as-max-len? updated-public-keys u30))
     }))
 
-;; @desc Foldable function evaluating signatures from a list of { guardian-id: u8, signature: (buff 65) }, returning a list of recovered public-keys
-;;
-;; NOTE: Since ECDSA signatures are malleable (both the high-s and low-s variants are valid), we need to check for unique public keys, not unique signatures
-(define-private (batch-check-active-public-keys
+(define-private (check-guardian-signature
       (entry { recovered-compressed-public-key: (buff 33), guardian-id: uint })
-      (acc {
-        active-guardians: (list 30 { compressed-public-key: (buff 33), uncompressed-public-key: (buff 64) }),
-        result: (list 30 (buff 33))
-      }))
-   (let ((compressed-public-key (get compressed-public-key (unwrap-panic (element-at? (get active-guardians acc) (get guardian-id entry))))))
-     (if (and
-            (is-eq (get recovered-compressed-public-key entry) compressed-public-key)
-            (is-none (index-of? (get result acc) (get recovered-compressed-public-key entry))))
-          {
-            result: (unwrap-panic (as-max-len? (append (get result acc) (get recovered-compressed-public-key entry)) u30)),
-            active-guardians: (get active-guardians acc)
-          }
-          acc)))
+      (acc (optional { guardians: (list 30 (buff 20)), signers: (list 30 (buff 20)) })))
+  (let ((state (unwrap! acc none))
+        (expected (unwrap! (element-at? (get guardians state) (get guardian-id entry)) none))
+        (key (unwrap! (secp256k1-decompress? (get recovered-compressed-public-key entry)) acc))
+        ;; Ethereum hashes the 64 coordinate bytes, excluding the 0x04 prefix.
+        (coordinates (unwrap! (slice? key u1 u65) acc))
+        (address (slice? (keccak256 coordinates) u12 u32)))
+    (if (and (is-eq address (some expected)) (is-none (index-of? (get signers state) expected)))
+      (some {
+        guardians: (get guardians state),
+        signers: (unwrap! (as-max-len? (append (get signers state) expected) u30) none)
+      })
+      acc)))
 
 ;; @desc Foldable function parsing a sequence of bytes into a list of { guardian-id: u8, signature: (buff 65) }
 (define-private (batch-read-signatures
@@ -894,17 +852,6 @@
         value:
           (unwrap-panic (as-max-len? (append (get value acc) { guardian-id: guardian-id, signature: signature }) u30))
       })))
-
-;; @desc Convert an uncompressed public key (64 bytes) into a compressed public key (33 bytes)
-(define-private (compress-public-key (uncompressed-public-key (buff 64)))
-  (if (is-eq 0x uncompressed-public-key)
-    0x
-    (let ((x-coordinate (unwrap-panic (slice? uncompressed-public-key u0 u32)))
-          (y-coordinate-parity (buff-to-uint-be (unwrap-panic (element-at? uncompressed-public-key u63)))))
-      (unwrap-panic (as-max-len? (concat (if (is-eq (mod y-coordinate-parity u2) u0) 0x02 0x03) x-coordinate) u33)))))
-
-(define-private (is-eth-address-matching-public-key (uncompressed-public-key (buff 64)) (eth-address (buff 20)))
-  (is-eq (unwrap-panic (slice? (keccak256 uncompressed-public-key) u12 u32)) eth-address))
 
 (define-private (parse-guardian (cue-position uint) (acc { bytes: (buff 8192), result: (list 30 (buff 20))}))
   (let (
@@ -958,20 +905,6 @@
       cursor: (+ u1 (get cursor acc)),
       result: (get result acc),
     }))
-
-(define-private (is-valid-guardian-entry (entry { compressed-public-key: (buff 33), uncompressed-public-key: (buff 64)}) (prev-res (response bool uint)))
-  (begin
-    (try! prev-res)
-    (let (
-      (compressed (get compressed-public-key entry))
-      (uncompressed (get uncompressed-public-key entry)))
-      (if (or (is-eq 0x compressed) (is-eq 0x uncompressed))
-        ERR_GSU_PARSING_GUARDIAN_LEN
-        (ok true)
-      )
-    )
-  )
-)
 
 (define-private (get-latest-stacks-timestamp)
   (ok (unwrap! (get-stacks-block-info? time (- stacks-block-height u1)) ERR_STACKS_TIMESTAMP)))

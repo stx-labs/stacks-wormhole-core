@@ -55,17 +55,7 @@
 ;; Map tracking consumed governance VAA hashes to prevent replay attacks
 (define-map consumed-governance-vaa-hashes (buff 32) bool)
 
-;; Map tracking guardian set public keys
-;; To be deprecated once `secp256k1-decompress?` is available in Clarity (see `guardian-set-addrs`)
-(define-map guardian-set-keys
-  uint         ;; Guardian set ID
-  (list 30 {   ;; Max Guardian set size is 30
-    compressed-public-key: (buff 33),
-    uncompressed-public-key: (buff 64)
-  }))
-
-;; Map tracking guardian set ETH addresses
-;; Stored separately from `guardian-set-keys` so future core versions can stop writing pubkeys
+;; Guardian ETH addresses in VAA signer-index order
 (define-map guardian-set-addrs
   uint                  ;; Guardian set ID
   (list 30 (buff 20)))  ;; ETH addresses (20 bytes) for 30 guardians max
@@ -173,16 +163,6 @@
     (try! (check-caller-is-owner))
     (ok (map-set kv-store key value))))
 
-;; @desc Set guardian set public keys
-;;       Does not check if index already exists, that is responsibility of core contract
-;;       If no error, returns `(ok bool)` with the result of `map-set`
-;; @param set-id: Guardian set ID
-;; @param guardian-set: List of Guardian pubkeys (compressed + uncompressed)
-(define-public (guardian-set-keys-set (set-id uint) (guardian-set (list 30 { compressed-public-key: (buff 33), uncompressed-public-key: (buff 64) })))
-  (begin
-    (try! (check-caller-is-owner))
-    (ok (map-set guardian-set-keys set-id guardian-set))))
-
 ;; @desc Set guardian set ETH addresses
 ;;       Does not check if index already exists, that is responsibility of core contract
 ;;       If no error, returns `(ok bool)` with the result of `map-set`
@@ -248,9 +228,6 @@
 
 (define-read-only (kv-store-get (key (string-ascii 32)))
   (map-get? kv-store key))
-
-(define-read-only (guardian-set-keys-get (set-id uint))
-  (map-get? guardian-set-keys set-id))
 
 (define-read-only (guardian-set-addrs-get (set-id uint))
   (map-get? guardian-set-addrs set-id))
