@@ -19,7 +19,7 @@ There is no separate build step. Clarity contracts are compiled and deployed int
 
 ## Architecture
 
-### Contract Layer (Clarity 4, Epoch 3.3)
+### Contract Layer (Clarity 5, Epoch 3.4)
 
 **Permanent state contract (never upgraded):**
 - `wormhole-core-state.clar` — Stores guardian sets, emitter sequences, consumed governance VAAs, and a key/value store. Only the active core contract (tracked via ownership) can write. Uses 2-step ownership transfer for upgrades.

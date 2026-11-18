@@ -73,40 +73,40 @@ plan:
       contract-name: addr32
       emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
       path: contracts/addr32.clar
-      clarity-version: 4
+      clarity-version: 5
     - transaction-type: emulated-contract-publish
       contract-name: protocol-send-trait-v1
       emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
       path: contracts/protocol-send-trait-v1.clar
-      clarity-version: 4
+      clarity-version: 5
     - transaction-type: emulated-contract-publish
       contract-name: wormhole-core-state
       emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
       path: contracts/wormhole-core-state.clar
-      clarity-version: 4
+      clarity-version: 5
     - transaction-type: emulated-contract-publish
       contract-name: wormhole-trait-core-v2
       emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
       path: contracts/wormhole-trait-core-v2.clar
-      clarity-version: 4
+      clarity-version: 5
     - transaction-type: emulated-contract-publish
       contract-name: wormhole-core-proxy-v2
       emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
       path: contracts/wormhole-core-proxy-v2.clar
-      clarity-version: 4
+      clarity-version: 5
     - transaction-type: emulated-contract-publish
       contract-name: wormhole-trait-export-v1
       emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
       path: contracts/wormhole-trait-export-v1.clar
-      clarity-version: 4
+      clarity-version: 5
     - transaction-type: emulated-contract-publish
       contract-name: wormhole-trait-governance-v1
       emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
       path: contracts/wormhole-trait-governance-v1.clar
-      clarity-version: 4
+      clarity-version: 5
     - transaction-type: emulated-contract-publish
       contract-name: wormhole-core-v4
       emulated-sender: ST1PQHQKV0RJXZFY1DGX8MNSNYVE3VGZJSRTPGZGM
       path: contracts/wormhole-core-v4.clar
-      clarity-version: 4
-    epoch: "3.3"
+      clarity-version: 5
+    epoch: "3.4"
