@@ -198,10 +198,9 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
       deployer,
       WC.CONTRACT_NAME,
     );
-    let [serializeVaaToClarityValue, _] = wormhole.serializeVaaToClarityValue(
+    const decodedVaa = wormhole.serializeVaaToClarityValue(
       vaaHeader as wormhole.VaaHeader,
       vaaBody as wormhole.VaaBody,
-      keychain,
     );
 
     expect(result).toBeOk(
@@ -211,7 +210,7 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade`, () => {
             keychain.map((g) => Cl.buffer(g.ethereumAddress)),
           ),
         }),
-        vaa: serializeVaaToClarityValue,
+        vaa: decodedVaa,
       }),
     );
 

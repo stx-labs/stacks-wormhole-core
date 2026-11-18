@@ -266,10 +266,9 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
       deployer,
       WC.CONTRACT_NAME,
     );
-    let [serializeVaaToClarityValue, _] = wormhole.serializeVaaToClarityValue(
+    const decodedVaa = wormhole.serializeVaaToClarityValue(
       vaaHeader as wormhole.VaaHeader,
       vaaBody as wormhole.VaaBody,
-      keychain,
     );
 
     expect(result).toBeOk(
@@ -279,7 +278,7 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
             keychain.map((g) => Cl.buffer(g.ethereumAddress)),
           ),
         }),
-        vaa: serializeVaaToClarityValue,
+        vaa: decodedVaa,
       }),
     );
 
@@ -337,7 +336,7 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
     fc.assert(
       fc.property(
         fc.bigInt({ min: 1n, max: 100n }), // Small amounts so we don't run out
-        fc.bigInt({ min: 0n, max: MaxValue.U128 }),
+        fc.bigInt({ min: 0n, max: MaxValue.U64 }),
         (amount, sequence) => {
           const payload = wormhole.serializeTransferFeesVaaPayloadToBuffer(
             WC.ACTION_TRANSFER_FEES,

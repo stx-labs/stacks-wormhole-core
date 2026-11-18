@@ -36,7 +36,6 @@ export namespace wormhole {
   export interface Guardian {
     guardianId: number;
     secretKey: Uint8Array;
-    compressedPublicKey: Uint8Array;
     ethereumAddress: Uint8Array;
   }
 
@@ -52,7 +51,6 @@ export namespace wormhole {
         guardianId: i,
         secretKey,
         ethereumAddress,
-        compressedPublicKey: secp.getPublicKey(secretKey, true),
       });
     }
     return keychain;
@@ -283,31 +281,14 @@ export namespace wormhole {
   export const serializeVaaToClarityValue = (
     header: VaaHeader,
     body: VaaBody,
-    keychain: Guardian[],
-  ): [ClarityValue, any[]] => {
-    let guardiansPublicKeys = [];
-    let guardiansSignatures = [];
-    for (let i = 0; i < header.signatures.length; i++) {
-      let guardianId = header.signatures[i][0];
-      if (keychain.length > i) {
-        let guardian = keychain[i];
-        guardiansPublicKeys.push(
-          Cl.tuple({
-            "guardian-id": Cl.uint(guardianId),
-            "recovered-compressed-public-key": Cl.buffer(
-              guardian.compressedPublicKey,
-            ),
-          }),
-        );
-      }
-      guardiansSignatures.push(
-        Cl.tuple({
-          "guardian-id": Cl.uint(header.signatures[i].slice(0, 1)),
-          signature: Cl.buffer(header.signatures[i].slice(1, 66)),
-        }),
-      );
-    }
-    let value = Cl.tuple({
+  ): ClarityValue => {
+    const guardiansSignatures = header.signatures.map((signature) =>
+      Cl.tuple({
+        "guardian-id": Cl.uint(signature[0]),
+        signature: Cl.buffer(signature.slice(1, 66)),
+      }),
+    );
+    return Cl.tuple({
       "consistency-level": Cl.uint(body.consistencyLevel),
       version: Cl.uint(header.version),
       "guardian-set-id": Cl.uint(header.guardianSetId),
@@ -320,7 +301,6 @@ export namespace wormhole {
       nonce: Cl.uint(body.nonce),
       payload: Cl.buffer(body.payload),
     });
-    return [value, guardiansPublicKeys];
   };
 
   export interface VaaBodySpec {

@@ -316,8 +316,8 @@
       ;; Ensure that the guardian-set-id is the active one or unexpired previous one
       (asserts! (try! (is-valid-guardian-set guardian-set-id)) ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY)
       (let ((active-guardians (unwrap! (contract-call? .wormhole-core-state guardian-set-addrs-get guardian-set-id) ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY))
-            (verified (unwrap! (fold check-guardian-signature (get recovered-public-keys message)
-              (some { guardians: active-guardians, signers: (list) }))
+            (verified (unwrap! (fold check-guardian-signature (get signatures (get vaa message))
+              (some { guardians: active-guardians, message-hash: (get vaa-body-hash message), signers: (list) }))
               ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY)))
         ;; Ensure that version is supported (v1 only)
         (asserts! (is-eq (get version (get vaa message)) u1)
@@ -326,10 +326,7 @@
         (asserts! (>= (len (get signers verified)) (get-quorum (len active-guardians)))
           ERR_VAA_CHECKS_THRESHOLD_SIGNATURE)
         ;; Good to go!
-        (ok {
-          vaa: (get vaa message),
-          vaa-body-hash: (get vaa-body-hash message)
-        }))))
+        (ok message))))
 
 ;; @desc Update the active set of guardians
 ;; @param guardian-set-vaa: VAA embedding the Guardian Set Update information
@@ -646,11 +643,7 @@
         (consistency-level (unwrap! (read-uint-8 end-signatures u50)
           ERR_VAA_PARSING_CONSISTENCY_LEVEL))
         (payload (unwrap! (read-buff-8192-max end-signatures u51 none)
-          ERR_VAA_PARSING_PAYLOAD))
-        (public-keys-results (fold batch-recover-public-keys signatures {
-          message-hash: vaa-body-hash,
-          value: (list)
-        })))
+          ERR_VAA_PARSING_PAYLOAD)))
     (ok {
         vaa: {
           version: version,
@@ -665,7 +658,6 @@
           consistency-level: consistency-level,
           payload: payload,
         },
-        recovered-public-keys: (get value public-keys-results),
         vaa-body-hash: vaa-body-hash,
     })))
 
@@ -808,33 +800,18 @@
       }
     }))))
 
-;; Recover each signer's compressed key and retain its guardian index for address verification.
-(define-private (batch-recover-public-keys
-      (entry { guardian-id: uint, signature: (buff 65) })
-      (acc { message-hash: (buff 32), value: (list 30 { recovered-compressed-public-key: (buff 33), guardian-id: uint }) }))
-  (let ((recovered-compressed-public-key (secp256k1-recover? (get message-hash acc) (get signature entry)))
-        (updated-public-keys (match recovered-compressed-public-key
-            public-key (append (get value acc) { recovered-compressed-public-key: public-key, guardian-id: (get guardian-id entry) } )
-            error (get value acc))))
-    {
-      message-hash: (get message-hash acc),
-      value: (unwrap-panic (as-max-len? updated-public-keys u30))
-    }))
-
 (define-private (check-guardian-signature
-      (entry { recovered-compressed-public-key: (buff 33), guardian-id: uint })
-      (acc (optional { guardians: (list 30 (buff 20)), signers: (list 30 (buff 20)) })))
+      (entry { guardian-id: uint, signature: (buff 65) })
+      (acc (optional { guardians: (list 30 (buff 20)), message-hash: (buff 32), signers: (list 30 (buff 20)) })))
   (let ((state (unwrap! acc none))
+        (compressed-key (unwrap! (secp256k1-recover? (get message-hash state) (get signature entry)) acc))
         (expected (unwrap! (element-at? (get guardians state) (get guardian-id entry)) none))
-        (key (unwrap! (secp256k1-decompress? (get recovered-compressed-public-key entry)) acc))
+        (key (unwrap! (secp256k1-decompress? compressed-key) acc))
         ;; Ethereum hashes the 64 coordinate bytes, excluding the 0x04 prefix.
         (coordinates (unwrap! (slice? key u1 u65) acc))
         (address (slice? (keccak256 coordinates) u12 u32)))
     (if (and (is-eq address (some expected)) (is-none (index-of? (get signers state) expected)))
-      (some {
-        guardians: (get guardians state),
-        signers: (unwrap! (as-max-len? (append (get signers state) expected) u30) none)
-      })
+      (some (merge state { signers: (unwrap! (as-max-len? (append (get signers state) expected) u30) none) }))
       acc)))
 
 ;; @desc Foldable function parsing a sequence of bytes into a list of { guardian-id: u8, signature: (buff 65) }

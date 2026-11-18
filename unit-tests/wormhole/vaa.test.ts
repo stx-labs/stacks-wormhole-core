@@ -60,8 +60,7 @@ describe(`${WC.CONTRACT_NAME}::parse-vaa success`, () => {
             consolidatedSignatures,
           );
           let vaa = wormhole.serializeVaaToBuffer(header, body);
-          let [decodedVaa, guardiansPublicKeys] =
-            wormhole.serializeVaaToClarityValue(header, body, keychain);
+          const decodedVaa = wormhole.serializeVaaToClarityValue(header, body);
 
           const res = simnet.callPrivateFn(
             WC.CONTRACT_NAME,
@@ -72,7 +71,6 @@ describe(`${WC.CONTRACT_NAME}::parse-vaa success`, () => {
           expect(res.result).toBeOk(
             Cl.tuple({
               vaa: decodedVaa,
-              "recovered-public-keys": Cl.list(guardiansPublicKeys),
               "vaa-body-hash": Cl.buffer(wormhole.hashVaaBody(body)),
             }),
           );
@@ -258,10 +256,9 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade success`, () => {
       deployer,
       WC.CONTRACT_NAME,
     );
-    let [serializeVaaToClarityValue, _] = wormhole.serializeVaaToClarityValue(
+    const decodedVaa = wormhole.serializeVaaToClarityValue(
       vaaHeader as wormhole.VaaHeader,
       vaaBody as wormhole.VaaBody,
-      guardianSet1Keys,
     );
 
     guardianSet1 = Cl.tuple({
@@ -278,7 +275,7 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade success`, () => {
             guardianSet1Keys.map((g) => Cl.buffer(g.ethereumAddress)),
           ),
         }),
-        vaa: serializeVaaToClarityValue,
+        vaa: decodedVaa,
       }),
     );
 
@@ -323,10 +320,9 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade success`, () => {
       guardianSetId: 1,
     });
     const vaa = wormhole.serializeVaaToBuffer(header, body);
-    const [serializeVaaToClarityValue, _] = wormhole.serializeVaaToClarityValue(
+    const decodedVaa = wormhole.serializeVaaToClarityValue(
       header,
       body,
-      guardianSet1Keys,
     );
     let res = mineBlock([
       tx.callPublicFn(
@@ -343,7 +339,7 @@ describe(`${WC.CONTRACT_NAME}::guardian-set-upgrade success`, () => {
             guardianSet2Keys.map((g) => Cl.buffer(g.ethereumAddress)),
           ),
         }),
-        vaa: serializeVaaToClarityValue,
+        vaa: decodedVaa,
       }),
     );
 
@@ -407,10 +403,9 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-vaa success`, () => {
       deployer,
       WC.CONTRACT_NAME,
     );
-    let [serializeVaaToClarityValue, _] = wormhole.serializeVaaToClarityValue(
+    const decodedVaa = wormhole.serializeVaaToClarityValue(
       vaaHeader as wormhole.VaaHeader,
       vaaBody as wormhole.VaaBody,
-      guardianSet1Keys,
     );
 
     expect(result).toBeOk(
@@ -420,56 +415,31 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-vaa success`, () => {
             guardianSet1Keys.map((g) => Cl.buffer(g.ethereumAddress)),
           ),
         }),
-        vaa: serializeVaaToClarityValue,
+        vaa: decodedVaa,
       }),
     );
   });
 
-  it("should succeed if the vaa is valid", () => {
-    let body = wormhole.buildValidVaaBodySpecs({
-      emitter: wormhole.GovernanceUpdateEmitter,
+  it("should ignore an unrecoverable signature when the other guardians reach quorum", () => {
+    const body = wormhole.buildValidVaaBodySpecs({ emitter: wormhole.GovernanceUpdateEmitter });
+    const header = wormhole.buildValidVaaHeader(guardianSet1Keys.slice(0, 14), body, {
+      version: 1,
+      guardianSetId: 1,
     });
-    let headerSpecs = wormhole.buildValidVaaHeaderSpecs(guardianSet1Keys, body);
-
-    fc.assert(
-      fc.property(
-        wormhole.fc_ext.vaaHeader(headerSpecs, 19),
-        ([
-          version,
-          guardianSetIndex,
-          providedSignatures,
-          generatedSignatures,
-        ]) => {
-          let consolidatedSignatures = [
-            ...(providedSignatures as Uint8Array[]),
-            ...(generatedSignatures as Uint8Array[]),
-          ];
-          let header = wormhole.assembleVaaHeader(
-            version,
-            guardianSetIndex,
-            consolidatedSignatures,
-          );
-          let vaa = wormhole.serializeVaaToBuffer(header, body);
-          let [decodedVaa, guardiansPublicKeys] =
-            wormhole.serializeVaaToClarityValue(header, body, guardianSet1Keys);
-
-          const res = simnet.callPrivateFn(
-            WC.CONTRACT_NAME,
-            `parse-vaa`,
-            [Cl.buffer(Uint8Array.from(vaa))],
-            sender,
-          );
-          res.result;
-          expect(res.result).toBeOk(
-            Cl.tuple({
-              vaa: decodedVaa,
-              "recovered-public-keys": Cl.list(guardiansPublicKeys),
-              "vaa-body-hash": Cl.buffer(wormhole.hashVaaBody(body)),
-            }),
-          );
-        },
-      ),
-      { verbose: verbosity },
+    // Preserve guardian 0's index, but give it an invalid signature.
+    header.signatures[0].fill(0, 1);
+    const vaa = wormhole.serializeVaaToBuffer(header, body);
+    const res = simnet.callReadOnlyFn(
+      WC.CONTRACT_NAME,
+      "parse-and-verify-vaa",
+      [Cl.buffer(Uint8Array.from(vaa))],
+      sender,
+    );
+    expect(res.result).toBeOk(
+      Cl.tuple({
+        vaa: wormhole.serializeVaaToClarityValue(header, body),
+        "vaa-body-hash": Cl.buffer(wormhole.hashVaaBody(body)),
+      }),
     );
   });
 
@@ -485,10 +455,9 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-vaa success`, () => {
       guardianSetId: 1,
     });
     let vaa = wormhole.serializeVaaToBuffer(header, body);
-    let [decodedVaa, _] = wormhole.serializeVaaToClarityValue(
+    const decodedVaa = wormhole.serializeVaaToClarityValue(
       header,
       body,
-      guardianSet1KeysSubset,
     );
 
     const res = simnet.callReadOnlyFn(
