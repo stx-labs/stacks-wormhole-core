@@ -549,6 +549,26 @@ describe(`${WC.CONTRACT_NAME}::parse-and-verify-vaa failures`, () => {
     expect(res.result).toBeErr(Cl.uint(error));
   });
 
+  it("rejects an out-of-range index even when its signature cannot recover and quorum is met", () => {
+    const body = wormhole.buildValidVaaBodySpecs();
+    const header = wormhole.buildValidVaaHeader(guardianSet1Keys.slice(0, 14), body, {
+      version: 1,
+      guardianSetId: 1,
+    });
+    // Keep the first 13 valid signatures and invalidate only the final entry.
+    const lastEntry = header.signatures[13];
+    lastEntry[0] = guardianSet1Keys.length;
+    lastEntry.fill(0, 1);
+    const vaa = wormhole.serializeVaaToBuffer(header, body);
+    const res = simnet.callReadOnlyFn(
+      WC.CONTRACT_NAME,
+      "parse-and-verify-vaa",
+      [Cl.buffer(Uint8Array.from(vaa))],
+      sender,
+    );
+    expect(res.result).toBeErr(Cl.uint(WC.ERR_VAA_CHECKS_GUARDIAN_SET_CONSISTENCY));
+  });
+
   it("should fail if one key is being used multiple times", () => {
     // Before performing this test, we need to setup the guardian set
     let body = wormhole.buildValidVaaBodySpecs({

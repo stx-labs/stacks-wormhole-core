@@ -800,12 +800,15 @@
       }
     }))))
 
+;; @desc Verify one signature against the guardian at its claimed index.
+;; An out-of-range index invalidates the VAA. An invalid signature at a valid index is skipped.
+;; Count each guardian address once because ECDSA permits multiple signatures for the same signer and message.
 (define-private (check-guardian-signature
       (entry { guardian-id: uint, signature: (buff 65) })
       (acc (optional { guardians: (list 30 (buff 20)), message-hash: (buff 32), signers: (list 30 (buff 20)) })))
   (let ((state (unwrap! acc none))
-        (compressed-key (unwrap! (secp256k1-recover? (get message-hash state) (get signature entry)) acc))
         (expected (unwrap! (element-at? (get guardians state) (get guardian-id entry)) none))
+        (compressed-key (unwrap! (secp256k1-recover? (get message-hash state) (get signature entry)) acc))
         (key (unwrap! (secp256k1-decompress? compressed-key) acc))
         ;; Ethereum hashes the 64 coordinate bytes, excluding the 0x04 prefix.
         (coordinates (unwrap! (slice? key u1 u65) acc))
