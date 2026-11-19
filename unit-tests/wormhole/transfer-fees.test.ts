@@ -348,6 +348,7 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
             payload: Uint8Array.from(payload),
             emitter: wormhole.GovernanceUpdateEmitter,
             sequence,
+            timestamp: 0, // Repeated inputs must produce the same signed body.
           });
           const header = wormhole.buildValidVaaHeader(keychain, body, {
             version: 1,
@@ -379,6 +380,8 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
           usedParams.add(params);
         },
       ),
+      // Exercise distinct sequences and an exact replay on every run.
+      { examples: [[1n, 0n], [1n, 1n], [1n, 0n]] },
     );
 
     // Check balances

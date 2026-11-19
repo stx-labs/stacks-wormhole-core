@@ -317,9 +317,9 @@ export namespace wormhole {
     payload?: Uint8Array;
     emitter?: Emitter;
     sequence?: bigint;
+    timestamp?: number;
   }): VaaBody => {
-    const date = Math.floor(Date.now() / 1000);
-    const timestamp = date >>> 0;
+    const timestamp = opts?.timestamp ?? (Math.floor(Date.now() / 1000) >>> 0);
     const payload =
       (opts && opts.payload && opts.payload) || new Uint8Array(32);
     let emitter =
@@ -329,7 +329,7 @@ export namespace wormhole {
       nonce: 0,
       emitterChain: emitter.chain,
       emitterAddress: emitter.address,
-      sequence: opts && opts.sequence ? opts.sequence : 1n,
+      sequence: opts?.sequence ?? 1n,
       consistencyLevel: 0,
       payload: payload,
     };
