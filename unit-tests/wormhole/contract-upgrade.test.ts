@@ -601,7 +601,7 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade with old guardian set`, () => {
       guardianSetId: 1,
     });
     const vaa = wormhole.serializeVaaToBuffer(header, body);
-    simnet.mineBlock([
+    const [rotation] = mineBlock([
       tx.callPublicFn(
         WC.CONTRACT_NAME,
         "guardian-set-upgrade",
@@ -609,6 +609,7 @@ describe(`${WC.CONTRACT_NAME}::contract-upgrade with old guardian set`, () => {
         sender,
       ),
     ]);
+    expect(rotation.result).toHaveClarityType(ClarityType.ResponseOk);
   });
 
   it("should fail contract-upgrade if signed by old guardian set (ERR_GOV_VAA_OLD_GUARDIAN_SET)", () => {

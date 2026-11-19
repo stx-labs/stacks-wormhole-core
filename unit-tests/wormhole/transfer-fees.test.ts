@@ -7,12 +7,12 @@ import {
   MaxValue,
 } from "./constants";
 import { keccak_256 } from "@noble/hashes/sha3";
-import { Cl } from "@stacks/transactions";
+import { Cl, ClarityType } from "@stacks/transactions";
 import { tx } from "@stacks/clarinet-sdk";
 import { default as objectHash } from "object-hash";
 import { expect, describe, beforeEach } from "vitest";
 
-import { wormhole } from "./helpers";
+import { mineBlock, wormhole } from "./helpers";
 
 const accounts = simnet.getAccounts();
 const action = WC.ACTION_TRANSFER_FEES;
@@ -583,7 +583,7 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees with old guardian set`, () => {
       guardianSetId: 1,
     });
     const vaa = wormhole.serializeVaaToBuffer(header, body);
-    simnet.mineBlock([
+    const [rotation] = mineBlock([
       tx.callPublicFn(
         WC.CONTRACT_NAME,
         "guardian-set-upgrade",
@@ -591,6 +591,7 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees with old guardian set`, () => {
         sender,
       ),
     ]);
+    expect(rotation.result).toHaveClarityType(ClarityType.ResponseOk);
   });
 
   it("should fail transfer-fees if signed by old guardian set (ERR_GOV_VAA_OLD_GUARDIAN_SET)", () => {
