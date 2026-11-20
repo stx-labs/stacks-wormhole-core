@@ -11,12 +11,13 @@
 
 ;; WARNING: THESE MAY NEED TO BE CHANGED WHEN UPDATING THE CORE CONTRACT!
 
+;; WARNING: Read-only functions still require hard-coded principals
+;;          DO NOT HAVE "mixed-use" (also hard-coded in read-only) CONSTANTS!
+;;          That would be misleading
+
 ;; The contract that is allowed to act as a proxy and specify `emitter` to `post-message`
 ;; This can be a constant because it will not change as long as the contract is active
 (define-constant PRINCIPAL_PROXY_CONTRACT .wormhole-core-proxy-v2)
-
-;; State-changing calls share this target. Read-only calls use the literal for static analysis.
-(define-constant PRINCIPAL_STATE_CONTRACT .wormhole-core-state)
 
 ;;;; Traits
 
@@ -299,7 +300,7 @@
     ;; Only the contract set by the ContractUpgrade VAA is allowed to call this function
     (asserts! (is-eq addr32 new-addr32) ERR_UPG_UNAUTHORIZED)
     ;; Transfer ownership of state contract
-    (try! (contract-call? PRINCIPAL_STATE_CONTRACT start-ownership-transfer caller))
+    (try! (contract-call? .wormhole-core-state start-ownership-transfer caller))
     ;; If we have an STX balance, transfer to new contract
     (if (> stx-balance u0)
       (try! (as-contract? ((with-stx stx-balance))
@@ -354,7 +355,7 @@
     (asserts! (>= (len eth-addresses) u1) ERR_GSU_EMPTY_GUARDIAN_SET)
     ;; Replay protection for Governance VAAs.
     ;; Theoretically, the increasing Guardian Set index should be sufficient for protection. 
-    (try! (contract-call? PRINCIPAL_STATE_CONTRACT consume-governance-vaa hash))
+    (try! (contract-call? .wormhole-core-state consume-governance-vaa hash))
 
     ;; Update storage
     (match active-set-id
@@ -362,7 +363,7 @@
       id (asserts! (is-eq new-set-id (+ u1 id)) ERR_GSU_CHECK_INDEX)
       ;; Initial guardian set, allow any value
       true)
-    (try! (contract-call? PRINCIPAL_STATE_CONTRACT guardian-set-addrs-set new-set-id eth-addresses))
+    (try! (contract-call? .wormhole-core-state guardian-set-addrs-set new-set-id eth-addresses))
     (try! (set-new-guardian-set-id new-set-id))
     ;; Emit Event
     (print {
@@ -424,7 +425,7 @@
 
     ;; --- Message has been validated, check if we can apply update ---
     ;; Check we are not re-processing an old message
-    (try! (contract-call? PRINCIPAL_STATE_CONTRACT consume-governance-vaa hash))
+    (try! (contract-call? .wormhole-core-state consume-governance-vaa hash))
 
     ;; --- Commit State ---
     (var-set message-fee fee)
@@ -476,7 +477,7 @@
 
     ;; --- Message has been validated, check if we can apply update ---
     ;; Check we are not re-processing an old message
-    (try! (contract-call? PRINCIPAL_STATE_CONTRACT consume-governance-vaa hash))
+    (try! (contract-call? .wormhole-core-state consume-governance-vaa hash))
 
     ;; --- Execute Action ---
     (try! (as-contract? ((with-stx amount))
@@ -532,7 +533,7 @@
 
     ;; --- Message has been validated, check if we can apply update ---
     ;; Check we are not re-processing an old message
-    (try! (contract-call? PRINCIPAL_STATE_CONTRACT consume-governance-vaa hash))
+    (try! (contract-call? .wormhole-core-state consume-governance-vaa hash))
 
     ;; --- Commit State ---
     ;; Save address and keep this contract active for now.
@@ -922,7 +923,7 @@
 ;;  - (err ...):  Already initialized or permissions error
 (define-private (initialize-wormhole)
   (begin
-    (try! (contract-call? PRINCIPAL_STATE_CONTRACT initialize current-contract))
+    (try! (contract-call? .wormhole-core-state initialize current-contract))
     ;; This is the initial deployment of `wormhole-core`
     (var-set deployment-state DEPLOYMENT_STATE_ACTIVE)
 
@@ -946,7 +947,7 @@
     (asserts! (is-eq (get-deployment-state) DEPLOYMENT_STATE_UNITIALIZED) ERR_DEPLOYMENT_STATE_ALREADY_INITIALIZED)
     (let ((previous-state (try! (contract-call? previous-contract export-state))))
       ;; Finalize ownership transfer of state contract
-      (try! (contract-call? PRINCIPAL_STATE_CONTRACT finalize-ownership-transfer))
+      (try! (contract-call? .wormhole-core-state finalize-ownership-transfer))
       ;; Import state from previous contract
       (var-set active-guardian-set-id (get active-guardian-set-id previous-state))
       (var-set previous-guardian-set (get previous-guardian-set previous-state))
@@ -989,7 +990,7 @@
     (asserts! (<= nonce MAX_VALUE_U32) ERR_POST_OVERFLOW_NONCE)
     ;; If a fee has been set, collect it
     (try! (charge-message-fee))
-    (contract-call? PRINCIPAL_STATE_CONTRACT post-message payload nonce consistency-level emitter)))
+    (contract-call? .wormhole-core-state post-message payload nonce consistency-level emitter)))
 
 
 (define-private (check-emitter (address (buff 32)) (chain uint))
