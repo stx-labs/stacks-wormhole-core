@@ -1,5 +1,5 @@
 import { fc } from "@fast-check/vitest";
-import { tx } from "@stacks/clarinet-sdk";
+import { tx, type Tx } from "@stacks/clarinet-sdk";
 import { Cl, ClarityValue } from "@stacks/transactions";
 import { bigintToBuffer } from "../utils/helpers";
 import * as secp from "@noble/secp256k1";
@@ -23,12 +23,19 @@ const initialGovernanceDataSource = {
 secp.etc.hmacSha256Sync = (k, ...m) =>
   hmac(sha256, k, secp.etc.concatBytes(...m));
 
+export function mineBlock(transactions: Tx[]) {
+  return simnet.mineBlock(transactions).map((receipt) => {
+    if (receipt.status === "rejected") {
+      throw new Error(receipt.error);
+    }
+    return receipt.execution;
+  });
+}
+
 export namespace wormhole {
   export interface Guardian {
     guardianId: number;
     secretKey: Uint8Array;
-    compressedPublicKey: Uint8Array;
-    uncompressedPublicKey: Uint8Array;
     ethereumAddress: Uint8Array;
   }
 
@@ -43,9 +50,7 @@ export namespace wormhole {
       keychain.push({
         guardianId: i,
         secretKey,
-        uncompressedPublicKey,
         ethereumAddress,
-        compressedPublicKey: secp.getPublicKey(secretKey, true),
       });
     }
     return keychain;
@@ -276,31 +281,14 @@ export namespace wormhole {
   export const serializeVaaToClarityValue = (
     header: VaaHeader,
     body: VaaBody,
-    keychain: Guardian[],
-  ): [ClarityValue, any[]] => {
-    let guardiansPublicKeys = [];
-    let guardiansSignatures = [];
-    for (let i = 0; i < header.signatures.length; i++) {
-      let guardianId = header.signatures[i][0];
-      if (keychain.length > i) {
-        let guardian = keychain[i];
-        guardiansPublicKeys.push(
-          Cl.tuple({
-            "guardian-id": Cl.uint(guardianId),
-            "recovered-compressed-public-key": Cl.buffer(
-              guardian.compressedPublicKey,
-            ),
-          }),
-        );
-      }
-      guardiansSignatures.push(
-        Cl.tuple({
-          "guardian-id": Cl.uint(header.signatures[i].slice(0, 1)),
-          signature: Cl.buffer(header.signatures[i].slice(1, 66)),
-        }),
-      );
-    }
-    let value = Cl.tuple({
+  ): ClarityValue => {
+    const guardiansSignatures = header.signatures.map((signature) =>
+      Cl.tuple({
+        "guardian-id": Cl.uint(signature[0]),
+        signature: Cl.buffer(signature.slice(1, 66)),
+      }),
+    );
+    return Cl.tuple({
       "consistency-level": Cl.uint(body.consistencyLevel),
       version: Cl.uint(header.version),
       "guardian-set-id": Cl.uint(header.guardianSetId),
@@ -313,7 +301,6 @@ export namespace wormhole {
       nonce: Cl.uint(body.nonce),
       payload: Cl.buffer(body.payload),
     });
-    return [value, guardiansPublicKeys];
   };
 
   export interface VaaBodySpec {
@@ -330,9 +317,9 @@ export namespace wormhole {
     payload?: Uint8Array;
     emitter?: Emitter;
     sequence?: bigint;
+    timestamp?: number;
   }): VaaBody => {
-    const date = Math.floor(Date.now() / 1000);
-    const timestamp = date >>> 0;
+    const timestamp = opts?.timestamp ?? (Math.floor(Date.now() / 1000) >>> 0);
     const payload =
       (opts && opts.payload && opts.payload) || new Uint8Array(32);
     let emitter =
@@ -342,7 +329,7 @@ export namespace wormhole {
       nonce: 0,
       emitterChain: emitter.chain,
       emitterAddress: emitter.address,
-      sequence: opts && opts.sequence ? opts.sequence : 1n,
+      sequence: opts?.sequence ?? 1n,
       consistencyLevel: 0,
       payload: payload,
     };
@@ -626,15 +613,11 @@ export namespace wormhole {
       guardianSetId: previousGuardianSetId,
     });
     let vaa = wormhole.serializeVaaToBuffer(vaaHeader, vaaBody);
-    let uncompressedPublicKey = [];
-    for (let guardian of keychain) {
-      uncompressedPublicKey.push(Cl.buffer(guardian.uncompressedPublicKey));
-    }
-    let result = simnet.mineBlock([
+    let result = mineBlock([
       tx.callPublicFn(
         contractName,
         `guardian-set-upgrade`,
-        [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
+        [Cl.buffer(Uint8Array.from(vaa))],
         txSenderAddress,
       ),
     ])[0].result;
@@ -646,13 +629,12 @@ export namespace wormhole {
     contractName: string,
   ) {
     const vaaRotation1 = Cl.bufferFromHex(gsuMainnetVaas[0].vaa);
-    let publicKeysRotation1 = gsuMainnetVaas[0].keys.map(Cl.bufferFromHex);
 
-    const block = simnet.mineBlock([
+    const block = mineBlock([
       tx.callPublicFn(
         contractName,
         "guardian-set-upgrade",
-        [vaaRotation1, Cl.list(publicKeysRotation1)],
+        [vaaRotation1],
         txSenderAddress,
       ),
     ]);
@@ -664,13 +646,12 @@ export namespace wormhole {
     contractName: string,
   ) {
     const vaaRotation2 = Cl.bufferFromHex(gsuMainnetVaas[1].vaa);
-    let publicKeysRotation2 = gsuMainnetVaas[1].keys.map(Cl.bufferFromHex);
 
-    const block = simnet.mineBlock([
+    const block = mineBlock([
       tx.callPublicFn(
         contractName,
         "guardian-set-upgrade",
-        [vaaRotation2, Cl.list(publicKeysRotation2)],
+        [vaaRotation2],
         txSenderAddress,
       ),
     ]);

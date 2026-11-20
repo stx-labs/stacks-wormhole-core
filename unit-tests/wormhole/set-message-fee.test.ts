@@ -1,7 +1,7 @@
-import { Cl } from "@stacks/transactions";
+import { Cl, ClarityType } from "@stacks/transactions";
 import { expect, describe, beforeEach } from "vitest";
 import { it, fc } from "@fast-check/vitest";
-import { wormhole } from "./helpers";
+import { mineBlock, wormhole } from "./helpers";
 import { tx } from "@stacks/clarinet-sdk";
 import { hexToBytes } from "@noble/hashes/utils";
 import {
@@ -202,10 +202,9 @@ describe(`${WC.CONTRACT_NAME}::set-message-fee`, () => {
       deployer,
       WC.CONTRACT_NAME,
     );
-    let [serializeVaaToClarityValue, _] = wormhole.serializeVaaToClarityValue(
+    const decodedVaa = wormhole.serializeVaaToClarityValue(
       vaaHeader as wormhole.VaaHeader,
       vaaBody as wormhole.VaaBody,
-      keychain,
     );
 
     expect(result).toBeOk(
@@ -214,11 +213,8 @@ describe(`${WC.CONTRACT_NAME}::set-message-fee`, () => {
           "guardians-eth-addresses": Cl.list(
             keychain.map((g) => Cl.buffer(g.ethereumAddress)),
           ),
-          "guardians-public-keys": Cl.list(
-            keychain.map((g) => Cl.buffer(g.uncompressedPublicKey)),
-          ),
         }),
-        vaa: serializeVaaToClarityValue,
+        vaa: decodedVaa,
       }),
     );
   });
@@ -457,17 +453,15 @@ describe(`${WC.CONTRACT_NAME}::set-message-fee with old guardian set`, () => {
       guardianSetId: 1,
     });
     const vaa = wormhole.serializeVaaToBuffer(header, body);
-    const uncompressedPublicKey = guardianSet2Keys.map((g) =>
-      Cl.buffer(g.uncompressedPublicKey),
-    );
-    simnet.mineBlock([
+    const [rotation] = mineBlock([
       tx.callPublicFn(
         WC.CONTRACT_NAME,
         "guardian-set-upgrade",
-        [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
+        [Cl.buffer(Uint8Array.from(vaa))],
         sender,
       ),
     ]);
+    expect(rotation.result).toHaveClarityType(ClarityType.ResponseOk);
   });
 
   it("should fail set-message-fee if signed by old guardian set (ERR_GOV_VAA_OLD_GUARDIAN_SET)", () => {

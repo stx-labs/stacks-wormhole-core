@@ -7,12 +7,12 @@ import {
   MaxValue,
 } from "./constants";
 import { keccak_256 } from "@noble/hashes/sha3";
-import { Cl } from "@stacks/transactions";
+import { Cl, ClarityType } from "@stacks/transactions";
 import { tx } from "@stacks/clarinet-sdk";
 import { default as objectHash } from "object-hash";
 import { expect, describe, beforeEach } from "vitest";
 
-import { wormhole } from "./helpers";
+import { mineBlock, wormhole } from "./helpers";
 
 const accounts = simnet.getAccounts();
 const action = WC.ACTION_TRANSFER_FEES;
@@ -266,10 +266,9 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
       deployer,
       WC.CONTRACT_NAME,
     );
-    let [serializeVaaToClarityValue, _] = wormhole.serializeVaaToClarityValue(
+    const decodedVaa = wormhole.serializeVaaToClarityValue(
       vaaHeader as wormhole.VaaHeader,
       vaaBody as wormhole.VaaBody,
-      keychain,
     );
 
     expect(result).toBeOk(
@@ -278,11 +277,8 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
           "guardians-eth-addresses": Cl.list(
             keychain.map((g) => Cl.buffer(g.ethereumAddress)),
           ),
-          "guardians-public-keys": Cl.list(
-            keychain.map((g) => Cl.buffer(g.uncompressedPublicKey)),
-          ),
         }),
-        vaa: serializeVaaToClarityValue,
+        vaa: decodedVaa,
       }),
     );
 
@@ -340,7 +336,7 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
     fc.assert(
       fc.property(
         fc.bigInt({ min: 1n, max: 100n }), // Small amounts so we don't run out
-        fc.bigInt({ min: 0n, max: MaxValue.U128 }),
+        fc.bigInt({ min: 0n, max: MaxValue.U64 }),
         (amount, sequence) => {
           const payload = wormhole.serializeTransferFeesVaaPayloadToBuffer(
             WC.ACTION_TRANSFER_FEES,
@@ -352,6 +348,7 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
             payload: Uint8Array.from(payload),
             emitter: wormhole.GovernanceUpdateEmitter,
             sequence,
+            timestamp: 0, // Repeated inputs must produce the same signed body.
           });
           const header = wormhole.buildValidVaaHeader(keychain, body, {
             version: 1,
@@ -383,6 +380,8 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees`, () => {
           usedParams.add(params);
         },
       ),
+      // Exercise distinct sequences and an exact replay on every run.
+      { examples: [[1n, 0n], [1n, 1n], [1n, 0n]] },
     );
 
     // Check balances
@@ -584,17 +583,15 @@ describe(`${WC.CONTRACT_NAME}::transfer-fees with old guardian set`, () => {
       guardianSetId: 1,
     });
     const vaa = wormhole.serializeVaaToBuffer(header, body);
-    const uncompressedPublicKey = guardianSet2Keys.map((g) =>
-      Cl.buffer(g.uncompressedPublicKey),
-    );
-    simnet.mineBlock([
+    const [rotation] = mineBlock([
       tx.callPublicFn(
         WC.CONTRACT_NAME,
         "guardian-set-upgrade",
-        [Cl.buffer(Uint8Array.from(vaa)), Cl.list(uncompressedPublicKey)],
+        [Cl.buffer(Uint8Array.from(vaa))],
         sender,
       ),
     ]);
+    expect(rotation.result).toHaveClarityType(ClarityType.ResponseOk);
   });
 
   it("should fail transfer-fees if signed by old guardian set (ERR_GOV_VAA_OLD_GUARDIAN_SET)", () => {
